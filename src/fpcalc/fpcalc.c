@@ -390,6 +390,7 @@ start_eval_1term:
 
             match_builtin_var(e, M_E);
             match_builtin_var(pi, M_PI);
+            s2data_unmap(idres);
         }
 
         if( !builtin && !arg )
