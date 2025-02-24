@@ -1,0 +1,22 @@
+2025-01-18:
+
+Recent-Most Anchored Sequence of Tokens: ASEQ
+Look-Ahead Token: LAT
+Rule with Prefix Matching ASEQ: PMR
+Rule Completely  Matching ASEQ: CMR
+!PMR && !CMR: NR
+
+Q1: what's the stance on multiple CMRs?
+A: complexity of parser at the ease of writing rules is a bad trade-off.
+
+Q2: what's the stance on some CMR being a prefix of a PMR?
+A: it causes difficulty with look-ahead, should avoid.
+
+if ASEQ+LAT && +(PMR|CMR): shift LAT.
+elif ASEQ && +PMR && {2,}CMR but ASEQ+LAT && NR: assert_error( refer to Q1 ).
+elif ASEQ && +PMR && {1}CMR but ASEQ+LAT && NR: assert_error( refer to Q2 ).
+elif ASEQ && +PMR && !CMR but ASEQ+LAT && NR:
+  if LAT && +(PMR|CMR): anch LAT.
+  else: clear the one recent-most anchor.
+elif ASEQ && !PMR && {1}CMR but ASEQ+LAT && NR: reduce ASEQ
+elif ASEQ && NR: clear the one recent-most anchor.

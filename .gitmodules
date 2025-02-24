@@ -1,0 +1,3 @@
+[submodule "contrib/SafeTypes2"]
+	path = contrib/SafeTypes2
+	url = ../SafeTypes2
