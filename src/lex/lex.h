@@ -39,7 +39,7 @@ struct lex_enum_strtab {
 #define s2_is_token(obj) (((s2obj_t *)obj)->type == S2_OBJ_TYPE_LEXTOKEN)
 
 typedef struct {
-    s2obj_t base;
+    s2obj_base;
     s2data_t *str;
     lexer_state_t completion;
     int32_t identity;

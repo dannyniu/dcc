@@ -2,71 +2,8 @@
 
 #include "fpcalc.h"
 #include "../lex/langlex.h"
+#include "../lex/shifter.h"
 #include <ctype.h>
-
-typedef struct {
-    lex_getc_base_t base;
-    const char *expr;
-    int32_t lineno, column;
-} fpexpr_lex_t;
-
-int fpexpr_lex_getc(fpexpr_lex_t *ctx)
-{
-    int ret = *ctx->expr;
-    if( !ret ) return EOF;
-    ctx->expr++;
-    return ret;
-}
-
-int fpexpr_lex_ungetc(int c, fpexpr_lex_t *ctx)
-{
-    if( c >= 0 ) --ctx->expr;
-    return c;
-}
-
-lex_token_t *shifter(fpexpr_lex_t *shctx)
-{
-    lex_token_t *token;
-    int c;
-
-    while( *shctx->expr )
-    {
-        if( (c = fpexpr_lex_getc(shctx)) == EOF ) break;
-        if( c == '\n' )
-        {
-            shctx->lineno ++;
-            shctx->column = 1;
-        }
-        else if( isspace(c) )
-        {
-            shctx->column ++;
-        }
-
-        if( !isspace(c) )
-        {
-            fpexpr_lex_ungetc(c, shctx);
-            token = lex_token_parse(langlex_fsm, &shctx->base);
-
-            if( !token )
-                token = lex_token_match(
-                    langlex_puncts, langlex_punct, &shctx->base);
-
-            if( !token )
-            {
-                fprintf(stderr, "Encountered malformed token!\n");
-                return NULL;
-            }
-
-            token->lineno = shctx->lineno;
-            token->column = shctx->column;
-            shctx->column += s2data_len(token->str);
-
-            return token;
-        }
-    }
-
-    return NULL;
-}
 
 s2data_t *s2data_stdio_getline(FILE *fp)
 {
@@ -98,10 +35,7 @@ s2data_t *s2data_stdio_getline(FILE *fp)
 
 int main()
 {
-    fpexpr_lex_t lexer = {
-        .base.getc = (lex_getc_func_t)fpexpr_lex_getc,
-        .base.ungetc = (lex_ungetc_func_t)fpexpr_lex_ungetc,
-    };
+    shifter_ctx_t lexer;
 
     lalr_stack_t *ps = NULL;
     s2data_t *line_data;
@@ -118,6 +52,11 @@ int main()
     acq_before = allocs;
     rel_before = frees;
 #endif /* INTERCEPT_MEM_CALLS */
+
+    shifter_init_from_expr(&lexer, NULL);
+    lexer.fsm = langlex_fsm;
+    lexer.puncts = langlex_puncts;
+    lexer.matched_fallback = langlex_punct;
 
     ns_rules_fpcalc = strvec_create();
     globaldefs = s2dict_create();

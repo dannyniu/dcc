@@ -15,6 +15,7 @@ src="\
 fpcalc-main.c
 fpcalc.c
 lalr/lalr.c
+lex/shifter.c
 lex/langlex.c
 lex/lex.c
 infra/strvec.c

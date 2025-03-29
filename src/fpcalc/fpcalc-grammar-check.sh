@@ -3,7 +3,7 @@
 optimize=debug
 testfunc()
 {
-    $exec ../tests/fpcalc-grammar-test-"${variant}".txt
+    $exec -f ../tests/fpcalc-grammar-test-"${variant}".txt
 }
 
 cd "$(dirname "$0")"
@@ -14,6 +14,7 @@ src="\
 fpcalc-grammar-check.c
 fpcalc-grammar.c
 lalr/lalr.c
+lex/shifter.c
 lex/langlex.c
 lex/lex.c
 infra/strvec.c

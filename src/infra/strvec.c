@@ -16,7 +16,7 @@ void strvec_final(T *restrict ctx)
     }
     s2data_unmap(ctx->ptab);
 
-    s2obj_release(&ctx->ptab->base);
+    s2obj_release(ctx->ptab->pobj);
 }
 
 T *strvec_create()
@@ -29,7 +29,7 @@ T *strvec_create()
     ret = (T *)s2gc_obj_alloc(0x0300 + sizeof(void *), sizeof(T));
     if( !ret )
     {
-        s2obj_release(&ptab->base);
+        s2obj_release(ptab->pobj);
         return NULL;
     }
 

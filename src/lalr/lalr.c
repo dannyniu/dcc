@@ -13,8 +13,8 @@ static void lalr_prod_final(lalr_prod_t *ctx)
 
     for(t=0; t<ctx->terms_count; t++)
     {
-        // could also be `... production->base`.
-        s2obj_release(&ctx->terms[t].terminal->base);
+        // could also be `... production->pobj`.
+        s2obj_release(ctx->terms[t].terminal->pobj);
     }
 
     free(ctx->terms);
@@ -315,8 +315,8 @@ static void lalr_stack_final(lalr_stack_t *ctx)
     {
         s = t->up;
 
-        // could also be `... terminal->base`.
-        s2obj_release(&t->production->base);
+        // could also be `... terminal->pobj`.
+        s2obj_release(t->production->pobj);
         lalr_term_free(t);
 
         t = s;
@@ -420,7 +420,7 @@ int lalr_parse(
     if( !(tn = shifter(shifter_ctx)) )
     {
         *out = NULL;
-        s2obj_release(&ps->base);
+        s2obj_release(ps->pobj);
         return -2;
     }
 
@@ -428,8 +428,8 @@ int lalr_parse(
 
     if( !(te = calloc(1, sizeof(lalr_term_t))) )
     {
-        s2obj_release(&tn->base);
-        s2obj_release(&ps->base);
+        s2obj_release(tn->pobj);
+        s2obj_release(ps->pobj);
         *out = NULL;
         return -1;
     }
@@ -469,7 +469,7 @@ int lalr_parse(
             {
                 if( bt == te ) eprintf("^");
                 if( bt->anchored ) eprintf("!");
-                if( s2_is_prod(&bt->production->base) )
+                if( s2_is_prod(bt->production->pobj) )
                     eprintf("%s, ", strvec_i2str(
                                 ns_rules, bt->production->production));
                 else eprintf("\"%s\", ", (char *)s2data_weakmap(
@@ -603,8 +603,8 @@ int lalr_parse(
 
             if( !(te = calloc(1, sizeof(lalr_term_t))) )
             {
-                s2obj_release(&tn->base);
-                s2obj_release(&ps->base);
+                s2obj_release(tn->pobj);
+                s2obj_release(ps->pobj);
                 *out = NULL;
                 return -1;
             }
@@ -642,7 +642,7 @@ int lalr_parse(
             {
                 if( bt == te ) eprintf("^");
                 if( bt->anchored ) eprintf("!");
-                if( s2_is_prod(&bt->production->base) )
+                if( s2_is_prod(bt->production->pobj) )
                     eprintf("%s, ", strvec_i2str(
                                 ns_rules, bt->production->production));
                 else eprintf("\"%s\", ", (char *)s2data_weakmap(
@@ -769,7 +769,7 @@ int lalr_parse(
         rd = lalr_rule_reduce(rules[last_resort_rule], te, ctx, ns_rules);
         if( !rd )
         {
-            s2obj_release(&ps->base);
+            s2obj_release(ps->pobj);
             *out = NULL;
             return -1;
         }

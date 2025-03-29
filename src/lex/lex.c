@@ -4,7 +4,7 @@
 
 static void lex_token_final(lex_token_t *ctx)
 {
-    s2obj_release(&ctx->str->base);
+    s2obj_release(ctx->str->pobj);
 }
 
 lex_token_t *lex_token_create()
@@ -20,7 +20,7 @@ lex_token_t *lex_token_create()
 
     if( !ret )
     {
-        s2obj_release(&str->base);
+        s2obj_release(str->pobj);
         return NULL;
     }
 
@@ -98,7 +98,7 @@ lex_token_t *lex_token_parse(
     }
     else
     {
-        s2obj_release(&ret->base);
+        s2obj_release(ret->pobj);
         return NULL;
     }
 }
@@ -143,7 +143,7 @@ lex_token_t *lex_token_match(
     s2data_putfin(ret->str);
     if( s2data_len(ret->str) == 0 )
     {
-        s2obj_release(&ret->base);
+        s2obj_release(ret->pobj);
         ret = NULL;
     }
 

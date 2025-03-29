@@ -412,7 +412,7 @@ start_eval_1term:
             eprintf("- attempt finding in globals: %f (subret: %d).\n",
                     resultvalue, subret);
 
-            if( !subret ) goto fail;
+            if( subret != 0 ) goto fail;
         }
 
         *fpreg = resultvalue;

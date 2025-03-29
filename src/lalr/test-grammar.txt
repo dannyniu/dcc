@@ -1,0 +1,37 @@
+identified-expression
+: <identifier>
+| <identifier> "(" ")"
+| <identifier> "(" arguments ")"
+;
+
+arguments
+: additive-expression
+| arguments "," additive-expression
+;
+
+primary-expression
+: identified-expression
+| <literal> # 2025-03-29: omitted for now to focus on practical tests.
+| "(" expression ")"
+;
+
+unary-expression
+: primary-expression
+| ("+"|"-") unary-expression
+;
+
+multiplicative-expression
+: unary-expression
+| multiplicative-expression ("*"|"/") unary-expression
+;
+
+additive-expression
+: multiplicative-expression
+| additive-expression ("+"|"-") multiplicative-expression
+;
+
+expression
+: additive-expression
+| expression "," additive-expression
+
+%->expression
