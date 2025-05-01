@@ -1,6 +1,6 @@
 /* DannyNiu/NJF, 2024-12-29. Public Domain. */
 
-#include "langlex.h"
+#include "langlex-c.h"
 #include <ctype.h>
 
 typedef struct lex_getc_checking {

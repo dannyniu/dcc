@@ -1,16 +1,16 @@
-/* DannyNiu/NJF, 2024-12-30. Public Domain. */
+/* DannyNiu/NJF, 2025-03-29. Public Domain. */
 
 #define dcc_lalr_defining_grammar
-#include "fpcalc-grammar.h"
-#include "../lex/langlex.h"
+#include "reduce-reduce-conflict.h"
+#include "../langlex-c/langlex-c.h"
 
-strvec_t *ns_rules_fpcalc;
+strvec_t *ns_rules_test;
 
-static void *fpcalc_goal(lalr_rule_params)
+static void *goal(lalr_rule_params)
 {
     int32_t production = hRule(".");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod,   .value = "assignment-expression" },
+        { symtype_prod,   .value = "expression" },
         {0},
     };
 
@@ -18,9 +18,9 @@ static void *fpcalc_goal(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *assignexpr_degenerate(lalr_rule_params)
+static void *expression_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("assignment-expression");
+    int32_t production = hRule("expression");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_prod,   .value = "additive-expression" },
         {0},
@@ -30,12 +30,12 @@ static void *assignexpr_degenerate(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *assignexpr_assignment(lalr_rule_params)
+static void *expression_list(lalr_rule_params)
 {
-    int32_t production = hRule("assignment-expression");
+    int32_t production = hRule("expression");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod,   .value = "identified-expression" },
-        { symtype_stoken, .value = "=" },
+        { symtype_prod,   .value = "expression" },
+        { symtype_stoken, .value = "," },
         { symtype_prod,   .value = "additive-expression" },
         {0},
     };
@@ -128,7 +128,7 @@ static void *unaryexpr_degenerate(lalr_rule_params)
 {
     int32_t production = hRule("unary-expression");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod  , .value = "primary-expression" },
+        { symtype_prod,   .value = "primary-expression" },
         {0},
     };
 
@@ -136,12 +136,12 @@ static void *unaryexpr_degenerate(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *unaryexpr_positive(lalr_rule_params)
+static void *unaryexpr_plus(lalr_rule_params)
 {
     int32_t production = hRule("unary-expression");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_stoken, .value = "+" },
-        { symtype_prod  , .value = "primary-expression" },
+        { symtype_prod,   .value = "unary-expression" },
         {0},
     };
 
@@ -149,12 +149,12 @@ static void *unaryexpr_positive(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *unaryexpr_negative(lalr_rule_params)
+static void *unaryexpr_minus(lalr_rule_params)
 {
     int32_t production = hRule("unary-expression");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_stoken, .value = "-" },
-        { symtype_prod  , .value = "primary-expression" },
+        { symtype_prod,   .value = "unary-expression" },
         {0},
     };
 
@@ -162,72 +162,12 @@ static void *unaryexpr_negative(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *primary_identexpr(lalr_rule_params)
-{
-    int32_t production = hRule("primary-expression");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod  , .value = "identified-expression" },
-        {0},
-    };
-
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-static void *primary_number_int(lalr_rule_params)
-{
-    int32_t production = hRule("primary-expression");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_int_dec },
-        {0},
-    };
-
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-static void *primary_number_fract(lalr_rule_params)
-{
-    int32_t production = hRule("primary-expression");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_fp_dec },
-        {0},
-    };
-
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-static void *primary_number_fp(lalr_rule_params)
-{
-    int32_t production = hRule("primary-expression");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_fp_dec_exp },
-        {0},
-    };
-
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-static void *primary_number_zero_1digit(lalr_rule_params)
-{
-    int32_t production = hRule("primary-expression");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_int_prefixed },
-        {0},
-    };
-
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-static void *primary_paren(lalr_rule_params)
+static void *primaryexpr_paren(lalr_rule_params)
 {
     int32_t production = hRule("primary-expression");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_stoken, .value = "(" },
-        { symtype_prod  , .value = "additive-expression" },
+        { symtype_prod,   .value = "expression" },
         { symtype_stoken, .value = ")" },
         {0},
     };
@@ -236,11 +176,35 @@ static void *primary_paren(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *addexprlist_base(lalr_rule_params)
+static void *primaryexpr_identexpr(lalr_rule_params)
 {
-    int32_t production = hRule("additive-expression-list");
+    int32_t production = hRule("primary-expression");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod,   .value = "identified-expression" },
+        {0},
+    };
+
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+static void *arguments_1arg(lalr_rule_params)
+{
+    int32_t production = hRule("arguments");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_prod,   .value = "additive-expression" },
+        {0},
+    };
+
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+static void *arguments_morearg(lalr_rule_params)
+{
+    int32_t production = hRule("arguments");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod,   .value = "arguments" },
         { symtype_stoken, .value = "," },
         { symtype_prod,   .value = "additive-expression" },
         {0},
@@ -250,25 +214,14 @@ static void *addexprlist_base(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *addexprlist_recursion(lalr_rule_params)
+static void *identexpr_func(lalr_rule_params)
 {
-    int32_t production = hRule("additive-expression-list");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod,   .value = "additive-expression-list" },
-        { symtype_stoken, .value = "," },
-        { symtype_prod,   .value = "additive-expression" },
-        {0},
-    };
-
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-static void *identexpr_label(lalr_rule_params)
-{
-    int32_t production = hRule("identified-expression");
+    int32_t production = hRule("arguments");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_vtoken, .vtype = langlex_identifier },
+        { symtype_stoken, .value = "(" },
+        { symtype_prod,   .value = "arguments" },
+        { symtype_stoken, .value = ")" },
         {0},
     };
 
@@ -276,9 +229,9 @@ static void *identexpr_label(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *identexpr_function_noparam(lalr_rule_params)
+static void *identexpr_subr(lalr_rule_params)
 {
-    int32_t production = hRule("identified-expression");
+    int32_t production = hRule("arguments");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_vtoken, .vtype = langlex_identifier },
         { symtype_stoken, .value = "(" },
@@ -290,14 +243,11 @@ static void *identexpr_function_noparam(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *identexpr_function_1param(lalr_rule_params)
+static void *identexpr_ident(lalr_rule_params)
 {
-    int32_t production = hRule("identified-expression");
+    int32_t production = hRule("arguments");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_vtoken, .vtype = langlex_identifier },
-        { symtype_stoken, .value = "(" },
-        { symtype_prod  , .value = "additive-expression" },
-        { symtype_stoken, .value = ")" },
         {0},
     };
 
@@ -305,26 +255,11 @@ static void *identexpr_function_1param(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *identexpr_function_multiparam(lalr_rule_params)
-{
-    int32_t production = hRule("identified-expression");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_identifier },
-        { symtype_stoken, .value = "(" },
-        { symtype_prod  , .value = "additive-expression-list" },
-        { symtype_stoken, .value = ")" },
-        {0},
-    };
+lalr_rule_t test_grammar_rules[] = {
+    goal,
 
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-lalr_rule_t fpcalc_grammar_rules[] = {
-    fpcalc_goal,
-
-    assignexpr_degenerate, // 1
-    assignexpr_assignment,
+    expression_degenerate, // 1
+    expression_list,
 
     addexpr_degenerate,
     addexpr_addition,
@@ -335,22 +270,18 @@ lalr_rule_t fpcalc_grammar_rules[] = {
     mulexpr_division,
 
     unaryexpr_degenerate,
-    unaryexpr_positive, // 10
-    unaryexpr_negative,
+    unaryexpr_plus, // 10
+    unaryexpr_minus,
 
-    primary_identexpr,
-    primary_number_int,
-    primary_number_fract,
-    primary_number_fp, // 15
-    primary_number_zero_1digit,
-    primary_paren,
+    primaryexpr_paren,
+    primaryexpr_identexpr,
 
-    addexprlist_base,
-    addexprlist_recursion,
-    identexpr_label, // 20
-    identexpr_function_noparam,
-    identexpr_function_1param,
-    identexpr_function_multiparam,
+    arguments_1arg,
+    arguments_morearg, // 15
+
+    identexpr_func,
+    identexpr_subr,
+    identexpr_ident,
 
     NULL,
 };

@@ -1,9 +1,14 @@
 #!/bin/sh
 
+# 2025-03-29:
+# this check verifies whether the current parser can handle
+# reduce-reduce conflict, and the result shows that it can't.
+
 optimize=debug
 testfunc()
 {
-    $exec -f ../tests/fpcalc-grammar-test-"${variant}".txt
+    #$exec -e 'f(x), g(x,(a,b),y) + 3*4'
+    $exec -f ../tests/fpcalc-grammar-test-${variant}.txt
 }
 
 cd "$(dirname "$0")"
@@ -11,12 +16,12 @@ unitest_sh=../unitest.sh
 . $unitest_sh
 
 src="\
-fpcalc-grammar-check.c
-fpcalc-grammar.c
-lalr/lalr.c
-lex/shifter.c
-lex/langlex.c
-lex/lex.c
+reduce-reduce-conflict-check.c
+reduce-reduce-conflict.c
+lalr-common/lalr.c
+lex-common/shifter.c
+lex-common/lex.c
+langlex-c/langlex-c.c
 infra/strvec.c
 ./../contrib/SafeTypes2/src/s2data.c
 ./../contrib/SafeTypes2/src/s2obj.c

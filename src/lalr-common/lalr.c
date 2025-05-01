@@ -304,7 +304,7 @@ void *lalr_rule_actions_generic(
      (lalr_rule_action_reduce, terms, ctx, strtab))
 
 #define lalr_rule_expect(rule, terms, ctx, strtab)      \
-    ((bool)((intptr_t (*)(lalr_rule_params))rule)       \
+    ((bool)((void *(*)(lalr_rule_params))rule)       \
      (lalr_rule_action_expect, terms, ctx, strtab))
 
 static void lalr_stack_final(lalr_stack_t *ctx)

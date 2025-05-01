@@ -2,11 +2,11 @@
 
 #define dcc_lalr_defining_grammar
 #include "fpcalc-grammar.h"
-#include "../lex/langlex.h"
+#include "../langlex-c/langlex-c.h"
 
 strvec_t *ns_rules_fpcalc = NULL;
 
-static void *fpcalc_goal(lalr_rule_params)
+void *fpcalc_goal(lalr_rule_params)
 {
     int32_t production = hRule(".");
     static lalr_rule_symbol_t symbolseq[] = {
@@ -18,7 +18,7 @@ static void *fpcalc_goal(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *addexpr_degenerate(lalr_rule_params)
+void *addexpr_degenerate(lalr_rule_params)
 {
     int32_t production = hRule("additive-expression");
     static lalr_rule_symbol_t symbolseq[] = {
@@ -30,7 +30,7 @@ static void *addexpr_degenerate(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *addexpr_addition(lalr_rule_params)
+void *addexpr_addition(lalr_rule_params)
 {
     int32_t production = hRule("additive-expression");
     static lalr_rule_symbol_t symbolseq[] = {
@@ -44,7 +44,7 @@ static void *addexpr_addition(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *addexpr_subtraction(lalr_rule_params)
+void *addexpr_subtraction(lalr_rule_params)
 {
     int32_t production = hRule("additive-expression");
     static lalr_rule_symbol_t symbolseq[] = {
@@ -58,7 +58,7 @@ static void *addexpr_subtraction(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *mulexpr_degenerate(lalr_rule_params)
+void *mulexpr_degenerate(lalr_rule_params)
 {
     int32_t production = hRule("multiplicative-expression");
     static lalr_rule_symbol_t symbolseq[] = {
@@ -70,7 +70,7 @@ static void *mulexpr_degenerate(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *mulexpr_multiplication(lalr_rule_params)
+void *mulexpr_multiplication(lalr_rule_params)
 {
     int32_t production = hRule("multiplicative-expression");
     static lalr_rule_symbol_t symbolseq[] = {
@@ -84,7 +84,7 @@ static void *mulexpr_multiplication(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *mulexpr_division(lalr_rule_params)
+void *mulexpr_division(lalr_rule_params)
 {
     int32_t production = hRule("multiplicative-expression");
     static lalr_rule_symbol_t symbolseq[] = {
@@ -98,7 +98,7 @@ static void *mulexpr_division(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *primary_paren(lalr_rule_params)
+void *primary_paren(lalr_rule_params)
 {
     int32_t production = hRule("primary-expression");
     static lalr_rule_symbol_t symbolseq[] = {
@@ -112,7 +112,7 @@ static void *primary_paren(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *primary_label(lalr_rule_params)
+void *primary_label(lalr_rule_params)
 {
     int32_t production = hRule("primary-expression");
     static lalr_rule_symbol_t symbolseq[] = {
@@ -124,7 +124,7 @@ static void *primary_label(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *primary_number_int(lalr_rule_params)
+void *primary_number_int(lalr_rule_params)
 {
     int32_t production = hRule("primary-expression");
     static lalr_rule_symbol_t symbolseq[] = {
@@ -136,7 +136,7 @@ static void *primary_number_int(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *primary_number_fract(lalr_rule_params)
+void *primary_number_fract(lalr_rule_params)
 {
     int32_t production = hRule("primary-expression");
     static lalr_rule_symbol_t symbolseq[] = {
@@ -148,7 +148,7 @@ static void *primary_number_fract(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *primary_number_fp(lalr_rule_params)
+void *primary_number_fp(lalr_rule_params)
 {
     int32_t production = hRule("primary-expression");
     static lalr_rule_symbol_t symbolseq[] = {
@@ -160,7 +160,7 @@ static void *primary_number_fp(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-static void *primary_number_zero_1digit(lalr_rule_params)
+void *primary_number_zero_1digit(lalr_rule_params)
 {
     int32_t production = hRule("primary-expression");
     static lalr_rule_symbol_t symbolseq[] = {

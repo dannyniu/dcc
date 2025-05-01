@@ -3,7 +3,7 @@
 #ifndef dcc_lalr_h
 #define dcc_lalr_h 1
 
-#include "../lex/lex.h"
+#include "../lex-common/lex.h"
 #include "../infra/strvec.h"
 
 #define S2_OBJ_TYPE_PRODUCTION 0x2021

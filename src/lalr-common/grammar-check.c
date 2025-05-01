@@ -3,11 +3,11 @@
 // #include "fpcalc-grammar.h" // 2025-03-29: included by parent source.
 // 2025-03-29: expects `GRAMMAR_RULES` and `NS_RULES`.
 
-#include "../lex/langlex.h"
-#include "../lex/shifter.h"
+#include "../langlex-c/langlex-c.h"
+#include "../lex-common/shifter.h"
 #include <ctype.h>
 
-#include "../lalr/print-prod.c.h"
+#include "./print-prod.c.h"
 
 int main(int argc, char *argv[])
 {

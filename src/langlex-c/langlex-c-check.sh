@@ -1,10 +1,9 @@
 #!/bin/sh
 
-optimize=debug
+optimize=true
 testfunc()
 {
-    #lldb \
-        $exec
+    $exec ../tests/langlex-test-src.c
 }
 
 cd "$(dirname "$0")"
@@ -12,18 +11,11 @@ unitest_sh=../unitest.sh
 . $unitest_sh
 
 src="\
-fpcalc-check.c
-fpcalc.c
-lalr/lalr.c
-lex/shifter.c
-lex/langlex.c
-lex/lex.c
-infra/strvec.c
-./../contrib/SafeTypes2/src/s2dict.c
+langlex-c-check.c
+langlex-c.c
+lex-common/lex.c
 ./../contrib/SafeTypes2/src/s2data.c
 ./../contrib/SafeTypes2/src/s2obj.c
-./../contrib/SafeTypes2/src/siphash.c
-./../contrib/SafeTypes2/src/mem-intercept.c
 "
 
 cflags_common="\
@@ -33,6 +25,5 @@ cflags_common="\
 
 arch_family=defaults
 srcset="Plain C"
-cflags="-D INTERCEPT_MEM_CALLS"
 
 tests_run

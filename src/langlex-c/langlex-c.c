@@ -1,10 +1,10 @@
 /* DannyNiu/NJF, 2024-12-26. Public Domain. */
 
-#include "langlex.h"
+#include "langlex-c.h"
 
 #define LEX_ENUM(e) { .enumerant = e, .str = #e },
 const struct lex_enum_strtab langlex_token_strtab[] = {
-#include "langlex-def.inc"
+#include "langlex-c-def.inc"
     { 0, NULL },
 };
 #undef LEX_ENUM
@@ -89,6 +89,10 @@ const struct lex_fsm_trans langlex_fsm[] =
       .next = langlex_int_prefixed },
 
     // octal integer
+    { .now = langlex_int_prefixed,
+      .expect = "oO",
+      .next = langlex_int_oct },
+
     { .now = langlex_int_prefixed,
       .expect = "01234567\'",
       .next = langlex_int_oct },

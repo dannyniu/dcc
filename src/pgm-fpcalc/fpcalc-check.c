@@ -1,11 +1,11 @@
 /* DannyNiu/NJF, 2025-02-14. Public Domain. */
 
 #include "fpcalc.h"
-#include "../lex/langlex.h"
-#include "../lex/shifter.h"
+#include "../langlex-c/langlex-c.h"
+#include "../lex-common/shifter.h"
 #include <ctype.h>
 
-#include "../lalr/print-prod.c.h"
+#include "../lalr-common/print-prod.c.h"
 
 const char *quadratic_func = "f(x) = x*x";
 const char *derivative = "g(x,h,d) = (h(x+d)-h(x))/d";

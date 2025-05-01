@@ -4,4 +4,4 @@
 #define GRAMMAR_RULES fpcalc_grammar_rules
 #define NS_RULES ns_rules_fpcalc
 
-#include "../lalr/grammar-check.c"
+#include "../lalr-common/grammar-check.c"

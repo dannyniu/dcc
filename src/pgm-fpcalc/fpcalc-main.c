@@ -1,8 +1,8 @@
 /* DannyNiu/NJF, 2025-02-23. Public Domain. */
 
 #include "fpcalc.h"
-#include "../lex/langlex.h"
-#include "../lex/shifter.h"
+#include "../langlex-c/langlex-c.h"
+#include "../lex-common/shifter.h"
 #include <ctype.h>
 
 s2data_t *s2data_stdio_getline(FILE *fp)
@@ -31,7 +31,7 @@ s2data_t *s2data_stdio_getline(FILE *fp)
 }
 
 // for debugging:
-//- #include "../lalr/print-prod.c.h"
+//- #include "../lalr-common/print-prod.c.h"
 
 int main()
 {

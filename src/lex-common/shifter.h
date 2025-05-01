@@ -1,7 +1,7 @@
 /* DannyNiu/NJF, 2025-03-29. Public Domain. */
 
-#ifndef dcc_shifter_h
-#define dcc_shifter_h 1
+#ifndef dcc_lex_shifter_h
+#define dcc_lex_shifter_h 1
 
 #include "lex.h"
 
@@ -21,4 +21,4 @@ shifter_ctx_t *shifter_init_from_fp(shifter_ctx_t *shctx, FILE *fp);
 shifter_ctx_t *shifter_init_from_expr(shifter_ctx_t *shctx, const char *expr);
 lex_token_t *shifter(shifter_ctx_t *shctx);
 
-#endif /* dcc_shifter_h */
+#endif /* dcc_lex_shifter_h */

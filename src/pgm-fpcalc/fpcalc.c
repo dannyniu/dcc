@@ -1,6 +1,6 @@
 /* DannyNiu/NJF, 2025-01-08. Public Domain. */
 
-#include "fpcalc-grammar.c"
+#include "fpcalc-grammar.h"
 #include "fpcalc.h"
 #include <math.h>
 
@@ -412,7 +412,7 @@ start_eval_1term:
             eprintf("- attempt finding in globals: %f (subret: %d).\n",
                     resultvalue, subret);
 
-            if( subret != 0 ) goto fail;
+            if( !subret ) goto fail;
         }
 
         *fpreg = resultvalue;

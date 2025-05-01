@@ -3,8 +3,9 @@
 optimize=debug
 testfunc()
 {
-    #lldb \
-        $exec
+    $exec -f ../tests/fpcalc-grammar-test-expr.txt
+    #$exec -f ../tests/fpcalc-grammar-test-funcs.txt
+    #$exec -f ../tests/fpcalc-grammar-test-partial.txt
 }
 
 cd "$(dirname "$0")"
@@ -12,18 +13,15 @@ unitest_sh=../unitest.sh
 . $unitest_sh
 
 src="\
-fpcalc-main.c
-fpcalc.c
-lalr/lalr.c
-lex/shifter.c
-lex/langlex.c
-lex/lex.c
+fpcalc-grammar-check.c
+fpcalc-grammar-simple.c
+lalr-common/lalr.c
+langlex-c/langlex-c.c
+lex-common/shifter.c
+lex-common/lex.c
 infra/strvec.c
-./../contrib/SafeTypes2/src/s2dict.c
 ./../contrib/SafeTypes2/src/s2data.c
 ./../contrib/SafeTypes2/src/s2obj.c
-./../contrib/SafeTypes2/src/siphash.c
-./../contrib/SafeTypes2/src/mem-intercept.c
 "
 
 cflags_common="\
@@ -33,6 +31,5 @@ cflags_common="\
 
 arch_family=defaults
 srcset="Plain C"
-cflags="-D INTERCEPT_MEM_CALLS"
 
 tests_run
