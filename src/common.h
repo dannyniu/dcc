@@ -8,6 +8,7 @@
 #endif /* __has_include */
 
 #include <assert.h>
+#include <ctype.h>
 #include <errno.h>
 #include <stdalign.h>
 #include <stdbool.h>
@@ -16,5 +17,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+struct logging_ctxbase;
+typedef int (*logger_func)(struct logging_ctxbase *, const char *);
+
+struct logging_ctxbase {
+    logger_func logger;
+    void *aux;
+};
 
 #endif /* dcc_common_h */

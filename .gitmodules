@@ -1,3 +1,6 @@
 [submodule "contrib/SafeTypes2"]
 	path = contrib/SafeTypes2
 	url = ../SafeTypes2
+[submodule "contrib/librematch"]
+	path = contrib/librematch
+	url = ../librematch

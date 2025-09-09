@@ -54,7 +54,8 @@ struct lalr_term {
     // down towards the bottom, up towards top.
     lalr_term_t *dn, *up;
 
-    // retained on behalf of the stack.
+    // retained on behalf of the stack, but not on behalf of itself,
+    // therefore `lalr_term_free` doesn't free it/them;
     // distinguish based on object type id.
     union {
         lalr_prod_t *production;

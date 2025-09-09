@@ -61,3 +61,6 @@ __pycache__
 # 2022-12-18 Additions: Makefile includes.
 # 2023-03-18: Changed to wildcard
 inc-*.mk
+
+# Added 2025-08-17:
+.kateproject.build

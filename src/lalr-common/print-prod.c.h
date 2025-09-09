@@ -1,5 +1,7 @@
 /* DannyNiu/NJF, 2025-02-23. Public Domain. */
 
+#include "lalr.h"
+
 void print_token(lex_token_t *tn, int indentlevel)
 {
     printf("%*s%s\n", indentlevel * 2, "",

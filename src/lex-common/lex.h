@@ -42,20 +42,20 @@ typedef struct {
     s2obj_base;
     s2data_t *str;
     lexer_state_t completion;
-    int32_t identity;
-    int32_t classification;
+    int32_t identity; // reserved as of 2025-08-09.
+    int32_t classification; // reserved as of 2025-08-09.
     int32_t lineno, column; // both are 1-based.
 } lex_token_t;
 
 lex_token_t *lex_token_create();
 
-// Lexing is deterministic as does regular languages,
-// as such, there should be no ambiguity as to
-// what the next state is. Therefore we can be confident
-// that the current state is not any other's prefix.
-
+// base lex getc context,
 typedef struct lex_getc_base lex_getc_base_t;
+
+// gets 1 character, or EOF.
 typedef int (*lex_getc_func_t)(lex_getc_base_t *ctx);
+
+// pushes 1 character back to the front of the stream.
 typedef int (*lex_ungetc_func_t)(int c, lex_getc_base_t *ctx);
 
 struct lex_getc_base {
@@ -63,15 +63,28 @@ struct lex_getc_base {
     lex_ungetc_func_t ungetc;
 };
 
-// scan based on a DFA specified in the `fsm` parameter.
-lex_token_t *lex_token_parse(
-    const struct lex_fsm_trans *fsm,
-    lex_getc_base_t *fc);
+// lex getc context over a string expression.
+typedef struct {
+    lex_getc_base_t base;
+    const char *expr;
+} lex_getc_str_t;
 
-// scan from a pre-defined set of tokens specified in `token_set`.
-lex_token_t *lex_token_match(
-    const char *token_set[],
-    lexer_state_t fallback_type,
-    lex_getc_base_t *fc);
+// lex getc context over a file handle.
+typedef struct {
+    lex_getc_base_t base;
+    FILE *fp;
+} lex_getc_fp_t;
+
+// For use with file handles,
+int fp_getc(lex_getc_fp_t *ctx);
+int fp_ungetc(int c, lex_getc_fp_t *ctx);
+
+// For use with string expressions.
+int expr_getc(lex_getc_str_t *ctx);
+int expr_ungetc(int c, lex_getc_str_t *ctx);
+
+// initializes a lex getc context from a string or a file handle respectively.
+lex_getc_base_t *lex_getc_init_from_str(lex_getc_str_t *ctx, const char *str);
+lex_getc_base_t *lex_getc_init_from_fp(lex_getc_fp_t *ctx, FILE *fp);
 
 #endif /* dcc_lex_h */

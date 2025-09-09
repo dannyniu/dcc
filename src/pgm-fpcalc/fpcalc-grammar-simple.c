@@ -124,47 +124,11 @@ void *primary_label(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *primary_number_int(lalr_rule_params)
+void *primary_number(lalr_rule_params)
 {
     int32_t production = hRule("primary-expression");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_int_dec },
-        {0},
-    };
-
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *primary_number_fract(lalr_rule_params)
-{
-    int32_t production = hRule("primary-expression");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_fp_dec },
-        {0},
-    };
-
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *primary_number_fp(lalr_rule_params)
-{
-    int32_t production = hRule("primary-expression");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_fp_dec_exp },
-        {0},
-    };
-
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *primary_number_zero_1digit(lalr_rule_params)
-{
-    int32_t production = hRule("primary-expression");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_int_prefixed },
+        { symtype_vtoken, .vtype = langlex_ppnum },
         {0},
     };
 
@@ -185,10 +149,7 @@ lalr_rule_t fpcalc_grammar_rules[] = {
 
     primary_paren,
     primary_label,
-    primary_number_int,
-    primary_number_fract,
-    primary_number_fp,
-    primary_number_zero_1digit,
+    primary_number,
 
     NULL,
 };

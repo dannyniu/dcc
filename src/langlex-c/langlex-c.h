@@ -3,7 +3,7 @@
 #ifndef dcc_langlex_c_h
 #define dcc_langlex_c_h 1
 
-#include "../lex-common/lex.h"
+#include "../lex-common/rope.h"
 
 // This is the language lexer that comes after the pre-processing stage.
 
@@ -28,5 +28,7 @@ extern const char *langlex_puncts[];
 // by the name of the language (before the filename extension).
 // The identifier names for lexing rules' data structure can be
 // simply named 'langlex' or 'pplex' for brevity.
+
+extern lex_elem_t CLexElems[];
 
 #endif /* dcc_langlex_c_h */

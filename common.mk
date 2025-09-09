@@ -23,7 +23,7 @@ OBJS_GROUP_WITH_ADDITION =
 CFLAGS_GROUP_WITH =
 
 INPUT_OBJECTS = ${OBJS_GROUP_ALL} ${OBJS_GROUP_WITH_ADDITION}
-CFLAGS = ${ccOpts} ${CFLAGS_GROUP_WITH} -I contrib/SafeTypes2/src
+CFLAGS = ${ccOpts} ${CFLAGS_GROUP_WITH} `cat compile_flags.txt`
 
 prefix = /usr/local
 exec_prefix = ${prefix}

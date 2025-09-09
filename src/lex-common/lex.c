@@ -38,114 +38,42 @@ lex_token_t *lex_token_create()
     return ret;
 }
 
-lex_token_t *lex_token_parse(
-    const struct lex_fsm_trans *fsm,
-    lex_getc_base_t *fc)
+int fp_getc(lex_getc_fp_t *ctx)
 {
-    lex_token_t *ret = NULL;
-    lexer_state_t state = lex_token_start;
-    lexer_state_t next;
-    int c;
-    int i;
-
-    if( !(ret = lex_token_create()) ) return NULL;
-
-    while( true )
-    {
-        next = lex_exceptional;
-        c = fc->getc(fc);
-
-        for(i=0; fsm[i].now; i++)
-        {
-            if( fsm[i].now != state )
-                continue;
-
-            if( fsm[i].flags == lex_expect_set ||
-                fsm[i].flags == lex_expect_compl )
-            {
-                if( (bool)strchr(fsm[i].expect, c) ==
-                    (fsm[i].flags == lex_expect_set) )
-                {
-                    s2data_putc(ret->str, c);
-                    next = fsm[i].next;
-                    break; // break to fetch the next character.
-                }
-            }
-        }
-
-        if( next == lex_token_complete )
-        {
-            break;
-        }
-        else if( next == lex_exceptional )
-        {
-            fc->ungetc(c, fc);
-            break;
-        }
-        else
-        {
-            state = next;
-            continue;
-        }
-    }
-
-    s2data_putfin(ret->str);
-
-    if( s2data_len(ret->str) > 0 )
-    {
-        ret->completion = state;
-        return ret;
-    }
-    else
-    {
-        s2obj_release(ret->pobj);
-        return NULL;
-    }
+    return fgetc(ctx->fp);
 }
 
-lex_token_t *lex_token_match(
-    const char *token_set[],
-    lexer_state_t fallback_type,
-    lex_getc_base_t *fc)
+int fp_ungetc(int c, lex_getc_fp_t *ctx)
 {
-    lex_token_t *ret = NULL;
-    size_t t = 0, m;
-    int c;
-    int i;
+    return ungetc(c, ctx->fp);
+}
 
-    if( !(ret = lex_token_create()) ) return NULL;
-    ret->completion = fallback_type;
-
-    while( true )
-    {
-        c = fc->getc(fc);
-
-        for(i=0, m=0; token_set[i]; i++)
-        {
-            if( t > 0 )
-                if( memcmp(token_set[i], s2data_weakmap(ret->str), t) != 0 )
-                    continue;
-
-            if( t < strlen(token_set[i]) && token_set[i][t] == c )
-            {
-                m++; t++;
-                s2data_putc(ret->str, c);
-                break;
-            }
-        }
-
-        if( m == 0 )
-            break;
-        else continue;
-    }
-
-    fc->ungetc(c, fc);
-    s2data_putfin(ret->str);
-    if( s2data_len(ret->str) == 0 )
-    {
-        s2obj_release(ret->pobj);
-        ret = NULL;
-    }
-
+int expr_getc(lex_getc_str_t *ctx)
+{
+    int ret = *ctx->expr;
+    if( !ret ) return EOF;
+    ctx->expr++;
     return ret;
+}
+
+int expr_ungetc(int c, lex_getc_str_t *ctx)
+{
+    if( c >= 0 ) --ctx->expr;
+    return c;
+}
+
+lex_getc_base_t *lex_getc_init_from_str(lex_getc_str_t *ctx, const char *str)
+{
+    ctx->base.getc = (lex_getc_func_t)expr_getc;
+    ctx->base.ungetc = (lex_ungetc_func_t)expr_ungetc;
+    ctx->expr = str;
+    return &ctx->base;
+}
+
+lex_getc_base_t *lex_getc_init_from_fp(lex_getc_fp_t *ctx, FILE *fp)
+{
+    ctx->base.getc = (lex_getc_func_t)fp_getc;
+    ctx->base.ungetc = (lex_ungetc_func_t)fp_ungetc;
+    ctx->fp = fp;
+    return &ctx->base;
 }

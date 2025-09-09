@@ -4,33 +4,31 @@ optimize=debug
 testfunc()
 {
     #lldb \
-        $exec
+        $exec <<EOF
+f(x) = 2*x
+g(x) = 3*f(x)
+g(1)
+EOF
 }
 
 cd "$(dirname "$0")"
 unitest_sh=../unitest.sh
 . $unitest_sh
 
+. ./fpcalc-src-common.inc
 src="\
 fpcalc-main.c
 fpcalc.c
 fpcalc-grammar.c
-lalr-common/lalr.c
-langlex-c/langlex-c.c
-lex-common/shifter.c
-lex-common/lex.c
-infra/strvec.c
 ./../contrib/SafeTypes2/src/s2dict.c
-./../contrib/SafeTypes2/src/s2data.c
-./../contrib/SafeTypes2/src/s2obj.c
-./../contrib/SafeTypes2/src/siphash.c
-./../contrib/SafeTypes2/src/mem-intercept.c
 "
 
 cflags_common="\
 -D SAFETYPES2_BUILD_WITHOUT_GC
 -I ./../src/../contrib/SafeTypes2/src
+-I ./../src/../contrib/librematch/src
 "
+ldflags_common="-lreadline"
 
 arch_family=defaults
 srcset="Plain C"

@@ -1,0 +1,164 @@
+Implementation Plan:
+1. collecting func-like macro arguments (pair-paren parsing, etc.)
+2. on-demand arg eval recursion (happening before arg substit).
+3. on-demand stringization,
+4. adjacent token concatenation,
+5. rescan
+
+Preparation:
+1. interface (for recursive self-invocation).
+2. output token indexing (stack-top instance of invocation).
+
+_DeclareGlobalInit_ `nx` as an initially empty list of macro names excluded from expansion.
+
+<BEGIN> {Expand} a `macro` and an optional number `cx` initially null:
+    _DeclareInit_ `out` to an empty sequence of tokens.
+    _DeclareInit_ `t0` to a null token.
+    <if> `cx` is null: _Set_ `cx` to the length of `nx` as of the current invocation of macro expansion before the next step. </if>
+    <if> the name of the current macro is not in `nx`: {Push} the name of current macro onto `nx`. </if>
+    _Implicit_ Special treatment for __VA_ARGS__ and __VA_OPT__ for variadic function-like macros.
+
+    <if> the name of the macro is within the first `cx` elements of `nx`:
+        {_Yield_} the identifier for the current macro.
+
+    <else-if> it's a function-like macro:
+        {Peek the Next Token} `p`.
+        <if> `p` isn't "(":
+            {_Yield_} the identifier for the current macro.
+            <return>
+        </if>
+
+        {ArgCollect} The %(arguments) as a list and {_Label_} it as `al`.
+        <if> the macro is variadic: {assert} the length of `al` is greater than or equal to the number of parameters named with identifiers.
+        <else>: {assert} the length of `al` is exactly the number of parameters in the macro definition.
+        </if>
+
+        <for> each `t` in the %(replacement list):
+            <if> `t0` is null: {assert} `t` isn't "#" or "##". </if>
+
+            <if> `t` is "#":
+                {Shift the Next Token} as `t1`.
+                {assert} `t1` is a parameter.
+                _Set_ `t0` to the stringification of the spelling of the argument of `t1`.
+                <continue>.
+
+            <else-if> `t` is "##":
+                {assert} `t0` isn't a stringification token.
+                {Shift} 1 next token from the %(replacement list) as `t1`.
+                // note that shifting fails if the current token is the last in the replacement list,
+                // thereby fulfilling the constraint that "##" shall neither be the first nor the last token in the replacement list.
+                {assert} `t1` isn't a stringification token.
+                _DeclareInit_ `a` to the token sequence (of the argument if a parameter) of `t0`.
+                _DeclareInit_ `b` to the token sequence (of the argument if a parameter) of `t1`.
+                _DeclareInit_ `c` to a token sequence consisting of `a` with its last token concatenated with the first token of `b` and the rest of the latter.
+                _Set_ `t0` to `c`.
+                <continue>.
+
+            <else>:
+                <if> `t0` is a parameter: {Expand} %(any macro in the argument of `t0`) with number `cx`. </if>
+                {PushEach} `t0` onto `out`.
+                _Set_ `t0` to `t`.
+                <continue>.
+            </if>
+        </for>
+
+    <else-if> it's an object-like macro:
+        <for> each `t` in the %(replacement list):
+            <if> `t0` is null: {assert} `t` isn't "##". </if>
+
+            <if> `t` is "##":
+                {assert} `t0` isn't a stringification token.
+                {Shift} 1 next token from the %(replacement list) as `t1`.
+                // same note as above.
+                {assert} `t1` isn't a stringification token.
+                _DeclareInit_ `a` to the token sequence (of the argument if a parameter) of `t0`.
+                _DeclareInit_ `b` to the token sequence (of the argument if a parameter) of `t1`.
+                _DeclareInit_ `c` to a token sequence consisting of `a` with its last token concatenated with the first token of `b` and the rest of the latter.
+                _Set_ `t0` to `c`.
+                <continue>.
+
+            <else>:
+                {PushEach} `t0` onto `out`.
+                _Set_ `t0` to `t`.
+                <continue>.
+            </if>
+        </for>
+    </if>
+
+    <if> `t0` isn't null: {PushEach} `t0` onto `out`. </if>
+    {YieldEach} `out`.
+    {Pop} the most recent macro name from `nx`.
+    <return>
+<END>
+
+_DeclareGlobalInit_ `tokseqstack` as a stack of token sequences, initialized with 1 sequence of all tokens of the current source code.
+
+<BEGIN> {YieldEach} token sequence `tseq`:
+    {Push} `tseq` onto `tokseqstack`.
+    // now implements the rescanning of further macros.
+    <until> `tseq` becomes empty:
+        {Generate 1 Token}.
+    </until>
+<END>
+
+<BEGIN> {Shift the Next Token}:
+    <if> the top most sequence on the `tokseqstack` is empty: {Pop} it. </if>
+    <if> `tokseqstack` is empty: return $"EOF". </if>
+    {Shift} 1 token from the top most sequence in the `tokseqstack` as `tok`.
+    <return> `tok`.
+<END>
+
+<BEGIN> {Peek the Next Token}:
+    <return> the 1st token from the top most sequence in the `tokseqstack`.
+<END>
+
+<BEGIN> {Generate 1 Token}:
+    {Shift the Next Token} as `tok`.
+    <if> `tok` is a macro name, {Expand} `tok` with the optional number left as null.
+    <else> {_Yield_} `tok`.
+    </if>
+    <if> `tok` is $"EOF": <return>. </if>
+<END>
+
+// The {Expand} subroutine is the main subroutine that expands the macros.
+// It's designed to behave like an "iterator" that generates tokens, by
+// using special constructs (underscored actions wrapped in braces) such as
+// ''{_Yield_}'' - which is the only special construct currently defined.
+//
+// The output is rescanned by feeding it back to {Expand} through {YieldEach}.
+// A stack of macro names is kept to prevent infinite recursion as required
+// by the standard. {YieldEach} injects the output sequence of tokens from
+// {Expand} back into the front of the input stream by pushing it onto a stack
+// where {Shift the Next Token} retrieves all its tokens from.
+//
+// Finally, {Generate 1 Token} wraps around {Shift the Next Token}, invokes
+// {Expand}, and produces all the final output; {Generate 1 Token} is also
+// invoked by {YieldEach}, such recursion forms a functional closure.
+
+<BEGIN> {ArgCollect}:
+    _DeclareInit_ `al` as an empty list.
+    _DeclareInit_ `t` as an empty sequence of tokens.
+    _DeclareInit_ `c` as 0.
+    _Declare_ `p`.
+    {Shift the Next Token} as `p`.
+    {assert} `p` is "(".
+    <loop>:
+        {Shift the Next Token} as `p`.
+        <if> `p` is "(": {increment} `c`.
+        <else-if> `p` is ")":
+            <if> `c` is 0:
+                {Push} `t` onto `al`.
+                <break>.
+            <else> {decrement} `c`.
+            </if>
+        <else-if> `p` is ",":
+            <if> `c` is 0:
+                {Push} `t` onto `al`.
+                _Set_ `t` to an empty sequence of tokens.
+                <continue>.
+            </if>
+        </if>
+        {Push} `p` onto `t`.
+    </loop>
+    <return> `al`.
+<END>

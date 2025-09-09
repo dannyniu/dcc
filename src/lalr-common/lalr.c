@@ -2,8 +2,7 @@
 
 #include "lalr.h"
 
-//#define eprintf(...) fprintf(stderr, __VA_ARGS__)
-#define eprintf(...) ((void)0)
+#define eprintf(...) //fprintf(stderr, __VA_ARGS__)
 
 static void lalr_prod_final(lalr_prod_t *ctx)
 {
@@ -13,7 +12,7 @@ static void lalr_prod_final(lalr_prod_t *ctx)
 
     for(t=0; t<ctx->terms_count; t++)
     {
-        // could also be `... production->pobj`.
+        // similarly `... production->pobj`.
         s2obj_release(ctx->terms[t].terminal->pobj);
     }
 
@@ -52,6 +51,10 @@ lalr_prod_t *lalr_prod_create(size_t init_terms_cnt)
 void lalr_term_free(lalr_term_t *term)
 {
     lalr_rule_symbol_free(term->expecting);
+
+    // 2025-06-01:
+    // refer to `lalr_rule_reduce` function definition
+    // for why production/terminal is not freed here.
     free(term);
 }
 
@@ -161,6 +164,13 @@ static lalr_prod_t *(lalr_rule_reduce)(
 
             // could also be `... terms->terminal`.
             newprod->terms[i].production = terms->production;
+
+            // 2025-06-01:
+            // Because we're assigning the production/terminal
+            // to the newly created production as part of the
+            // reduction operation, when we free the term using
+            // `lalr_term_free`, we must retain the
+            // production/terminal originally contained therein.
 
             if( terms != anchterm )
             {
@@ -315,8 +325,8 @@ static void lalr_stack_final(lalr_stack_t *ctx)
     {
         s = t->up;
 
-        // could also be `... terminal->pobj`.
-        s2obj_release(t->production->pobj);
+        // similarly `... production->pobj`.
+        s2obj_release(t->terminal->pobj);
         lalr_term_free(t);
 
         t = s;
@@ -415,12 +425,14 @@ int lalr_parse(
     int32_t candidate_rules_count, lookahead_rules_count;
     int32_t ri; // rule index.
 
-    if( !(ps = lalr_stack_create()) ) return -1;
+    if( !(ps = lalr_stack_create()) ) return -1; // [host error].
 
     if( !(tn = shifter(shifter_ctx)) )
     {
         *out = NULL;
         s2obj_release(ps->pobj);
+
+        // [parse error] - empty token sequence (2025-06-01).
         return -2;
     }
 
@@ -431,7 +443,7 @@ int lalr_parse(
         s2obj_release(tn->pobj);
         s2obj_release(ps->pobj);
         *out = NULL;
-        return -1;
+        return -1; // [host error].
     }
     te->container = ps;
     te->terminal = tn;
@@ -481,11 +493,11 @@ int lalr_parse(
 
         // Enumerate rules that have matches with the parsing stack.
         candidate_rules_count = 0;
-        unique_rule = -1;
+        unique_rule = -1; // [host error].
         mr = NULL;
         if( !(expect = calloc(1, sizeof(lalr_rule_symbol_t))) )
         {
-            return -1;
+            return -1; // [host error].
         }
         expect_chain = expect;
         for(ri=0; rules[ri]; ri++)
@@ -540,7 +552,7 @@ int lalr_parse(
                       calloc(1, sizeof(lalr_rule_symbol_t))) )
                 {
                     lalr_rule_symbol_free(expect);
-                    return -1;
+                    return -1; // [host error].
                 }
                 expect_chain = expect_chain->next;
             }
@@ -562,6 +574,26 @@ int lalr_parse(
             te = ps->top;
             if( !(te = terms_drop_1anch(te)) )
             {
+                // [parse error] - encountered offending token.
+                // All available rules had been tried on all
+                // anchored sequences. (2025-06-01).
+
+                // 2025-06-01:
+                // Because this return procedurally precedes the shifting
+                // of next look-ahead token, there might be a saved one
+                // that needs to be released.
+
+                eprintf("sv: %p, ", sv);
+                if( sv )
+                {
+                    if( sv->terminal ){ // equivalently `->production`.
+                        eprintf("%x.", sv->terminal->base.type);
+                        s2obj_release(sv->terminal->pobj);
+                    }
+                    lalr_term_free(sv);
+                }
+                eprintf("\n");
+
                 return -3;
             }
             continue;
@@ -592,6 +624,8 @@ int lalr_parse(
                 {
                     if( !(te = terms_drop_1anch(te)) )
                     {
+                        // [parse error] - parsing ended without reaching
+                        // the goal symbol (2025-06-01).
                         return -4;
                     }
                     continue;
@@ -606,7 +640,7 @@ int lalr_parse(
                 s2obj_release(tn->pobj);
                 s2obj_release(ps->pobj);
                 *out = NULL;
-                return -1;
+                return -1; // [host error].
             }
             te->container = ps;
             te->terminal = tn;
@@ -673,6 +707,13 @@ int lalr_parse(
             continue;
         }
 
+        // 2025-06-01:
+        // @dannyniu checked that there's no code - conditional or not, that
+        // altered `sv` between the shifting of saved or new token and
+        // this newly added assertion. Barring new changes in the future
+        // of course,
+        assert( !sv );
+
         // ought to be expecting a LHS. as such, anchor the top of stack
         // so that it can be reduced (possibly grown with further tokens)
         // into what's expected.
@@ -730,6 +771,8 @@ int lalr_parse(
             eprintf(" Unshift the *Offending* Look-Ahead,\n");
             if( sv )
             {
+                // 2025-06-01:
+                // See note above `assert( !sv )` added by @dannyniu.
                 return -5;
             }
             sv = ps->top;
@@ -740,6 +783,11 @@ int lalr_parse(
             te = ps->top;
             if( !(te = terms_drop_1anch(te)) )
             {
+                // [parse error] - encountered offending token.
+                // All available rules had been tried on all
+                // anchored sequences. This is the same reason
+                // as -3, but whose origin warrants distinction.
+                // (2025-06-01).
                 return -6;
             }
             continue;
@@ -748,6 +796,8 @@ int lalr_parse(
         eprintf(" Unshift the Look-Ahead.\n");
         if( sv )
         {
+            // 2025-06-01:
+            // See note above `assert( !sv )` added by @dannyniu.
             return -7;
         }
         sv = ps->top;
@@ -771,7 +821,7 @@ int lalr_parse(
         {
             s2obj_release(ps->pobj);
             *out = NULL;
-            return -1;
+            return -1; // [host error].
         }
 
         // `lalr_rule_reduce` didn't know what value to assign.

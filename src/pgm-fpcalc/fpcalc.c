@@ -3,11 +3,11 @@
 #include "fpcalc-grammar.h"
 #include "fpcalc.h"
 #include <math.h>
+#include "../lalr-common/print-prod.c.h"
 
 void print_token(lex_token_t *tn, int indentlevel);
 void print_prod(lalr_prod_t *prod, int indentlevel, strvec_t *ns);
-//#define eprintf(...) fprintf(stderr, __VA_ARGS__)
-#define eprintf(...) ((void)0)
+#define eprintf(...) //fprintf(stderr, __VA_ARGS__)
 
 static inline lalr_rule_t rules(int32_t r)
 {
@@ -178,19 +178,20 @@ bool fpcalc_eval_start(
     }
 
     eprintf("\n========\nEntering `fpcalc_eval_start`.\n");
-    /*eprintf("== == == expr:\n");
-      print_prod(expr, 0, ns_rules_fpcalc);
-      if( params )
-      {
-      eprintf("-------- params:\n");
-      print_prod(params, 0, ns_rules_fpcalc);
-      }
-      if( args )
-      {
-      eprintf("-------- args:\n");
-      print_prod(args, 0, ns_rules_fpcalc);
-      }
-      eprintf("-- -- --\n");*/
+    /*
+    printf("== == == expr:\n");
+    print_prod(expr, 0, ns_rules_fpcalc);
+    if( params )
+    {
+        printf("-------- params:\n");
+        print_prod(params, 0, ns_rules_fpcalc);
+    }
+    if( args )
+    {
+        printf("-------- args:\n");
+        print_prod(args, 0, ns_rules_fpcalc);
+    }
+    printf("-- -- --\n");//*/
 
 start_eval_1term:
 
@@ -207,7 +208,11 @@ start_eval_1term:
         }
 
         bp = calloc(1, sizeof(eval_stack_chained_t));
-        if( !bp ) goto fail;
+        if( !bp )
+        {
+            eprintf("Memory Allocation Error. sp: %p.\n", sp);
+            goto fail;
+        }
 
         bp->ret = sp;
         bp->operand_index = 0;
@@ -314,35 +319,10 @@ start_eval_1term:
             *(double *)s2data_weakmap(value_body_of_term(0));
     }
 
-    if( theRule == primary_number_int )
+    if( theRule == primary_number )
     {
         assert( s2_is_token(sp->body->terms[0].terminal) );
-        *fpreg =
-            atof(s2data_weakmap(sp->body->terms[0].terminal->str));
-        eprintf("Dump: %f,\n", *fpreg);
-    }
-
-    if( theRule == primary_number_fract )
-    {
-        assert( s2_is_token(sp->body->terms[0].terminal) );
-        *fpreg =
-            atof(s2data_weakmap(sp->body->terms[0].terminal->str));
-        eprintf("Dump: %f,\n", *fpreg);
-    }
-
-    if( theRule == primary_number_fp )
-    {
-        assert( s2_is_token(sp->body->terms[0].terminal) );
-        *fpreg =
-            atof(s2data_weakmap(sp->body->terms[0].terminal->str));
-        eprintf("Dump: %f,\n", *fpreg);
-    }
-
-    if( theRule == primary_number_zero_1digit )
-    {
-        assert( s2_is_token(sp->body->terms[0].terminal) );
-        *fpreg =
-            atof(s2data_weakmap(sp->body->terms[0].terminal->str));
+        *fpreg = atof(s2data_weakmap(sp->body->terms[0].terminal->str));
         eprintf("Dump: %f,\n", *fpreg);
     }
 
@@ -396,7 +376,11 @@ start_eval_1term:
         if( !builtin && !arg )
         {
             def = find_def_from_id(idres);
-            if( !def ) goto fail;
+            if( !def )
+            {
+                eprintf(". not a builtin, argument, or defined variable.\n");
+                goto fail;
+            }
 
             subret = fpcalc_eval_start(
                 &resultvalue,
@@ -412,7 +396,13 @@ start_eval_1term:
             eprintf("- attempt finding in globals: %f (subret: %d).\n",
                     resultvalue, subret);
 
-            if( !subret ) goto fail;
+            if( !subret )
+            {
+                // 2025-05-18:
+                // silent failure of identifier evaluation -
+                // could be that the identifier isn't a number.
+                resultvalue = 0.0 / 0.0;
+            }
         }
 
         *fpreg = resultvalue;
@@ -439,9 +429,10 @@ start_eval_1term:
         idname = sp->body->terms[0].terminal->str;
         builtin = false;
 
+        idres = NULL;
         arg = find_arg_from_param_using_id(idname, params, args);
         if( arg ) idres = resolve_id_from_expr(arg);
-        else idres = idname;
+        if( !idres ) idres = idname;
 
         name = s2data_map(idres, 0, 0);
 #define match_builtin_func(nm, ...)             \
@@ -513,7 +504,11 @@ start_eval_1term:
         if( !builtin ) // not a built-in.
         {
             def = find_def_from_id(idres);
-            if( !def ) goto fail;
+            if( !def )
+            {
+                eprintf(". not a builtin or defined function.\n");
+                goto fail;
+            }
 
             subret = fpcalc_eval_start(
                 &resultvalue,
@@ -533,7 +528,11 @@ start_eval_1term:
                 sp->body->terms[2] // the currently evaluated expressions.
                 .production);
 
-            if( !subret ) goto fail;
+            if( !subret )
+            {
+                eprintf(". function evaluation failure.\n");
+                goto fail;
+            }
         }
 
         *fpreg = resultvalue;

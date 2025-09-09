@@ -27,10 +27,7 @@ void *unaryexpr_positive(lalr_rule_params);
 void *unaryexpr_negative(lalr_rule_params);
 
 void *primary_identexpr(lalr_rule_params);
-void *primary_number_int(lalr_rule_params);
-void *primary_number_fract(lalr_rule_params);
-void *primary_number_fp(lalr_rule_params);
-void *primary_number_zero_1digit(lalr_rule_params);
+void *primary_number(lalr_rule_params);
 void *primary_paren(lalr_rule_params);
 
 void *addexprlist_base(lalr_rule_params);

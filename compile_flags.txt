@@ -1,0 +1,4 @@
+-Wall
+-Wextra
+-Icontrib/SafeTypes2/src
+-Icontrib/librematch/src

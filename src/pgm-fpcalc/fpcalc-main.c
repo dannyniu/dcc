@@ -2,14 +2,30 @@
 
 #include "fpcalc.h"
 #include "../langlex-c/langlex-c.h"
-#include "../lex-common/shifter.h"
-#include <ctype.h>
+
+#if __has_include(<readline/readline.h>)
+#include <readline/readline.h>
 
 s2data_t *s2data_stdio_getline(FILE *fp)
 {
-    s2data_t *ret = s2data_create(0);
+    assert( fp == stdin );
+    char *line = readline("input> ");
+    if( !line ) return NULL;
+    s2data_t *ret = s2data_from_str(line);
+    (free)(line);
+    return ret;
+}
+
+#else // There's no 'readline.h'
+s2data_t *s2data_stdio_getline(FILE *fp)
+{
+    s2data_t *ret;
     int c;
 
+    fprintf(stderr, "input> ");
+    fflush(stderr);
+
+    ret = s2data_create(0);
     if( !ret ) return NULL;
 
     while( (c = getc(fp)) >= 0 )
@@ -30,16 +46,23 @@ s2data_t *s2data_stdio_getline(FILE *fp)
     return ret;
 }
 
-// for debugging:
-//- #include "../lalr-common/print-prod.c.h"
+#endif // __has_include(<readline/readline.h>)
+
+int logger(void *ctx, const char *msg)
+{
+    (void)ctx;
+    fprintf(stderr, "%s\n", msg);
+    return 0;
+}
 
 int main()
 {
-    shifter_ctx_t lexer;
+    source_rope_t *rope;
+    RegexLexContext lexer;
 
     lalr_stack_t *ps = NULL;
     s2data_t *line_data;
-    const char *line;
+    //const char *line;
     int i, subret;
     double result;
 
@@ -53,38 +76,40 @@ int main()
     rel_before = frees;
 #endif /* INTERCEPT_MEM_CALLS */
 
-    shifter_init_from_expr(&lexer, NULL);
-    lexer.fsm = langlex_fsm;
-    lexer.puncts = langlex_puncts;
-    lexer.matched_fallback = langlex_punct;
+    for(i=0; CLexElems[i].pattern; i++)
+    {
+        subret = libregcomp(
+            &CLexElems[i].preg, CLexElems[i].pattern, CLexElems[i].cflags);
+    }
+    lexer.regices = CLexElems;
+    lexer.logger_base = (struct logging_ctxbase){
+        .logger = (logger_func)logger,
+    };
 
     ns_rules_fpcalc = strvec_create();
     globaldefs = s2dict_create();
 
     while( !feof(stdin) )
     {
-        fprintf(stderr, "input> ");
-        fflush(stderr);
-
         line_data = s2data_stdio_getline(stdin);
         if( !line_data || s2data_len(line_data) == 0 )
         {
             fprintf(stderr, "Bye!\n");
-            s2obj_release(line_data->pobj);
+            if( line_data )
+                s2obj_release(line_data->pobj);
             break;
         }
+        rope = CreateRopeFromLineData(line_data, s2_setter_gave);
+        RegexLexFromRope_Init(&lexer, rope);
 
-        line = s2data_map(line_data, 0, 0);
-        lexer.expr = line;
         subret = lalr_parse(
             &ps,
             fpcalc_grammar_rules,
             NULL, ns_rules_fpcalc,
-            (token_shifter_t)shifter,
+            (token_shifter_t)RegexLexFromRope_Shift,
             &lexer);
 
-        s2data_unmap(line_data);
-        s2obj_release(line_data->pobj);
+        s2obj_release(rope->pobj);
 
         if( subret != 0 )
         {
@@ -116,6 +141,11 @@ int main()
         else printf("%f\n", result);
 
         s2obj_release(ps->pobj);
+    }
+
+    for(i=0; CLexElems[i].pattern; i++)
+    {
+        libregfree(&CLexElems[i].preg);
     }
 
     s2obj_release(ns_rules_fpcalc->pobj);
