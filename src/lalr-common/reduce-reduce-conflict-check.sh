@@ -21,7 +21,7 @@ reduce-reduce-conflict.c
 lalr-common/lalr.c
 lex-common/shifter.c
 lex-common/lex.c
-langlex-c/langlex-c.c
+langlex/langlex-c.c
 infra/strvec.c
 ./../contrib/SafeTypes2/src/s2data.c
 ./../contrib/SafeTypes2/src/s2obj.c

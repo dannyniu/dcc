@@ -1,7 +1,7 @@
 /* DannyNiu/NJF, 2025-02-23. Public Domain. */
 
 #include "fpcalc.h"
-#include "../langlex-c/langlex-c.h"
+#include "../langlex/langlex-c.h"
 
 #if __has_include(<readline/readline.h>)
 #include <readline/readline.h>

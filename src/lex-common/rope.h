@@ -36,6 +36,8 @@ struct RegexLexContext {
 
     source_rope_t *rope; // source code input.
     lex_elem_t *regices; // set of known lexical elements.
+    const char **keywords;
+    void *misc; // For the lexer hack to be used with C.
 
     // current position in the rope-represented source code text. zero-based.
     ptrdiff_t offsub;

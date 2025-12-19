@@ -1,6 +1,6 @@
 /* DannyNiu/NJF, 2024-12-29. Public Domain. */
 
-#include "langlex-c.h"
+#ifdef var_lex_elems
 
 int logger(void *ctx, const char *msg)
 {
@@ -19,12 +19,15 @@ int main(int argc, char *argv[])
     int c;
     int i;
 
-    for(i=0; CLexElems[i].pattern; i++)
+    for(i=0; var_lex_elems[i].pattern; i++)
     {
         c = libregcomp(
-            &CLexElems[i].preg, CLexElems[i].pattern, CLexElems[i].cflags);
+            &var_lex_elems[i].preg,
+            var_lex_elems[i].pattern,
+            var_lex_elems[i].cflags);
+        assert( c == 0 );
     }
-    lexer.regices = CLexElems;
+    lexer.regices = var_lex_elems;
     lexer.logger_base = (struct logging_ctxbase){
         .logger = (logger_func)logger,
     };
@@ -52,3 +55,5 @@ int main(int argc, char *argv[])
 
     return EXIT_SUCCESS;
 }
+
+#endif /* var_lex_elems */

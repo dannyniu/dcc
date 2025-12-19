@@ -2,7 +2,8 @@
 
 // Checks the consistency of a grammar by parsing something using it.
 
-#if !defined(NS_RULES) || !defined(GRAMMAR_RULES)
+#include "../lex-common/rope.h"
+#if !defined(NS_RULES) || !defined(GRAMMAR_RULES) || !defined(var_lex_elems)
 // 2025-03-29:
 // included by parent source.
 // expects `GRAMMAR_RULES` and `NS_RULES`.
@@ -11,9 +12,9 @@
 #include "lalr.h"
 static strvec_t *NS_RULES = NULL;
 static lalr_rule_t *GRAMMAR_RULES = NULL;
+static lex_elem_t *var_lex_elems = NULL;
 #endif // !defined(NS_RULES) || !defined(GRAMMAR_RULES)
 
-#include "../langlex-c/langlex-c.h"
 #include "../lalr-common/print-prod.c.h"
 
 #if false // no need to link with readline
@@ -105,12 +106,14 @@ int main(int argc, char *argv[])
     rope = CreateRopeFromGetc(&expr_getc.base, 0);
     RegexLexFromRope_Init(&lexer, rope);
 
-    for(i=0; CLexElems[i].pattern; i++)
+    for(i=0; var_lex_elems[i].pattern; i++)
     {
         subret = libregcomp(
-            &CLexElems[i].preg, CLexElems[i].pattern, CLexElems[i].cflags);
+            &var_lex_elems[i].preg,
+            var_lex_elems[i].pattern,
+            var_lex_elems[i].cflags);
     }
-    lexer.regices = CLexElems;
+    lexer.regices = var_lex_elems;
     lexer.logger_base = (struct logging_ctxbase){
         .logger = (logger_func)logger,
     };
@@ -141,9 +144,9 @@ int main(int argc, char *argv[])
         te = te->up;
     }
 
-    for(i=0; CLexElems[i].pattern; i++)
+    for(i=0; var_lex_elems[i].pattern; i++)
     {
-        libregfree(&CLexElems[i].preg);
+        libregfree(&var_lex_elems[i].preg);
     }
 
     s2obj_release(parsed->pobj);

@@ -1,7 +1,7 @@
 /* DannyNiu/NJF, 2025-02-14. Public Domain. */
 
 #include "fpcalc.h"
-#include "../langlex-c/langlex-c.h"
+#include "../langlex/langlex-c.h"
 
 void print_token(lex_token_t *tn, int indentlevel);
 void print_prod(lalr_prod_t *prod, int indentlevel, strvec_t *ns);

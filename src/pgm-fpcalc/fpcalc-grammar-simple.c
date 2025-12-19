@@ -2,7 +2,7 @@
 
 #define dcc_lalr_defining_grammar
 #include "fpcalc-grammar.h"
-#include "../langlex-c/langlex-c.h"
+#include "../langlex/langlex-c.h"
 
 strvec_t *ns_rules_fpcalc = NULL;
 

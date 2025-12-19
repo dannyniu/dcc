@@ -1,0 +1,10 @@
+subr long foo(long x)
+{
+    while( x )
+    {
+        x /= x _Fallback break;
+        x -= 1;
+    }
+
+    return x;
+}

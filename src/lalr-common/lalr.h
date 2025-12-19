@@ -29,15 +29,15 @@ struct lalr_production {
     // right-hand side.
     s2obj_base;
 
-    int32_t production;
-    int32_t rule;
+    int32_t production; // for to be recognized in matching,
+    int32_t semantic_production; // the actual semantic,
+    int32_t rule; // index into the rules table.
+    int32_t terms_count; // number of elements in `terms`.
 
     // 2025-01-30:
     // Semantics are evaluated during reduce operations during parse,
     // and are assigned to `value`.
     s2obj_t *value;
-
-    size_t terms_count;
     union {
         lalr_prod_t *production;
         lex_token_t *terminal;
@@ -117,7 +117,7 @@ struct lalr_rulesym {
 #define symtype_vtoken .type = lalr_symtype_vtoken
 #define symtype_stoken .type = lalr_symtype_stoken
 #define lalr_opt       .optional = true
-#define lalr_rule_gen_args symbolseq, production, action, terms, ns_rules
+#define lalr_rule_gen_args symbolseq, production, action, terms, rules, ns_rules
 #endif /* dcc_lalr_defining_grammar */
 
 typedef enum {
@@ -130,21 +130,26 @@ typedef enum {
     // - the reduced symbol is returned.
     lalr_rule_action_reduce,
 
-    // Purpose: if the 1st symbol in the rule's rewrite sequence matches
-    // one of the 'expectations' and the left-hand side of the rule's
-    // production is none in the 'expectations', then false is returned to
-    // indicate to not further reduce the recent-most anchored tokens using
-    // the current rule; otherwise true is returned.
-    // Additionally, if ''expecting'' some terminal symbols, and the next
-    // token isn't one of the expeceted, false is returned to indicate the
-    // rule is not one of the candidates.
+    // if the current rule cannot lead to any of what's expected,
+    // then exclude that rule from applicable candidates.
     lalr_rule_action_expect,
+
+    // returns the left-hand-side as an int32_t into the rules namespace table.
+    lalr_rule_inspect_lhs,
+
+    // returns the symbol sequence as a pointer to `lalr_rule_symbol_t`.
+    lalr_rule_inspect_symseq,
+
+    // Semantic actions associated with the rule. Not used by the parser.
+    lalr_rule_action_evaluate,
 } lalr_rule_action_t;
 
-#define lalr_rule_params                                \
-    lalr_rule_action_t action,                          \
-        lalr_term_t *restrict terms,                    \
-        void *restrict ctx, strvec_t *restrict ns_rules
+#define lalr_rule_params                        \
+    lalr_rule_action_t action,                  \
+        lalr_term_t *restrict terms,            \
+        void *restrict ctx,                     \
+        void *restrict rules,                   \
+        strvec_t *restrict ns_rules
 
 // The grammar define a set of rules in the form of an array of `lalr_rule_t`
 // function pointers. The 0th element of the array is the goal symbol,
@@ -157,6 +162,7 @@ void *lalr_rule_actions_generic(
     lalr_rule_action_t action,
     lalr_term_t *restrict terms,
     // `ctx` is used by rules themselves, to e.g. build semantics.
+    lalr_rule_t rules[restrict],
     strvec_t *restrict ns_rules);
 
 typedef lex_token_t *(*token_shifter_t)(void *);

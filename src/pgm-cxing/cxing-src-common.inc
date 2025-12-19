@@ -1,9 +1,16 @@
 src_common="\
+cxing-grammar.c
+expr-arith.c
+expr-bits.c
+expr-unary.c
+langsem.c
+runtime.c
 lalr-common/lalr.c
-langlex/langlex-c.c
+langlex/langlex-cxing.c
 lex-common/lex.c
 lex-common/rope.c
 infra/strvec.c
+./../contrib/SafeTypes2/src/s2dict.c
 ./../contrib/SafeTypes2/src/s2data.c
 ./../contrib/SafeTypes2/src/s2obj.c
 ./../contrib/SafeTypes2/src/mem-intercept.c

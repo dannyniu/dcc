@@ -2,7 +2,7 @@
 
 #define dcc_lalr_defining_grammar
 #include "reduce-reduce-conflict.h"
-#include "../langlex-c/langlex-c.h"
+#include "../langlex/langlex-c.h"
 
 strvec_t *ns_rules_test;
 

@@ -1,0 +1,27 @@
+_Include "./some-decl.hxing";
+
+extern subr long recusion2(long x);
+subr long recursion1(long x)
+{
+    if( x % 2 == 1 ) return recursion1(x * 3 + 1);
+    else return recursion2(x);
+}
+subr long recursion2(long x)
+{
+    return recursion1(x / 2);
+}
+
+subr val message()
+{
+    decl msg = "We'll spend forever to find out.\n";
+    return msg;
+}
+
+subr double fpcalc(in s, in t)
+{
+    decl u = 01 + 23 + 4.5 + 67e+89 + 0x1p-2 + .34;
+    decl v = (1 + 3) * (2 + 4);
+    decl w = u + s * v;
+    !isnull(w) and return w;
+    return t > 3 ? u*u - v*v : t > 1 ? u*v - 2 : t=?9>0 ? u/v =? 12 : null;
+}

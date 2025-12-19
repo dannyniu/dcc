@@ -2,7 +2,71 @@
 
 #include "lalr.h"
 
+#if DCC_LALR_LOGGING == 1
+
+#error Logging?
 #define eprintf(...) //fprintf(stderr, __VA_ARGS__)
+
+static void symbol_print_expect_chain(lalr_rule_symbol_t *chain)
+{
+    while( chain )
+    {
+        if( chain->type == lalr_symtype_vtoken )
+        {
+            eprintf("vtoken(%ld), ", (long)chain->vtype);
+        }
+        else if( chain->type == lalr_symtype_stoken )
+        {
+            eprintf("\"%s\", ", chain->value);
+        }
+        else if( chain->type == lalr_symtype_prod )
+        {
+            eprintf("%s, ", chain->value);
+        }
+        else eprintf("!%d!, ", chain->type);
+
+        chain = chain->next;
+    }
+    eprintf("\n");
+}
+
+static void dump_parsing_stack(
+    const char *h,
+    lalr_term_t const *bt,
+    lalr_term_t const *te,
+    strvec_t *ns_rules,
+    const char *t)
+{
+    #define STRBUF_SIZE 58
+    char strbuf[STRBUF_SIZE];
+    char *strp;
+    eprintf("%s", h);
+    for(; bt; bt = bt->up)
+    {
+        memset(strbuf, 0, sizeof(strbuf));
+        memset(strbuf, ' ', 2);
+        strp = strbuf + 2;
+        if( bt == te ) strbuf[0] = '^';
+        if( bt->anchored ) strbuf[1] = '!';
+        if( s2_is_prod(bt->production->pobj) )
+            snprintf(strp, STRBUF_SIZE-2, "%s", strvec_i2str(
+                         ns_rules, bt->production->production));
+        else snprintf(strp, STRBUF_SIZE-2, "\"%s\"",
+                      (char *)s2data_weakmap(bt->terminal->str));
+        eprintf("%-28s: ", strbuf);
+        symbol_print_expect_chain(bt->expecting);
+    }
+    eprintf("\n");
+    eprintf("%s", t);
+}
+
+#else
+
+#define eprintf(...)
+#define symbol_print_expect_chain(...)
+#define dump_parsing_stack(...)
+
+#endif /* DCC_LALR_LOGGING */
 
 static void lalr_prod_final(lalr_prod_t *ctx)
 {
@@ -60,7 +124,8 @@ void lalr_term_free(lalr_term_t *term)
 
 static bool lalr_symbol_matches_term(
     lalr_rule_symbol_t const *symbol,
-    lalr_term_t *term, strvec_t *ns_rules)
+    lalr_term_t *term,
+    strvec_t *ns_rules)
 {
     // 2025-01-27:
     // predicate: `term` matches `symbol`.
@@ -85,6 +150,7 @@ static bool lalr_symbol_matches_term(
     else
     {
         const char *strptr = NULL;
+
         assert( symbol->type == lalr_symtype_prod );
 
         if( !s2_is_prod(term->production) )
@@ -99,7 +165,8 @@ static bool lalr_symbol_matches_term(
 
 static lalr_rule_symbol_t const *(lalr_rule_match)(
     lalr_rule_symbol_t const *symbolseq,
-    lalr_term_t *anchterm, strvec_t *ns_rules)
+    lalr_term_t *anchterm,
+    strvec_t *ns_rules)
 {
     lalr_term_t *term = anchterm;
 
@@ -129,8 +196,10 @@ static lalr_rule_symbol_t const *(lalr_rule_match)(
 }
 
 static lalr_prod_t *(lalr_rule_reduce)(
-    lalr_rule_symbol_t const *symbolseq, int32_t production,
-    lalr_term_t *anchterm, strvec_t *ns_rules)
+    lalr_rule_symbol_t const *symbolseq,
+    int32_t production,
+    lalr_term_t *anchterm,
+    strvec_t *ns_rules)
 {
     // less checks are made, lenient on undefined behaviors.
 
@@ -138,12 +207,20 @@ static lalr_prod_t *(lalr_rule_reduce)(
     lalr_term_t *terms = anchterm, *temp;
     lalr_prod_t *newprod = NULL;
 
-    for(terms_count = 0; symbolseq[terms_count].type; terms_count++);
+    for(terms_count = 0; symbolseq[terms_count].type; terms_count++) ((void)0);
+
+    eprintf("prod: %s; ", strvec_i2str(ns_rules, production));
+
+     if( symbolseq[0].type == lalr_symtype_prod &&
+         !symbolseq[0].optional && terms_count == 1 )
+     {
+         // 2025-12-17: optimization for the degenerate case.
+         anchterm->production->production = production;
+         return anchterm->production;
+     }
 
     newprod = lalr_prod_create(terms_count);
     if( !newprod ) return NULL;
-
-    eprintf("prod: %s; ", strvec_i2str(ns_rules, production));
 
     for(i=0; i<terms_count; i++)
     {
@@ -192,91 +269,129 @@ static lalr_prod_t *(lalr_rule_reduce)(
     anchterm->up = terms;
     anchterm->production = newprod;
 
-    newprod->production = production;
+    newprod->semantic_production = newprod->production = production;
     // newprod->rule // Assigned from a calling routine.
 
     eprintf("\n");
     return newprod;
 }
 
-static bool (lalr_rule_expect)(
-    lalr_rule_symbol_t const *symbolseq, int32_t production,
-    lalr_term_t const *term_expectation, strvec_t *ns_rules)
-{
-    lalr_rule_symbol_t *expect_chain;
-    const char *lhs;
+struct traversed_rules {
+    lalr_rule_t r;
+    struct traversed_rules *up;
+};
 
-    if( symbolseq->type == lalr_symtype_stoken ||
-        symbolseq->type == lalr_symtype_vtoken )
+static bool find_rule_in_traversed(
+    lalr_rule_t rule, struct traversed_rules *tup)
+{
+    while( tup )
+    {
+        if( rule == tup->r ) return true;
+        else tup = tup->up;
+    }
+    return false;
+}
+
+static bool begins_with_expected(
+    lalr_rule_symbol_t const *restrict symbolseq, // from the compiled grammar.
+    lalr_rule_symbol_t const *restrict expected_sym,
+    struct traversed_rules *tup, // prevents infinite loop.
+    lalr_rule_t grammar_rules[restrict],
+    strvec_t *restrict ns_rules)
+{
+    lalr_rule_symbol_t const *rchain; // r = rule/reduction.
+    lalr_rule_t *subsrule; // subs = substitution,
+
+    if( symbolseq[0].type == lalr_symtype_stoken ||
+        symbolseq[0].type == lalr_symtype_vtoken )
     {
         // If the current state expect a terminal (in the symbol sequence),
         // and the term is one, then return true.
 
-        for(expect_chain = term_expectation->expecting;
-            expect_chain; expect_chain = expect_chain->next)
+        if( expected_sym->type == lalr_symtype_prod )
         {
-            if( expect_chain->type == lalr_symtype_prod )
-            {
-                // 2025-01-20:
-                // Because expectation is a non-terminal, and the 1st symbol
-                // in the current rule isn't one, donot apply the current rule.
-                return true;
-            }
-
-            if( expect_chain->type != symbolseq->type )
-                continue;
-
-            if( expect_chain->type == lalr_symtype_stoken )
-                if( strcmp(expect_chain->value, symbolseq->value) == 0 )
-                    break;
-
-            if( expect_chain->type == lalr_symtype_vtoken )
-                if( expect_chain->vtype == symbolseq->vtype )
-                    break;
+            // 2025-01-20:
+            // Because expectation is a non-terminal, and the 1st symbol
+            // in the current rule isn't one, donot apply the current rule.
+            return false;
         }
 
-        if( expect_chain )
-            return true;
-        else return false;
+        if( expected_sym->type != symbolseq[0].type )
+            return false;
+
+        if( expected_sym->type == lalr_symtype_stoken )
+            if( strcmp(expected_sym->value, symbolseq[0].value) == 0 )
+                return true;
+
+        if( expected_sym->type == lalr_symtype_vtoken )
+            if( expected_sym->vtype == symbolseq[0].vtype )
+                return true;
     }
 
-    assert( symbolseq->type == lalr_symtype_prod );
-
-    for(expect_chain = term_expectation->expecting;
-        expect_chain; expect_chain = expect_chain->next)
-    {
-        if( expect_chain->type != symbolseq->type )
-            continue;
-
-        if( strcmp(expect_chain->value, symbolseq->value) == 0 )
-            break;
-    }
-
-    if( !expect_chain )
-    {
-        // 2025-01-20:
-        // The 1st symbol of the rule is none that's inside the expected set.
-        return true;
-    }
-
-    lhs = strvec_i2str(ns_rules, production);
-    for(expect_chain = term_expectation->expecting;
-        expect_chain; expect_chain = expect_chain->next)
-    {
-        if( expect_chain->type != symbolseq->type )
-            continue;
-
-        if( strcmp(expect_chain->value, lhs) == 0 )
-            break;
-    }
-
-    if( !expect_chain )
-    {
-        // 2025-01-20:
-        // the rule led to an LHS that's not expected
-        // by a previous one on the parsing stack.
+    if( expected_sym->type != symbolseq[0].type )
         return false;
+
+    if( strcmp(expected_sym->value, symbolseq[0].value) == 0 )
+        return true;
+
+    for(subsrule = grammar_rules; *subsrule; subsrule++)
+    {
+        struct traversed_rules trav = { .r = *subsrule, .up = tup };
+        int32_t lhs = (int32_t)(long)(*subsrule)(
+            lalr_rule_inspect_lhs, NULL,
+            NULL, grammar_rules, ns_rules);
+        const char *strptr = strvec_i2str(ns_rules, lhs);
+
+        if( strcmp(symbolseq[0].value, strptr) != 0 )
+            // the lhs of subsrule doesn't match the 1st symbol of symbolseq.
+            continue;
+
+        rchain = (*subsrule)(lalr_rule_inspect_symseq, NULL,
+                             NULL, grammar_rules, ns_rules);
+
+        if( rchain->type == lalr_symtype_prod )
+            if( strcmp(rchain[0].value, strptr) == 0 )
+                // The rule's 1st symbol equals its left-hand-side,
+                // avoid its infinite loop.
+                continue;
+
+        if( find_rule_in_traversed(*subsrule, tup) )
+            // catches loop-in-alternation rule pairs and groups.
+            continue;
+
+        if( begins_with_expected(
+                rchain, expected_sym, &trav, grammar_rules, ns_rules) )
+            return true;
     }
+
+    // there doesn't exist j such that g(0) is not an empty set.
+    return false;
+}
+
+static bool (lalr_rule_expect)(
+    int32_t production,
+    lalr_term_t const *term_expectation,
+    lalr_rule_t grammar_rules[],
+    strvec_t *ns_rules)
+{
+    lalr_rule_symbol_t *expect_chain;
+    lalr_rule_symbol_t expect_symbol = {};
+    const char *lhs = strvec_i2str(ns_rules, production);
+
+    expect_symbol.type = lalr_symtype_prod;
+    expect_symbol.value = lhs;
+
+    for(expect_chain = term_expectation->expecting;
+        expect_chain; expect_chain = expect_chain->next)
+    {
+        if( begins_with_expected(
+                expect_chain, &expect_symbol,
+                NULL, grammar_rules, ns_rules) )
+            break;
+    }
+
+    if( !expect_chain )
+        return false;
 
     return true;
 }
@@ -286,36 +401,45 @@ void *lalr_rule_actions_generic(
     lalr_rule_action_t action,
     lalr_term_t *restrict terms,
     // `ctx` is used by rules themselves, to e.g. build semantics.
+    lalr_rule_t rules[restrict],
     strvec_t *restrict ns_rules)
 {
     switch( action )
     {
     case lalr_rule_action_match:
-        return (void *)(lalr_rule_match)(symbolseq, terms, ns_rules);
+        return (void *)(lalr_rule_match)(
+            symbolseq, terms, ns_rules);
 
     case lalr_rule_action_reduce:
-        return (lalr_rule_reduce)(symbolseq, production, terms, ns_rules);
+        return (lalr_rule_reduce)(
+            symbolseq, production, terms, ns_rules);
 
     case lalr_rule_action_expect:
         return (void *)(intptr_t)(lalr_rule_expect)(
-            symbolseq, production, terms, ns_rules);
+            production, terms, rules, ns_rules);
+
+    case lalr_rule_inspect_lhs:
+        return (void *)(long)production;
+
+    case lalr_rule_inspect_symseq:
+        return symbolseq;
 
     default:
         return NULL;
     }
 }
 
-#define lalr_rule_match(rule, terms, ctx, strtab)               \
-    (((lalr_rule_symbol_t const *(*)(lalr_rule_params))rule)    \
-     (lalr_rule_action_match, terms, ctx, strtab))
+#define lalr_rule_match(rules, ri, terms, ctx, strtab)                  \
+    (((lalr_rule_symbol_t const *(*)(lalr_rule_params))rules[ri])       \
+     (lalr_rule_action_match, terms, ctx, rules, strtab))
 
-#define lalr_rule_reduce(rule, terms, ctx, strtab)      \
-    (((lalr_prod_t *(*)(lalr_rule_params))rule)         \
-     (lalr_rule_action_reduce, terms, ctx, strtab))
+#define lalr_rule_reduce(rules, ri, terms, ctx, strtab)         \
+    (((lalr_prod_t *(*)(lalr_rule_params))rules[ri])            \
+     (lalr_rule_action_reduce, terms, ctx, rules, strtab))
 
-#define lalr_rule_expect(rule, terms, ctx, strtab)      \
-    ((bool)((void *(*)(lalr_rule_params))rule)       \
-     (lalr_rule_action_expect, terms, ctx, strtab))
+#define lalr_rule_expect(rules, ri, terms, ctx, strtab)         \
+    ((bool)((void *(*)(lalr_rule_params))rules[ri])             \
+     (lalr_rule_action_expect, terms, ctx, rules, strtab))
 
 static void lalr_stack_final(lalr_stack_t *ctx)
 {
@@ -379,29 +503,6 @@ void lalr_rule_symbol_free(lalr_rule_symbol_t *chain)
         free(chain);
         chain = next;
     }
-}
-
-static void symbol_print_expect_chain(lalr_rule_symbol_t *chain)
-{
-    while( chain )
-    {
-        if( chain->type == lalr_symtype_vtoken )
-        {
-            eprintf("vtoken(%ld), ", (long)chain->vtype);
-        }
-        else if( chain->type == lalr_symtype_stoken )
-        {
-            eprintf("\"%s\", ", chain->value);
-        }
-        else if( chain->type == lalr_symtype_prod )
-        {
-            eprintf("%s, ", chain->value);
-        }
-        else eprintf("!!, ");
-
-        chain = chain->next;
-    }
-    eprintf("\n");
 }
 
 int lalr_parse(
@@ -474,26 +575,11 @@ int lalr_parse(
             }
         }
 
-        eprintf("\n========\n");
-        {
-            lalr_term_t *bt;
-            for(bt = ps->bottom; bt; bt = bt->up)
-            {
-                if( bt == te ) eprintf("^");
-                if( bt->anchored ) eprintf("!");
-                if( s2_is_prod(bt->production->pobj) )
-                    eprintf("%s, ", strvec_i2str(
-                                ns_rules, bt->production->production));
-                else eprintf("\"%s\", ", (char *)s2data_weakmap(
-                                 bt->terminal->str));
-            }
-            eprintf("\n");
-        }
-        eprintf("--------\n");
+        dump_parsing_stack("\n========\n", ps->bottom, te, ns_rules, "--------\n");
 
         // Enumerate rules that have matches with the parsing stack.
         candidate_rules_count = 0;
-        unique_rule = -1; // [host error].
+        unique_rule = -1;
         mr = NULL;
         if( !(expect = calloc(1, sizeof(lalr_rule_symbol_t))) )
         {
@@ -507,11 +593,12 @@ int lalr_parse(
             // 2025-01-17:
             // a separate `mt` so that `mr` won't be mistakenly overwritten
             // in a case of `unique_rule`.
-            if( !(mt = lalr_rule_match(rules[ri], te, ctx, ns_rules)) )
+            if( !(mt = lalr_rule_match(rules, ri, te, ctx, ns_rules)) )
                 continue;
 
+            eprintf("  rule becomes candidate: %d.\n", ri);
             if( te->expecting && !lalr_rule_expect(
-                    rules[ri], te, ctx, ns_rules) )
+                    rules, ri, te, ctx, ns_rules) )
                 continue;
 
             mr = mt;
@@ -611,6 +698,8 @@ int lalr_parse(
             ps->top->up = sv;
             ps->top = sv;
             sv = NULL;
+            if( last_resort_rule == 0 )
+                last_resort_rule = -1;
         }
         else
         {
@@ -630,6 +719,11 @@ int lalr_parse(
                     }
                     continue;
                 }
+            }
+            else
+            {
+                if( last_resort_rule == 0 )
+                    last_resort_rule = -1;
             }
 
             eprintf(" Shifted: %p \"%s\".\n", tn,
@@ -666,34 +760,17 @@ int lalr_parse(
             lalr_rule_symbol_free(ps->top->expecting);
         }
         ps->top->expecting = expect;
-        eprintf(" == expect: %p.\n", expect);
-        if( expect ) symbol_print_expect_chain(expect);
 
-        eprintf("-- -- --\n");
-        {
-            lalr_term_t *bt;
-            for(bt = ps->bottom; bt; bt = bt->up)
-            {
-                if( bt == te ) eprintf("^");
-                if( bt->anchored ) eprintf("!");
-                if( s2_is_prod(bt->production->pobj) )
-                    eprintf("%s, ", strvec_i2str(
-                                ns_rules, bt->production->production));
-                else eprintf("\"%s\", ", (char *)s2data_weakmap(
-                                 bt->terminal->str));
-            }
-            eprintf("\n");
-        }
-        eprintf("-- -- --\n");
+        dump_parsing_stack("-- -- --\n", ps->bottom, te, ns_rules, "-- -- --\n");
 
         lookahead_rules_count = 0;
         for(ri=0; rules[ri]; ri++)
         {
-            if( !lalr_rule_match(rules[ri], te, ctx, ns_rules) )
+            if( !lalr_rule_match(rules, ri, te, ctx, ns_rules) )
                 continue;
 
             if( te->expecting && !lalr_rule_expect(
-                    rules[ri], te, ctx, ns_rules) )
+                    rules, ri, te, ctx, ns_rules) )
                 continue;
 
             lookahead_rules_count++;
@@ -738,11 +815,12 @@ int lalr_parse(
             for(ri=0; rules[ri]; ri++)
             {
                 lalr_rule_symbol_t const *mt;
-                if( !(mt = lalr_rule_match(rules[ri], te, ctx, ns_rules)) )
+                if( !(mt = lalr_rule_match(rules, ri, te, ctx, ns_rules)) )
                     continue;
 
+                eprintf("  rule becomes candidate: %d.\n", ri);
                 if( te->expecting && !lalr_rule_expect(
-                        rules[ri], te, ctx, ns_rules) )
+                        rules, ri, te, ctx, ns_rules) )
                     continue;
 
                 if( mt->type )
@@ -816,7 +894,7 @@ int lalr_parse(
         }
 
         // invoke rule.
-        rd = lalr_rule_reduce(rules[last_resort_rule], te, ctx, ns_rules);
+        rd = lalr_rule_reduce(rules, last_resort_rule, te, ctx, ns_rules);
         if( !rd )
         {
             s2obj_release(ps->pobj);

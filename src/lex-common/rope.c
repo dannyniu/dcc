@@ -129,6 +129,8 @@ lex_token_t *RegexLexFromRope_Shift(RegexLexContext *ctx)
         if( !isspace(src[ctx->offsub]) )
         {
             int i, subret;
+            int record = -1;
+            ptrdiff_t best = -1;
 
             for(i=0; ctx->regices[i].pattern; i++)
             {
@@ -137,7 +139,22 @@ lex_token_t *RegexLexFromRope_Shift(RegexLexContext *ctx)
                     src+ctx->offsub,
                     1, &matched, ctx->regices[i].eflags);
                 if( subret == 0 && matched.rm_so == 0 )
-                    break;
+                {
+                    if( matched.rm_eo > best )
+                    {
+                        best = matched.rm_eo;
+                        record = i;
+                    }
+                }
+            }
+
+            // Lex elements earlier in the list have
+            // higher precedence, so don't use `>=`.
+            if( record > 0 )
+            {
+                i = record;
+                matched.rm_so = 0;
+                matched.rm_eo = best;
             }
 
             if( !ctx->regices[i].pattern )

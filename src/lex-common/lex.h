@@ -20,16 +20,6 @@ enum {
     lex_token_start = 1,
 };
 
-struct lex_fsm_trans {
-    char *expect;
-    lexer_state_t now;
-    lexer_state_t next;
-    enum {
-        lex_expect_set = 0, // accept a set of chars.
-        lex_expect_compl, // accept the complement of a set of chars.
-    } flags;
-};
-
 struct lex_enum_strtab {
     lexer_state_t enumerant;
     const char *str;

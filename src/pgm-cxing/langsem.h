@@ -21,16 +21,22 @@
 int NormalizeTypeForArithContext(struct value_nativeobj);
 //
 // Then, 2 operands at a time, determine their
-// common arithmetic context. To maintain associativity,
-// the function has an additional possible return value
-// of valtyp_null, which need to be converted
-// to valtyp_long by the end of list processing.
-int DetermineTypeForArithContext(int type1, int type2);
+// common arithmetic context.
+int DetermineValueTypeForArithContext(int type1, int type2);
+int DetermineOrderingTypeForArithContext(int type1, int type2);
+
+// Implemented 2025-11-21.
+int DetermineTypeForIntegerContext(int type1, int type2);
 
 struct value_nativeobj ConvertToDouble(struct value_nativeobj val);
 struct value_nativeobj ConvertToUlong(struct value_nativeobj val);
 struct value_nativeobj ConvertToLong(struct value_nativeobj val);
 
+// Implemented 2025-11-21.
+struct value_nativeobj Logic2ValueNativeObj(int logic);
+
+bool IsInteger(struct value_nativeobj val);
+bool IsFunction(struct value_nativeobj val);
 bool IsNull(struct value_nativeobj val);
 bool IsNullish(struct value_nativeobj val);
 

@@ -1,0 +1,269 @@
+cxing % goal : TU % translation_unit ;
+
+TU % TU
+: entity-declaration % base
+| TU entity-declaration % genrule
+;
+
+identifier % ident
+: langlex_identifier % ident
+;
+
+constant % const
+: "true" % true
+| "false" % false
+| "null" % null
+| langlex_declit % declit
+| langlex_octlit % octlit
+| langlex_hexlit % hexlit
+| langlex_r64lit % r64lit
+| langlex_decfplit % decfplit
+| langlex_hexfplit % hexfplit
+| langlex_charlit % charlit
+| langlex_strlit % strlit
+| langlex_rawlit % rawlit
+;
+
+primary-expr % primary
+: "(" expressions-list ")" % paren
+| identifier % ident
+| constant % const
+;
+
+postfix-expr % postfix
+: primary-expr % degenerate
+| postfix-expr "=?" primary-expr % nullcoalesce
+| postfix-expr "[" assign-expr "]" % indirect
+| postfix-expr "(" expressions-list ")" % funccall
+| postfix-expr "." identifier % member
+| postfix-expr "++" % inc
+| postfix-expr "--" % dec
+| object-notation % objdef
+;
+
+unary-expr % unary
+: postfix-expr % degenerate
+| "++" unary-expr % inc
+| "--" unary-expr % dec
+| "+" unary-expr % positive
+| "-" unary-expr % negative
+| "~" unary-expr % bitcompl
+| "!" unary-expr % logicnot
+;
+
+mul-expr % mulexpr
+: unary-expr % degenerate
+| mul-expr "*" unary-expr % multiply
+| mul-expr "/" unary-expr % divide
+| mul-expr "%" unary-expr % remainder
+;
+
+add-expr % addexpr
+: mul-expr % degenerate
+| add-expr "+" mul-expr % add
+| add-expr "-" mul-expr % subtract
+;
+
+bit-shift-expr % shiftexpr
+: add-expr % degenerate
+| bit-shift-expr "<<" add-expr % lshift
+| bit-shift-expr ">>" add-expr % arshift
+| bit-shift-expr ">>>" add-expr % rshift
+;
+
+rel-expr % relops
+: bit-shift-expr % degenerate
+| rel-expr "<" bit-shift-expr % lt
+| rel-expr ">" bit-shift-expr % gt
+| rel-expr "<=" bit-shift-expr % le
+| rel-expr ">=" bit-shift-expr % ge
+;
+
+eq-expr % eqops
+: rel-expr % degenerate
+| eq-expr "==" rel-expr % eq
+| eq-expr "!=" rel-expr % ne
+| eq-expr "===" rel-expr % ideq
+| eq-expr "!==" rel-expr % idne
+;
+
+bit-and % bitand
+: eq-expr % degenerate
+| bit-and "&" eq-expr % bitand
+;
+
+bit-xor % bitxor
+: bit-and % degenerate
+| bit-xor "^" bit-and % bitxor
+;
+
+bit-or % bitor
+: bit-xor % degenerate
+| bit-or "|" bit-xor % bitor
+;
+
+logic-and % logicand
+: bit-or % degenerate
+| logic-and "&&" bit-or % logicand
+;
+
+logic-or % logicor
+: logic-and % degenerate
+| logic-or "||" logic-and % logicor
+| logic-or "??" logic-and % nullcoalesce
+;
+
+cond-expr % tenary
+: logic-or % degenerate
+| logic-or "?" expressions-list ":" cond-expr % tenary
+;
+
+assign-expr % assignment
+: cond-expr % degenerate
+| unary-expr "=" assign-expr % directassign
+| unary-expr "*=" assign-expr % mulassign
+| unary-expr "/=" assign-expr % divassign
+| unary-expr "%=" assign-expr % remassign
+| unary-expr "+=" assign-expr % addassign
+| unary-expr "-=" assign-expr % subassign
+| unary-expr "<<=" assign-expr % lshiftassign
+| unary-expr ">>=" assign-expr % arshiftassign
+| unary-expr ">>>=" assign-expr % rshiftassign
+| unary-expr "&=" assign-expr % andassign
+| unary-expr "^=" assign-expr % xorassign
+| unary-expr "|=" assign-expr % orassign
+;
+
+expressions-list % exprlist
+: assign-expr % degenerate
+| expressions-list "," assign-expr % exprlist
+;
+
+and-phrase-ion % and_phrase_ion
+: expressions-list "and" % exprlist
+| and-phrase-atom "and" % ionize
+;
+
+and-phrase-atom % and_phrase_atom
+: and-phrase-ion expressions-list % atomize
+;
+
+or-phrase-ion % or_phrase_ion
+: expressions-list "or" % exprlist_or
+| expressions-list "_Fallback" % exprlist_nullcoalesce
+| control-flow-operator "or" % op_or
+| control-flow-operator "_Fallback" % op_nullcoalesce
+| control-flow-operator label "or" % labelledop_or
+| control-flow-operator label "_Fallback" % labelledop_nullcoalesce
+| "return" "or" % returnnull_or
+| "return" "_Fallback" % returnnull_nullcoalesce
+| "return" expression "or" % returnexpr_or
+| "return" expression "_Fallback" % returnexpr_nullcoalesce
+| and-phrase-atom "or" % andphra_or
+| and-phrase-atom "_Fallback" % andphra_nullcoalesce
+| or-phrase-atom "or" % ionize_or
+| or-phrase-atom "_Fallback" % ionize_nullcoalesce
+;
+
+or-phrase-atom % or_phrase_atom
+: or-phrase-ion and-phrase-atom % atomize
+;
+
+seq-phrase-molecule % seq_phrase_atom
+: expressions-list ";" % exprlist
+| control-flow-operator ";" % op
+| control-flow-operator label ";" % labelledop
+| "return" ";" % returnnull
+| "return" expressions-list ";" % returnexpr
+| or-phrase-atom ";" % orphra
+;
+
+phrase-stmt % phrase_stmt
+: seq-phrase-molecule % degenerate
+| and-phrase-ion seq-phrase-molecule % andphra
+| or-phrase-ion seq-phrase-molecule % orphra
+;
+
+statement % stmt
+: ";" % emptystmt
+| identifier ":" statement % labelled
+| phrase-stmt % phrase
+| conditionals % cond
+| while-loop % while
+| do-while-loop % dowhile
+| for-loop % for
+| "{" statements-list "}" % brace
+| declaration ";" % decl
+;
+
+conditionals % condstmt
+: predicated-clause % base
+| predicated-clause "else" statement % else
+;
+
+predicated-clause % predclause
+: "if" "(" expressions-list ")" statement % base
+| predicated-clause "elif" "(" expressions-list ")" statement % genrule
+;
+
+while-loop % while
+: "while" "(" expressions-list ")" statement % rule
+;
+
+do-while-loop % dowhile
+: "do" "{" statements-list "}" "while" "(" expressions-list ")" ";" % rule
+;
+
+for-loop % for
+: "for" "(" expressions-list ";"
+            expressions-list ";"
+            expressions-list ")" statement % classic
+
+| "for" "(" declaration ";"
+            expressions-list ";"
+            expressions-list ")" statement % vardecl
+;
+
+statements-list % stmtlist
+: statement % base
+| statements-list statement % genrule
+;
+
+declaration % decl
+: "decl" identifier % singledecl
+| "decl" identifier "=" assign-expr % signledeclinit
+| declaration "," identifier % declarelist1
+| declaration "," identifier "=" assign-expr % declarelist2
+;
+
+function-declaration % funcdecl
+: "subr" type-keyword identifier arguments-list statement % subr
+| "method" type-keyword identifier arguments-list statement % method
+;
+
+arguments-list % arglist
+: "(" ")" % empty
+| arguments-begin ")" % some
+;
+
+arguments-begin % args
+: "(" type-keyword identifier % base
+| arguments-begin "," type-keyword identifier % genrule
+;
+
+type-keyword % typekw
+: "val" % val
+| "obj" % obj
+| "in" % in
+| "out" % out
+| "void" % void
+| "long" % long
+| "ulong" % ulong
+| "double" % double
+;
+
+entity-declaration % entdecl
+: "_Include" langlex_strlit ";" % srcinc
+| "extern" function-declaration % extern
+| function-declaration % implicit
+;

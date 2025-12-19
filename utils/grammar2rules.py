@@ -20,7 +20,7 @@ if sys.argv[1] != "decl" and sys.argv[1] != "def":
 # argv[3] is header name for lexer declarations.
 
 vtokens = set({'a'})
-try: import vtoken_defs
+try: from vtoken_defs import *
 except: print('Import of `vtoken_defs` failed, using empty set.',
               file=sys.stderr)
 
@@ -39,17 +39,24 @@ prod = []
 
 rules = []
 
+lineno = 1
+def ParsingException(msg):
+    global lineno
+    return Exception(msg+" (This occurred at syntax line {})".format(lineno))
+
 def shift1():
+    global lineno
     q = False
     s = ""
     while True:
         c = sys.stdin.read(1)
         if not c:
             if q:
-                raise Exception("Ended in partial S-token")
+                raise ParsingException("Ended in partial S-token")
             else:
                 if s: yield s
                 break
+        if c == "\n": lineno += 1
         if q:
             s += c
             if c == '\\':
@@ -112,24 +119,24 @@ for t in shift1():
 
         case "init":
             if t in ":|;%" or t[0] == '"':
-                raise Exception("Unexpected token: {}".format(t))
+                raise ParsingException("Unexpected token: {}".format(t))
             lhs = t
             fsm = "expect_label_lhs"
 
         case "expect_label_lhs":
             if t != "%":
-                raise Exception("Unexpected token: {}".format(t))
+                raise ParsingException("Unexpected token: {}".format(t))
             fsm = "label_lhs"
 
         case "label_lhs":
             if t in ":|;%" or t[0] == '"':
-                raise Exception("Unexpected token: {}".format(t))
+                raise ParsingException("Unexpected token: {}".format(t))
             lhl = t
             fsm = "expect_rules_start"
 
         case "expect_rules_start":
             if t != ':':
-                raise Exception("Unexpected token: {}".format(t))
+                raise ParsingException("Unexpected token: {}".format(t))
             fsm = "expect_terms"
 
         case "expect_terms":
@@ -144,7 +151,7 @@ for t in shift1():
 
         case "expect_label_for_rule":
             if t in ":|;%" or t[0] == '"':
-                raise Exception("Unexpected token: {}".format(t))
+                raise ParsingException("Unexpected token: {}".format(t))
             rules += [ lhl+"_"+t ]
             if sys.argv[1] == "decl":
                 Decl1Rule(lhl, t)
@@ -162,7 +169,7 @@ for t in shift1():
                 lhl = ""
                 fsm = "init"
             else:
-                raise Exception("Unexpected token: {}".format(t))
+                raise ParsingException("Unexpected token: {}".format(t))
 
 if sys.argv[1] == "decl":
     print('extern lalr_rule_t {}_grammar_rules[];'.format(sys.argv[2]))

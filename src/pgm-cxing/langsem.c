@@ -21,6 +21,14 @@ const struct TYPE_NATIVEOBJ_STRUCT(1) type_nativeobj_ulong_def = {
 const struct TYPE_NATIVEOBJ_STRUCT(1) type_nativeobj_double_def = {
     .typeid = valtyp_double, .n_entries = 0, .static_members[0] = {} };
 
+const struct TYPE_NATIVEOBJ_STRUCT(9) type_nativeobj_s2data_str_def = {
+    .typeid = valtyp_obj,
+    .n_entries = 8,
+    .static_members = {
+        // 2025-12-13: TODO.
+    },
+};
+
 // The "Morgoth" null.
 const struct type_nativeobj *type_nativeobj_morgoth =
     (const void *)&type_nativeobj_morgoth_def;
@@ -39,6 +47,9 @@ const struct type_nativeobj *type_nativeobj_ulong =
 const struct type_nativeobj *type_nativeobj_double =
     (const void *)&type_nativeobj_double_def;
 
+const struct type_nativeobj *type_nativeobj_s2data_str =
+    (const void *)&type_nativeobj_s2data_str_def;
+
 int NormalizeTypeForArithContext(struct value_nativeobj val)
 {
     if( IsNull(val) ) return valtyp_null;
@@ -48,27 +59,8 @@ int NormalizeTypeForArithContext(struct value_nativeobj val)
     else return valtyp_long;
 }
 
-int DetermineTypeForArithContext(int type1, int type2)
+static int DetermineNumericTypeForArithContext(int type1, int type2)
 {
-    if( type1 == valtyp_null ||
-        type2 == valtyp_null )
-    {
-        // Convert null to NaN.
-        if( type1 == valtyp_double ||
-            type2 == valtyp_double )
-            return valtyp_double;
-
-        // -1 means operand absent.
-        // The only null operand remain,
-        // and it's arithmetic context.
-        else if( type1 == -1 ||
-                 type2 == -1 )
-            return valtyp_long;
-
-        // still null.
-        else return valtyp_null;
-    }
-
     if( type1 == valtyp_double ||
         type2 == valtyp_double )
         return valtyp_double;
@@ -79,6 +71,39 @@ int DetermineTypeForArithContext(int type1, int type2)
 
     // type 1 and 2 can't both be absent, so assumed.
     return valtyp_long;
+}
+
+int DetermineValueTypeForArithContext(int type1, int type2)
+{
+    if( type1 == valtyp_null ||
+        type2 == valtyp_null )
+    {
+        // -1 means operand absent.
+        // The only null operand remain,
+        // and it's arithmetic context.
+        if( type1 == -1 ||
+            type2 == -1 )
+            return valtyp_long;
+    }
+    // still null.
+
+    return DetermineNumericTypeForArithContext(type1, type2);
+}
+
+int DetermineOrderingTypeForArithContext(int type1, int type2)
+{
+    if( type1 == valtyp_null ||
+        type2 == valtyp_null )
+        return valtyp_null;
+    else return DetermineNumericTypeForArithContext(type1, type2);
+}
+
+int DetermineTypeForIntegerContext(int type1, int type2)
+{
+    if( type1 == valtyp_ulong ||
+        type2 == valtyp_ulong )
+        return valtyp_ulong;
+    else return valtyp_long;
 }
 
 struct value_nativeobj ConvertToDouble(struct value_nativeobj val)
@@ -196,6 +221,35 @@ struct value_nativeobj ConvertToLong(struct value_nativeobj val)
     else assert( 0 );
 
     return ret;
+}
+
+struct value_nativeobj Logic2ValueNativeObj(int logic)
+{
+    // 2025-11-21:
+    // Otherwise it'll be verbose.
+    return (struct value_nativeobj){
+        .proper.l = logic ? 1 : 0,
+        .type = type_nativeobj_long };
+}
+
+bool IsInteger(struct value_nativeobj val)
+{
+    if( val.type->typeid == valtyp_long ||
+        val.type->typeid == valtyp_ulong )
+        return true;
+    else return false;
+}
+
+bool IsFunction(struct value_nativeobj val)
+{
+    if( val.type->typeid == valtyp_subr ||
+        val.type->typeid == valtyp_method ||
+        val.type->typeid == valtyp_ffisubr ||
+        val.type->typeid == valtyp_ffimethod )
+    {
+        return true;
+    }
+    else return false;
 }
 
 bool IsNull(struct value_nativeobj val)

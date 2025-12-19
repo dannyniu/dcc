@@ -2,20 +2,11 @@
 
 #include "expr.h"
 
-struct value_nativeobj NullCoalesceExpr(
-    struct value_nativeobj testexpr,
-    struct value_nativeobj replexpr)
-{
-    if( IsNullish(testexpr) )
-        return replexpr;
-    else return testexpr;
-}
-
 struct value_nativeobj IncrementExpr(
     struct lvalue_nativeobj lvalue, int preop)
 {
     struct value_nativeobj ovalue, svalue;
-    int newtype = DetermineTypeForArithContext(
+    int newtype = DetermineValueTypeForArithContext(
         NormalizeTypeForArithContext(lvalue.value), -1);
 
     if( newtype == valtyp_long ) ovalue = ConvertToLong(lvalue.value);
@@ -47,7 +38,7 @@ struct value_nativeobj DecrementExpr(
     struct lvalue_nativeobj lvalue, int preop)
 {
     struct value_nativeobj ovalue, svalue;
-    int newtype = DetermineTypeForArithContext(
+    int newtype = DetermineValueTypeForArithContext(
         NormalizeTypeForArithContext(lvalue.value), -1);
 
     if( newtype == valtyp_long ) ovalue = ConvertToLong(lvalue.value);
@@ -79,7 +70,7 @@ struct value_nativeobj PositiveExpr(
     struct value_nativeobj ivalue)
 {
     struct value_nativeobj ovalue;
-    int newtype = DetermineTypeForArithContext(
+    int newtype = DetermineValueTypeForArithContext(
         NormalizeTypeForArithContext(ivalue), -1);
 
     if( newtype == valtyp_long ) ovalue = ConvertToLong(ivalue);
@@ -93,7 +84,7 @@ struct value_nativeobj NegativeExpr(
     struct value_nativeobj ivalue)
 {
     struct value_nativeobj ovalue;
-    int newtype = DetermineTypeForArithContext(
+    int newtype = DetermineValueTypeForArithContext(
         NormalizeTypeForArithContext(ivalue), -1);
 
     if( newtype == valtyp_long )
@@ -148,7 +139,5 @@ bool LogicallyTrue(
 struct value_nativeobj LogicNotExpr(
     struct value_nativeobj ivalue)
 {
-    return (struct value_nativeobj){
-        .proper.l = LogicallyTrue(ivalue) ? 1 : 0,
-        .type = type_nativeobj_long };
+    return Logic2ValueNativeObj(!LogicallyTrue(ivalue));
 }
