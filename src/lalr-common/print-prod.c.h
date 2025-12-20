@@ -10,7 +10,7 @@ void print_token(lex_token_t *tn, int indentlevel)
 
 void print_prod(lalr_prod_t *prod, int indentlevel, strvec_t *ns)
 {
-    size_t t;
+    int32_t t;
     printf("%*s%s<%s>\n", indentlevel * 2, "",
            strvec_i2str(ns, prod->production),
            strvec_i2str(ns, prod->semantic_production));

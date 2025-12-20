@@ -1,13 +1,12 @@
 #!/bin/sh
 
-CC='clang-mp-21'
-cflags_common='-fprofile-instr-generate'
-ldflags_common='-fprofile-instr-generate'
+#CC='clang-mp-21'
+#cflags_common='-fprofile-instr-generate'
+#ldflags_common='-fprofile-instr-generate'
 
 optimize=true
 testfunc()
 {
-    #objdump -h -j xray_instr_map $exe
     echo parsing starts.
     #export LLVM_PROFILE_FILE="$HOME/deleteme.instrprof"
     #lldb -- \

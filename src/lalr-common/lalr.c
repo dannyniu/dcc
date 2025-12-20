@@ -60,7 +60,7 @@ static void dump_parsing_stack(
     eprintf("%s", t);
 }
 
-#else
+#else /* Not Logging. */
 
 #define eprintf(...)
 #define symbol_print_expect_chain(...)
@@ -70,7 +70,7 @@ static void dump_parsing_stack(
 
 static void lalr_prod_final(lalr_prod_t *ctx)
 {
-    size_t t;
+    int32_t t;
 
     if( ctx->value ) s2obj_release(ctx->value);
 
@@ -203,7 +203,7 @@ static lalr_prod_t *(lalr_rule_reduce)(
 {
     // less checks are made, lenient on undefined behaviors.
 
-    size_t terms_count = 0, i;
+    int32_t terms_count = 0, i;
     lalr_term_t *terms = anchterm, *temp;
     lalr_prod_t *newprod = NULL;
 
@@ -292,6 +292,95 @@ static bool find_rule_in_traversed(
     return false;
 }
 
+s2dict_t *lalr_parse_accel_cache = NULL;
+static s2data_t *s2_true, *s2_false;
+
+void lalr_parse_accel_cache_clear()
+{
+    if( lalr_parse_accel_cache ) s2obj_release(lalr_parse_accel_cache->pobj);
+    if( s2_true ) s2obj_release(s2_true->pobj);
+    if( s2_false ) s2obj_release(s2_false->pobj);
+    lalr_parse_accel_cache = NULL;
+    s2_true = s2_false = NULL;
+}
+
+// returns one of the `s2_access_retvals` enumeration.
+static int lalr_parse_accel_cache_insert(
+    lalr_rule_symbol_t const *restrict symbolseq,
+    lalr_rule_symbol_t const *restrict expected_sym,
+    int query_result)
+{
+    // All errors in this function may be safely ignored by
+    // the caller, which then resort to a full search.
+    s2data_t *cache_key = NULL;
+    int ret;
+
+    if( !lalr_parse_accel_cache )
+        lalr_parse_accel_cache = s2dict_create();
+
+    if( !s2_true ) s2_true = s2data_from_str("\x01");
+    if( !s2_false ) s2_false = s2data_from_str("\x00");
+
+    if( !lalr_parse_accel_cache || !s2_true || !s2_false )
+    {
+        lalr_parse_accel_cache_clear();
+        return s2_access_error;
+    }
+
+    assert( expected_sym->type == lalr_symtype_prod );//return s2_access_error;
+
+    if( !(cache_key = s2data_create(0)) )
+        return s2_access_error;
+
+    // First element of the key tuple is the pointer to
+    // the static-qualified function-scope symbol sequence.
+    s2data_puts(cache_key, (const void *)&symbolseq, sizeof(const void *));
+
+    // Second element of the key tuple is the string
+    // representing the (human-readable) production
+    // of the expected symbol.
+    s2data_puts(cache_key, expected_sym->value, strlen(expected_sym->value));
+
+    ret = s2dict_set(
+        lalr_parse_accel_cache, cache_key,
+        query_result ? s2_true->pobj : s2_false->pobj,
+        s2_setter_kept);
+    s2obj_release(cache_key->pobj);
+    return ret;
+}
+
+// Returns one of true, false, and -1.
+static int lalr_parse_accel_cache_query(
+    lalr_rule_symbol_t const *restrict symbolseq,
+    lalr_rule_symbol_t const *restrict expected_sym)
+{//return -1;
+    s2data_t *query_result;
+    s2data_t *cache_key;
+    int ret = -1;
+
+    if( !lalr_parse_accel_cache ) return -1;
+
+    assert( expected_sym->type == lalr_symtype_prod );
+
+    if( !(cache_key = s2data_create(0)) ) return -1;
+    s2data_puts(cache_key, (const void *)&symbolseq, sizeof(const void *));
+    s2data_puts(cache_key, expected_sym->value, strlen(expected_sym->value));
+
+    ret = s2dict_get_T(s2data_t)(
+        lalr_parse_accel_cache, cache_key, &query_result);
+    s2obj_release(cache_key->pobj);
+
+    if( ret != s2_access_success )
+    {
+        return -1;
+    }
+    else if( *(char *)s2data_weakmap(query_result) )
+    {
+        return true;
+    }
+    else return false;
+}
+
 static bool begins_with_expected(
     lalr_rule_symbol_t const *restrict symbolseq, // from the compiled grammar.
     lalr_rule_symbol_t const *restrict expected_sym,
@@ -332,22 +421,34 @@ static bool begins_with_expected(
         return false;
 
     if( strcmp(expected_sym->value, symbolseq[0].value) == 0 )
+    {
+        lalr_parse_accel_cache_insert(symbolseq, expected_sym, true);
         return true;
+    }
 
     for(subsrule = grammar_rules; *subsrule; subsrule++)
     {
         struct traversed_rules trav = { .r = *subsrule, .up = tup };
-        int32_t lhs = (int32_t)(long)(*subsrule)(
+        int32_t lhs;
+        int query_result;
+        const char *strptr;
+
+        rchain = (*subsrule)(lalr_rule_inspect_symseq, NULL,
+                             NULL, grammar_rules, ns_rules);
+
+        query_result = lalr_parse_accel_cache_query(
+            rchain, expected_sym);
+        //if( tmp == true ) return tmp; else
+        if( query_result == false ) continue;
+
+        lhs = (int32_t)(long)(*subsrule)(
             lalr_rule_inspect_lhs, NULL,
             NULL, grammar_rules, ns_rules);
-        const char *strptr = strvec_i2str(ns_rules, lhs);
+        strptr = strvec_i2str(ns_rules, lhs);
 
         if( strcmp(symbolseq[0].value, strptr) != 0 )
             // the lhs of subsrule doesn't match the 1st symbol of symbolseq.
             continue;
-
-        rchain = (*subsrule)(lalr_rule_inspect_symseq, NULL,
-                             NULL, grammar_rules, ns_rules);
 
         if( rchain->type == lalr_symtype_prod )
             if( strcmp(rchain[0].value, strptr) == 0 )
@@ -359,12 +460,16 @@ static bool begins_with_expected(
             // catches loop-in-alternation rule pairs and groups.
             continue;
 
-        if( begins_with_expected(
+        if( query_result == true || begins_with_expected(
                 rchain, expected_sym, &trav, grammar_rules, ns_rules) )
+        {
+            lalr_parse_accel_cache_insert(
+                symbolseq, expected_sym, true);
             return true;
+        }
     }
 
-    // there doesn't exist j such that g(0) is not an empty set.
+    lalr_parse_accel_cache_insert(symbolseq, expected_sym, false);
     return false;
 }
 

@@ -149,6 +149,7 @@ int main(int argc, char *argv[])
         libregfree(&var_lex_elems[i].preg);
     }
 
+    lalr_parse_accel_cache_clear();
     s2obj_release(parsed->pobj);
     s2obj_release(NS_RULES->pobj);
     subret = EXIT_SUCCESS;

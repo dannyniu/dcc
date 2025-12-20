@@ -5,6 +5,7 @@
 
 #include "../lex-common/lex.h"
 #include "../infra/strvec.h"
+#include <s2dict.h>
 
 #define S2_OBJ_TYPE_PRODUCTION 0x2021
 #define S2_OBJ_TYPE_STACK      0x2022
@@ -111,6 +112,10 @@ struct lalr_rulesym {
     // in `lalr_rule_action_expect` for details.
     lalr_rule_symbol_t *next;
 };
+
+// `lalr_parse_accel_cache*` interfaces are not thread-safe.
+extern s2dict_t *lalr_parse_accel_cache;
+void lalr_parse_accel_cache_clear();
 
 #ifdef dcc_lalr_defining_grammar
 #define symtype_prod   .type = lalr_symtype_prod
