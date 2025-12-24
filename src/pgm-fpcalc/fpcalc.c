@@ -7,16 +7,17 @@
 
 void print_token(lex_token_t *tn, int indentlevel);
 void print_prod(lalr_prod_t *prod, int indentlevel, strvec_t *ns);
-#define eprintf(...) //fprintf(stderr, __VA_ARGS__)
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
 
 static inline lalr_rule_t rules(int32_t r)
 {
     return fpcalc_grammar_rules[r];
 }
 
-#define theRule rules(sp->body->rule)
+#define theRule rules(sp->body->semantic_rule)
 
 #define prod_expect_next(rulefunc, n) do {                      \
+        eprintf("ri:%d\n", x->rule);                            \
         if( rules(x->rule) != rulefunc ) return NULL;           \
         else x = x->terms[n].production; } while( false )
 
@@ -27,10 +28,9 @@ static s2data_t *resolve_id_from_expr(lalr_prod_t *addexpr)
 
     lalr_prod_t *x = addexpr;
 
-    prod_expect_next(addexpr_degenerate, 0);
-    prod_expect_next(mulexpr_degenerate, 0);
-    prod_expect_next(unaryexpr_degenerate, 0);
-    prod_expect_next(primary_identexpr, 0);
+    if( rules(x->rule) != addexpr_degenerate ||
+        rules(x->semantic_rule) != identexpr_label )
+        return NULL;
 
     return x->terms[0].terminal->str;
 }
@@ -116,27 +116,29 @@ static lalr_prod_t *find_def_from_id(s2data_t *id)
 
     if( s2dict_get_T(lalr_prod_t)(globaldefs, id, &def) != s2_access_success)
         return NULL;
-    else return def;
+    else return print_prod(def, 0, ns_rules_fpcalc), def;
 }
 
 int remember_definition(lalr_prod_t *expr, int semantic)
 {
     lalr_prod_t *x = expr;
+    int ret;
+    eprintf("remembering definition.\n");
 
-    if( rules(x->rule) != fpcalc_goal ) return s2_access_nullval;
-    else x = x->terms[0].production;
+    if( rules(x->rule) != fpcalc_goal ||
+        rules(x->semantic_rule) != assignexpr_assignment )
+        return s2_access_nullval;
 
-    if( rules(x->rule) != assignexpr_assignment ) return s2_access_nullval;
-    else x = x->terms[0].production;
+    x = x->terms[0].production;
 
-    if( strcmp(strvec_i2str(ns_rules_fpcalc, x->production),
+    if( strcmp(strvec_i2str(ns_rules_fpcalc, x->semantic_production),
                "identified-expression") != 0 )
         return s2_access_nullval;
 
-    assert( s2_is_token(x->terms[0].terminal) );
-
-    return s2dict_set(
+    ret = s2dict_set(
         globaldefs, x->terms[0].terminal->str, expr->pobj, semantic);
+    assert( ret == s2_access_success );
+    return ret;
 }
 
 typedef struct eval_stack_chained_ctx eval_stack_chained_t;
@@ -179,25 +181,26 @@ bool fpcalc_eval_start(
 
     eprintf("\n========\nEntering `fpcalc_eval_start`.\n");
     /*
-    printf("== == == expr:\n");
-    print_prod(expr, 0, ns_rules_fpcalc);
-    if( params )
-    {
-        printf("-------- params:\n");
-        print_prod(params, 0, ns_rules_fpcalc);
-    }
-    if( args )
-    {
-        printf("-------- args:\n");
-        print_prod(args, 0, ns_rules_fpcalc);
-    }
-    printf("-- -- --\n");//*/
+      printf("== == == expr:\n");
+      print_prod(expr, 0, ns_rules_fpcalc);
+      if( params )
+      {
+      printf("-------- params:\n");
+      print_prod(params, 0, ns_rules_fpcalc);
+      }
+      if( args )
+      {
+      printf("-------- args:\n");
+      print_prod(args, 0, ns_rules_fpcalc);
+      }
+      printf("-- -- --\n");//*/
 
 start_eval_1term:
 
     while( sp->operand_index < sp->body->terms_count )
     {
         eprintf("sp: %p, opind: %zd, ", sp, sp->operand_index);
+        eprintf("sri: %d, ri: %d; ", sp->body->semantic_rule, sp->body->rule);
         if( !s2_is_prod(sp->body->terms[sp->operand_index].production) )
         {
             eprintf("terminal: %s.\n",
@@ -229,29 +232,24 @@ start_eval_1term:
 
     if( theRule == fpcalc_goal )
     {
-        assert( s2_is_prod(sp->body->terms[0].production) );
         *fpreg =
             *(double *)s2data_weakmap(value_body_of_term(0));
     }
 
     if( theRule == assignexpr_degenerate )
     {
-        assert( s2_is_prod(sp->body->terms[0].production) );
         *fpreg =
             *(double *)s2data_weakmap(value_body_of_term(0));
     }
 
     if( theRule == addexpr_degenerate )
     {
-        assert( s2_is_prod(sp->body->terms[0].production) );
         *fpreg =
             *(double *)s2data_weakmap(value_body_of_term(0));
     }
 
     if( theRule == addexpr_addition )
     {
-        assert( s2_is_prod(sp->body->terms[0].production) );
-        assert( s2_is_prod(sp->body->terms[2].production) );
         *fpreg =
             *(double *)s2data_weakmap(value_body_of_term(0)) +
             *(double *)s2data_weakmap(value_body_of_term(2));
@@ -259,8 +257,6 @@ start_eval_1term:
 
     if( theRule == addexpr_subtraction )
     {
-        assert( s2_is_prod(sp->body->terms[0].production) );
-        assert( s2_is_prod(sp->body->terms[2].production) );
         *fpreg =
             *(double *)s2data_weakmap(value_body_of_term(0)) -
             *(double *)s2data_weakmap(value_body_of_term(2));
@@ -268,15 +264,12 @@ start_eval_1term:
 
     if( theRule == mulexpr_degenerate )
     {
-        assert( s2_is_prod(sp->body->terms[0].production) );
         *fpreg =
             *(double *)s2data_weakmap(value_body_of_term(0));
     }
 
     if( theRule == mulexpr_multiplication )
     {
-        assert( s2_is_prod(sp->body->terms[0].production) );
-        assert( s2_is_prod(sp->body->terms[2].production) );
         *fpreg =
             *(double *)s2data_weakmap(value_body_of_term(0)) *
             *(double *)s2data_weakmap(value_body_of_term(2));
@@ -284,8 +277,6 @@ start_eval_1term:
 
     if( theRule == mulexpr_division )
     {
-        assert( s2_is_prod(sp->body->terms[0].production) );
-        assert( s2_is_prod(sp->body->terms[2].production) );
         *fpreg =
             *(double *)s2data_weakmap(value_body_of_term(0)) /
             *(double *)s2data_weakmap(value_body_of_term(2));
@@ -293,35 +284,30 @@ start_eval_1term:
 
     if( theRule == unaryexpr_degenerate )
     {
-        assert( s2_is_prod(sp->body->terms[0].production) );
         *fpreg =
             *(double *)s2data_weakmap(value_body_of_term(0));
     }
 
     if( theRule == unaryexpr_positive )
     {
-        assert( s2_is_prod(sp->body->terms[1].production) );
         *fpreg =
             *(double *)s2data_weakmap(value_body_of_term(1));
     }
 
     if( theRule == unaryexpr_negative )
     {
-        assert( s2_is_prod(sp->body->terms[1].production) );
         *fpreg =
             -*(double *)s2data_weakmap(value_body_of_term(1));
     }
 
     if( theRule == primary_identexpr )
     {
-        assert( s2_is_prod(sp->body->terms[0].production) );
         *fpreg =
             *(double *)s2data_weakmap(value_body_of_term(0));
     }
 
     if( theRule == primary_number )
     {
-        assert( s2_is_token(sp->body->terms[0].terminal) );
         *fpreg = atof(s2data_weakmap(sp->body->terms[0].terminal->str));
         eprintf("Dump: %f,\n", *fpreg);
     }
@@ -386,9 +372,8 @@ start_eval_1term:
                 &resultvalue,
                 //
                 //-- expr --//
-                def        ->terms[0] // from the goal symbol,
-                .production->terms[2] // from `assignexpr_assignment`,
-                .production,
+                def
+                ->terms[2].production, // -hand side of the memorized assignment.
                 //
                 //-- params, args --//
                 NULL, NULL);
@@ -487,6 +472,7 @@ start_eval_1term:
         else
         {
             lalr_rule_t fprule = rules(sp->body->terms[2].production->rule);
+
             if( fprule == addexprlist_base )
             {
                 def = sp->body->terms[2].production->terms[0].production;
@@ -514,19 +500,18 @@ start_eval_1term:
                 &resultvalue,
                 //
                 //-- expr --//
-                def        ->terms[0] // from the goal symbol,
-                .production->terms[2] // from the `assignexpr_assignment` rule,
-                .production,
+                def
+                ->terms[2].production, // right-hand side of the memorized assignment,
+
                 //
                 //-- params --//
-                def        ->terms[0] // from the goal symbol,
-                .production->terms[0] // ident-expr from assign-expr-assignment,
-                .production->terms[2] // param from function-form ident-expr.
-                .production,
+                def
+                ->terms[0].production // left-hand side of the memorized assignment,
+                ->terms[2].production, // parameters list.
                 //
                 //-- args --//
-                sp->body->terms[2] // the currently evaluated expressions.
-                .production);
+                sp->body
+                ->terms[2].production); // arguments list.
 
             if( !subret )
             {

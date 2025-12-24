@@ -33,16 +33,18 @@ struct lalr_production {
     int32_t production; // for to be recognized in matching,
     int32_t semantic_production; // the actual semantic,
     int32_t rule; // index into the rules table.
-    int32_t terms_count; // number of elements in `terms`.
+    int32_t semantic_rule; // same distinction as above.
+    size_t terms_count; // number of elements in `terms`.
+
+    union {
+        lalr_prod_t *production;
+        lex_token_t *terminal;
+    } *terms;
 
     // 2025-01-30:
     // Semantics are evaluated during reduce operations during parse,
     // and are assigned to `value`.
     s2obj_t *value;
-    union {
-        lalr_prod_t *production;
-        lex_token_t *terminal;
-    } *terms;
 };
 
 struct lalr_term {
@@ -122,7 +124,8 @@ void lalr_parse_accel_cache_clear();
 #define symtype_vtoken .type = lalr_symtype_vtoken
 #define symtype_stoken .type = lalr_symtype_stoken
 #define lalr_opt       .optional = true
-#define lalr_rule_gen_args symbolseq, production, action, terms, rules, ns_rules
+#define lalr_rule_gen_args \
+    symbolseq, production, ri, action, terms, rules, ns_rules
 #endif /* dcc_lalr_defining_grammar */
 
 typedef enum {
@@ -152,6 +155,7 @@ typedef enum {
 #define lalr_rule_params                        \
     lalr_rule_action_t action,                  \
         lalr_term_t *restrict terms,            \
+        int32_t ri,                             \
         void *restrict ctx,                     \
         void *restrict rules,                   \
         strvec_t *restrict ns_rules
@@ -163,7 +167,8 @@ typedef void *(*lalr_rule_t)(lalr_rule_params);
 
 // Implements common rule actions for all rules.
 void *lalr_rule_actions_generic(
-    lalr_rule_symbol_t *restrict symbolseq, int32_t production,
+    lalr_rule_symbol_t *restrict symbolseq,
+    int32_t production, int32_t ri,
     lalr_rule_action_t action,
     lalr_term_t *restrict terms,
     // `ctx` is used by rules themselves, to e.g. build semantics.

@@ -76,6 +76,8 @@ int main()
     rel_before = frees;
 #endif /* INTERCEPT_MEM_CALLS */
 
+
+
     for(i=0; CLexElems[i].pattern; i++)
     {
         subret = libregcomp(
@@ -148,6 +150,7 @@ int main()
         libregfree(&CLexElems[i].preg);
     }
 
+    lalr_parse_accel_cache_clear();
     s2obj_release(ns_rules_fpcalc->pobj);
     s2obj_release(globaldefs->pobj);
     subret = EXIT_SUCCESS;

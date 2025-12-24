@@ -5,7 +5,7 @@
 #if DCC_LALR_LOGGING == 1
 
 #error Logging?
-#define eprintf(...) //fprintf(stderr, __VA_ARGS__)
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
 
 static void symbol_print_expect_chain(lalr_rule_symbol_t *chain)
 {
@@ -198,6 +198,7 @@ static lalr_rule_symbol_t const *(lalr_rule_match)(
 static lalr_prod_t *(lalr_rule_reduce)(
     lalr_rule_symbol_t const *symbolseq,
     int32_t production,
+    int32_t ri,
     lalr_term_t *anchterm,
     strvec_t *ns_rules)
 {
@@ -211,13 +212,15 @@ static lalr_prod_t *(lalr_rule_reduce)(
 
     eprintf("prod: %s; ", strvec_i2str(ns_rules, production));
 
-     if( symbolseq[0].type == lalr_symtype_prod &&
-         !symbolseq[0].optional && terms_count == 1 )
-     {
-         // 2025-12-17: optimization for the degenerate case.
-         anchterm->production->production = production;
-         return anchterm->production;
-     }
+    if( symbolseq[0].type == lalr_symtype_prod &&
+        s2_is_prod(terms[0].production) &&
+        !symbolseq[0].optional && terms_count == 1 )
+    {
+        // 2025-12-17: optimization for the degenerate case.
+        anchterm->production->production = production;
+        anchterm->production->rule = ri;
+        return anchterm->production;
+    }
 
     newprod = lalr_prod_create(terms_count);
     if( !newprod ) return NULL;
@@ -270,9 +273,9 @@ static lalr_prod_t *(lalr_rule_reduce)(
     anchterm->production = newprod;
 
     newprod->semantic_production = newprod->production = production;
+    newprod->semantic_rule = newprod->rule = ri;
     // newprod->rule // Assigned from a calling routine.
 
-    eprintf("\n");
     return newprod;
 }
 
@@ -433,8 +436,9 @@ static bool begins_with_expected(
         int query_result;
         const char *strptr;
 
-        rchain = (*subsrule)(lalr_rule_inspect_symseq, NULL,
-                             NULL, grammar_rules, ns_rules);
+        rchain = (*subsrule)(lalr_rule_inspect_symseq,
+                             NULL, -1, NULL,
+                             grammar_rules, ns_rules);
 
         query_result = lalr_parse_accel_cache_query(
             rchain, expected_sym);
@@ -442,8 +446,9 @@ static bool begins_with_expected(
         if( query_result == false ) continue;
 
         lhs = (int32_t)(long)(*subsrule)(
-            lalr_rule_inspect_lhs, NULL,
-            NULL, grammar_rules, ns_rules);
+            lalr_rule_inspect_lhs,
+            NULL, -1, NULL,
+            grammar_rules, ns_rules);
         strptr = strvec_i2str(ns_rules, lhs);
 
         if( strcmp(symbolseq[0].value, strptr) != 0 )
@@ -502,7 +507,9 @@ static bool (lalr_rule_expect)(
 }
 
 void *lalr_rule_actions_generic(
-    lalr_rule_symbol_t *restrict symbolseq, int32_t production,
+    lalr_rule_symbol_t *restrict symbolseq,
+    int32_t production,
+    int32_t ri,
     lalr_rule_action_t action,
     lalr_term_t *restrict terms,
     // `ctx` is used by rules themselves, to e.g. build semantics.
@@ -517,7 +524,7 @@ void *lalr_rule_actions_generic(
 
     case lalr_rule_action_reduce:
         return (lalr_rule_reduce)(
-            symbolseq, production, terms, ns_rules);
+            symbolseq, production, ri, terms, ns_rules);
 
     case lalr_rule_action_expect:
         return (void *)(intptr_t)(lalr_rule_expect)(
@@ -536,15 +543,15 @@ void *lalr_rule_actions_generic(
 
 #define lalr_rule_match(rules, ri, terms, ctx, strtab)                  \
     (((lalr_rule_symbol_t const *(*)(lalr_rule_params))rules[ri])       \
-     (lalr_rule_action_match, terms, ctx, rules, strtab))
+     (lalr_rule_action_match, terms, ri, ctx, rules, strtab))
 
 #define lalr_rule_reduce(rules, ri, terms, ctx, strtab)         \
     (((lalr_prod_t *(*)(lalr_rule_params))rules[ri])            \
-     (lalr_rule_action_reduce, terms, ctx, rules, strtab))
+     (lalr_rule_action_reduce, terms, ri, ctx, rules, strtab))
 
 #define lalr_rule_expect(rules, ri, terms, ctx, strtab)         \
     ((bool)((void *(*)(lalr_rule_params))rules[ri])             \
-     (lalr_rule_action_expect, terms, ctx, rules, strtab))
+     (lalr_rule_action_expect, terms, ri, ctx, rules, strtab))
 
 static void lalr_stack_final(lalr_stack_t *ctx)
 {
@@ -1006,9 +1013,6 @@ int lalr_parse(
             *out = NULL;
             return -1; // [host error].
         }
-
-        // `lalr_rule_reduce` didn't know what value to assign.
-        rd->rule = last_resort_rule;
 
         ps->top = te;
 

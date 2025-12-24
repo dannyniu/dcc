@@ -3,9 +3,9 @@
 optimize=debug
 testfunc()
 {
-    $exec -f ../tests/fpcalc-grammar-test-expr.txt
-    #$exec -f ../tests/fpcalc-grammar-test-funcs.txt
-    #$exec -f ../tests/fpcalc-grammar-test-partial.txt
+    $exec -f "$(realpath ../tests/fpcalc-grammar-test-expr.txt)"
+    #$exec -f "$(realpath ../tests/fpcalc-grammar-test-funcs.txt)"
+    #$exec -f "$(realpath ../tests/fpcalc-grammar-test-partial.txt)"
 }
 
 cd "$(dirname "$0")"
@@ -20,8 +20,6 @@ fpcalc-grammar-simple.c
 
 cflags_common="\
 -D SAFETYPES2_BUILD_WITHOUT_GC
--I ./../src/../contrib/SafeTypes2/src
--I ./../src/../contrib/librematch/src
 "
 
 arch_family=defaults

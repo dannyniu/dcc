@@ -61,6 +61,7 @@ int main()
         NULL, ns_rules_fpcalc,
         (token_shifter_t)RegexLexFromRope_Shift,
         &lexer);
+    print_prod(ps->bottom->production, 0, ns_rules_fpcalc);
     printf("%d is returned from parsing the quadratic function.\n", subret);
 
     subret = remember_definition(ps->bottom->production, s2_setter_kept);
@@ -77,6 +78,7 @@ int main()
         NULL, ns_rules_fpcalc,
         (token_shifter_t)RegexLexFromRope_Shift,
         &lexer);
+    print_prod(ps->bottom->production, 0, ns_rules_fpcalc);
     printf("%d is returned from parsing the derivative function.\n", subret);
 
     subret = remember_definition(ps->bottom->production, s2_setter_kept);
@@ -107,6 +109,7 @@ int main()
         s2obj_release(rope->pobj);
     }
 
+    lalr_parse_accel_cache_clear();
     s2obj_release(ns_rules_fpcalc->pobj);
     s2obj_release(globaldefs->pobj);
     subret=EXIT_SUCCESS;
