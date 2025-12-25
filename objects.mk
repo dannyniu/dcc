@@ -1,14 +1,13 @@
-# DannyNiu/NJF, 2023-03-17. Public Domain.
+# DannyNiu/NJF, 2025-12-25. Public Domain.
 
-OBJ_SRC_FPCALC = \
-    src/infra/strvec.o \
-    src/lex/lex.o \
-    src/lex/langlex.o \
-    src/lalr/lalr.o \
-    src/fpcalc/fpcalc.o \
-    src/fpcalc/fpcalc-main.o
+OBJ_CONTRIB_LIBREMATCH = \
+    contrib/librematch/src/regcomp-brackets.o \
+    contrib/librematch/src/regcomp-interval.o \
+    contrib/librematch/src/regcomp-bre.o \
+    contrib/librematch/src/regcomp-ere.o \
+    contrib/librematch/src/librematch.o
 
-OBJ_CONTRIB_SAFETYPE2 = \
+OBJ_CONTRIB_SAFETYPES2 = \
     contrib/SafeTypes2/src/s2obj.o \
     contrib/SafeTypes2/src/s2data.o \
     contrib/SafeTypes2/src/s2dict.o \
@@ -16,8 +15,33 @@ OBJ_CONTRIB_SAFETYPE2 = \
     contrib/SafeTypes2/src/s2ref.o \
     contrib/SafeTypes2/src/siphash.o
 
-OBJS_GROUP_ALL = ${OBJ_SRC_FPCALC} ${OBJ_CONTRIB_SAFETYPE2}
+OBJ_SRC_PARSER_COMMON = \
+    src/lex-common/lex.o \
+    src/lex-common/rope.o \
+    src/lalr-common/lalr.o \
+    src/infra/strvec.o
+
+OBJ_SRC_LANGLEX_C = \
+    src/langlex/langlex-c.o
+
+OBJ_SRC_PGM_CXING = \
+    src/langlex/langlex-cxing.o \
+    src/pgm-cxing/cxing-grammar.o \
+    src/pgm-cxing/cxing-interp.o \
+    src/pgm-cxing/expr-arith.o \
+    src/pgm-cxing/expr-bits.o \
+    src/pgm-cxing/expr-unary.o \
+    src/pgm-cxing/langsem.o \
+    src/pgm-cxing/runtime.o
+
+OBJ_SRC_PGM_FPCALC = \
+    src/pgm-fpcalc/fpcalc-grammar.o \
+    src/pgm-fpcalc/fpcalc-main.o \
+    src/pgm-fpcalc/fpcalc.o
 
 OBJ_SRC_UNUSED = \
-    src/fpcalc/fpcalc-grammar.o \
-    src/fpcalc/fpcalc-grammar-simple.o
+    src/lalr-common/reduce-reduce-conflict.o \
+    src/pgm-fpcalc/fpcalc-grammar-simple.o
+
+OBJ_GROUP_ALL = \
+    OBJ_CONTRIB_SAFETYPES2

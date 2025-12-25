@@ -7,7 +7,7 @@
 
 void print_token(lex_token_t *tn, int indentlevel);
 void print_prod(lalr_prod_t *prod, int indentlevel, strvec_t *ns);
-#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#define eprintf(...) // fprintf(stderr, __VA_ARGS__)
 
 static inline lalr_rule_t rules(int32_t r)
 {
