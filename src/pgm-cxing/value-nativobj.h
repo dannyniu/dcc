@@ -47,37 +47,32 @@ struct lvalue_nativeobj {
     struct value_nativeobj value;
 
     // The following fields are for lvalues:
-    //
-    // 2025-10-02:
-    // Because lvalue is the by product of accessing the member of an
-    // object, it only exist transiently, so as such the scope object
-    // don't need to be `__copy__()`'d.
-    //
+
+    // 2026-01-01:
+    // because different kind of scopes needs different accessors,
+    // a mere pointer to the scope is not enough - it needs
+    // accessor properties, therefore this is changed to 
+    // a value native object.
     struct value_nativeobj scope;
-    s2data_t *key;
+    
+    // 2026-01-01:
+    // the reference implementation uses `s2data_t` from the SafeTypes2
+    // library, other implementations may have a different choice,
+    // barring binary compatibility and interoperability issues.
+    void *key; // if null, then it's not an lvalue irrespective of scope.
 };
 
 // There are `n + 1` elements in `static_members`, last of which `type` being
 // the only `NULL` entry in the array.
-#define TYPE_NATIVEOBJ_STRUCT(...) {            \
-        uint64_t typeid;                        \
-        uint64_t n_entries;                     \
-        struct {                                \
-            const char *name;                   \
-            struct value_nativeobj *member;     \
-        } static_members[__VA_ARGS__];          \
+#define TYPE_NATIVEOBJ_STRUCT(...) {                    \
+        uint64_t typeid;                                \
+        uint64_t n_entries;                             \
+        struct {                                        \
+            const char *name;                           \
+            const struct value_nativeobj *member;       \
+        } static_members[__VA_ARGS__];                  \
     }
 
 struct type_nativeobj TYPE_NATIVEOBJ_STRUCT();
-
-extern const struct type_nativeobj *type_nativeobj_morgoth;
-extern const struct type_nativeobj *type_nativeobj_null;
-extern const struct type_nativeobj *type_nativeobj_long;
-extern const struct type_nativeobj *type_nativeobj_ulong;
-extern const struct type_nativeobj *type_nativeobj_double;
-
-// 2025-10-02: Certain assumptions about the string type
-// depends on that of the reference implementation.
-extern const struct type_nativeobj *type_nativeobj_s2data_str;
 
 #endif /* cxing_value_nativobj_h */

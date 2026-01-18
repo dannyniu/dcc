@@ -4,7 +4,7 @@ optimize=debug
 testfunc()
 {
     #lldb -- \
-        $exec ;:<<EOF
+        $exec <<EOF
 f(x) = 2*x
 g(x) = 3*f(x)
 g(1)

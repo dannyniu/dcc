@@ -1,4 +1,8 @@
 src_common="\
+cxing-callstub.c
+cxing-interp-func-exec.c
+cxing-interp-module.c
+cxing-interp-misc.c
 cxing-grammar.c
 expr-arith.c
 expr-bits.c
@@ -10,8 +14,9 @@ langlex/langlex-cxing.c
 lex-common/lex.c
 lex-common/rope.c
 infra/strvec.c
-./../contrib/SafeTypes2/src/s2dict.c
 ./../contrib/SafeTypes2/src/s2data.c
+./../contrib/SafeTypes2/src/s2dict.c
+./../contrib/SafeTypes2/src/s2list.c
 ./../contrib/SafeTypes2/src/s2obj.c
 ./../contrib/SafeTypes2/src/mem-intercept.c
 ./../contrib/SafeTypes2/src/siphash.c
@@ -21,3 +26,5 @@ infra/strvec.c
 ./../contrib/librematch/src/regcomp-ere.c
 ./../contrib/librematch/src/regcomp-interval.c
 "
+
+if [ X"$(uname -s)" = XLinux ] ; then ldflags_common=-lm ; fi

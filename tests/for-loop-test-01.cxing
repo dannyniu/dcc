@@ -1,0 +1,15 @@
+subr main(arg0, arg1, arg2, arg3)
+{
+    decl x=1;
+    for(;;) break;
+    for(;;x=3) if( x == 3 ) break;
+    for(;0;) continue;
+    for(;x;x=0) continue;
+    for(x=5;;) break;
+    for(x=3;; x=0) continue;
+    for(x=2;x;x=x-1);
+    for(decl c=0;; c=3) break;
+    for(decl c=0; c; ) continue;
+    for(decl c=1; c; c=0) continue;
+    return 37;
+}

@@ -22,31 +22,6 @@ const struct lex_enum_strtab langlex_token_strtab[] = {
 
 #define EscSeq "\\\\([\\\"\'?abfnrtv]|[0-7]{1,3}|o\\{[0-7]+\\}|x[0-9A-Fa-f]+|x\\{[0-9A-Fa-f]+\\})"
 
-// Keywords actually.
-const char *langlex_punctx[] = {
-    // types:
-    "void", "long", "ulong", "double", "val", "obj", "in", "out",
-
-    // special values:
-    "true", "false", "null",
-
-    // phrases:
-    "return", "break", "continue", "and", "or", "_Fallback",
-
-    // statements and declarations:
-    "decl",
-
-    // control flows:
-    "if", "else", "elif", "while", "do", "for",
-
-    // functions:
-    "subr", "method", "this",
-
-    // translation unit interface:
-    "_Include", "extern",
-    NULL,
-};
-
 lex_elem_t LexElems[] = {
     { .pattern = "\'([^\\\']|"EscSeq")*\'",
       .cflags = LIBREG_EXTENDED, .completion = langlex_charlit },
@@ -56,8 +31,8 @@ lex_elem_t LexElems[] = {
       .cflags = LIBREG_EXTENDED, .completion = langlex_rawlit },
 
     { .pattern =
-      "void|u?long|double|val|obj|in|out|true|false|null|"
-      "return|break|continue|and|or|_Fallback|decl|"
+      "true|false|null|"
+      "return|break|continue|and|_Then|or|_Fallback|decl|"
       "if|else|elif|while|do|for|subr|method|this|_Include|extern",
       .cflags = LIBREG_EXTENDED, .completion = langlex_keyword },
 
@@ -93,7 +68,7 @@ lex_elem_t LexElems[] = {
       .completion = langlex_hexfplit },
 
     { .pattern =
-      "(<<|>>>?|[*/%+-&^|])=|=[?]|"
+      "(<<|>>>?|[-+*/%&^|])=|=[?]|"
       "[+][+]|--|<<|>>>?|[<>=!]=|&&|[|][|]|[?][?]|"
       "[[.].][.[.](){}.&*+[.-.]~!/%<>\\^|?:;=,#]",
       .cflags = LIBREG_EXTENDED, .completion = langlex_punct },

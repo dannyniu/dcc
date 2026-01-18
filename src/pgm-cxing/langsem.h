@@ -40,6 +40,9 @@ bool IsFunction(struct value_nativeobj val);
 bool IsNull(struct value_nativeobj val);
 bool IsNullish(struct value_nativeobj val);
 
+// Implemented 2025-12-30.
+bool ValueNativeObj2Logic(struct value_nativeobj val);
+
 struct lvalue_nativeobj GetValProperty(
     struct value_nativeobj obj,
     struct value_nativeobj key);

@@ -10,7 +10,8 @@ testfunc()
     echo parsing starts.
     #export LLVM_PROFILE_FILE="$HOME/deleteme.instrprof"
     #lldb -- \
-    time $exec -f ../tests/langlex-test-src.cxing
+    #time $exec -f ../tests/langlex-test-src.cxing
+    time $exec -f ../tests/phrase-experiment.cxing
 }
 
 cd "$(dirname "$0")"

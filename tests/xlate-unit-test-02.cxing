@@ -1,0 +1,5 @@
+subr func1(x, y){ return x + y; }
+method func2(a, b){ a _Then return b; }
+extern subr func1(x, y);
+extern subr func3(u, v);
+subr func4(){ func1(1, 2) _Then return func2(3, 4) _Fallback func3(5, 6); }

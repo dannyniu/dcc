@@ -1,6 +1,7 @@
 /* DannyNiu/NJF, 2025-09-14. Public Domain. */
 
 #include "expr.h"
+#include "runtime.h"
 
 struct value_nativeobj IncrementExpr(
     struct lvalue_nativeobj lvalue, int preop)
@@ -20,7 +21,7 @@ struct value_nativeobj IncrementExpr(
     if( preop ) svalue = ValueCopy(lvalue.value);
     SetValProperty(lvalue.scope, (struct value_nativeobj){
             .proper.p = lvalue.key,
-            .type = type_nativeobj_s2data_str
+            .type = (const void *)&type_nativeobj_s2impl_str,
         }, ovalue);
 
     if( preop )
@@ -52,7 +53,7 @@ struct value_nativeobj DecrementExpr(
     if( preop ) svalue = ValueCopy(lvalue.value);
     SetValProperty(lvalue.scope, (struct value_nativeobj){
             .proper.p = lvalue.key,
-            .type = type_nativeobj_s2data_str
+            .type = (const void *)&type_nativeobj_s2impl_str
         }, ovalue);
 
     if( preop )

@@ -14,7 +14,6 @@ enum {
 #undef LEX_ENUM
 
 extern const struct lex_enum_strtab langlex_token_strtab[];
-extern const char *langlex_keywords[];
 extern lex_elem_t LexElems[];
 
 #endif /* dcc_langlex_cxing_h */

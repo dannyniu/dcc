@@ -3,53 +3,6 @@
 #include "langsem.h"
 #include "runtime.h"
 
-// The "Morgoth" null.
-const struct TYPE_NATIVEOBJ_STRUCT(1) type_nativeobj_morgoth_def = {
-    .typeid = valtyp_obj, .n_entries = 0, .static_members[0] = {} };
-
-// The "blessed" null.
-const struct TYPE_NATIVEOBJ_STRUCT(1) type_nativeobj_null_def = {
-    .typeid = valtyp_null, .n_entries = 0, .static_members[0] = {} };
-
-// The arithmetic types.
-const struct TYPE_NATIVEOBJ_STRUCT(1) type_nativeobj_long_def = {
-    .typeid = valtyp_long, .n_entries = 0, .static_members[0] = {} };
-
-const struct TYPE_NATIVEOBJ_STRUCT(1) type_nativeobj_ulong_def = {
-    .typeid = valtyp_ulong, .n_entries = 0, .static_members[0] = {} };
-
-const struct TYPE_NATIVEOBJ_STRUCT(1) type_nativeobj_double_def = {
-    .typeid = valtyp_double, .n_entries = 0, .static_members[0] = {} };
-
-const struct TYPE_NATIVEOBJ_STRUCT(9) type_nativeobj_s2data_str_def = {
-    .typeid = valtyp_obj,
-    .n_entries = 8,
-    .static_members = {
-        // 2025-12-13: TODO.
-    },
-};
-
-// The "Morgoth" null.
-const struct type_nativeobj *type_nativeobj_morgoth =
-    (const void *)&type_nativeobj_morgoth_def;
-
-// The "blessed" null.
-const struct type_nativeobj *type_nativeobj_null =
-    (const void *)&type_nativeobj_null_def;
-
-// The arithmetic types.
-const struct type_nativeobj *type_nativeobj_long =
-    (const void *)&type_nativeobj_long_def;
-
-const struct type_nativeobj *type_nativeobj_ulong =
-    (const void *)&type_nativeobj_ulong_def;
-
-const struct type_nativeobj *type_nativeobj_double =
-    (const void *)&type_nativeobj_double_def;
-
-const struct type_nativeobj *type_nativeobj_s2data_str =
-    (const void *)&type_nativeobj_s2data_str_def;
-
 int NormalizeTypeForArithContext(struct value_nativeobj val)
 {
     if( IsNull(val) ) return valtyp_null;
@@ -109,7 +62,7 @@ int DetermineTypeForIntegerContext(int type1, int type2)
 struct value_nativeobj ConvertToDouble(struct value_nativeobj val)
 {
     struct value_nativeobj ret;
-    ret.type = type_nativeobj_double;
+    ret.type = (const void *)&type_nativeobj_double;
 
     if( val.type->typeid == valtyp_null )
         ret.proper.l = -1; // all-bit-one representation of NaN.
@@ -148,7 +101,7 @@ struct value_nativeobj ConvertToDouble(struct value_nativeobj val)
 struct value_nativeobj ConvertToUlong(struct value_nativeobj val)
 {
     struct value_nativeobj ret;
-    ret.type = type_nativeobj_ulong;
+    ret.type = (const void *)&type_nativeobj_ulong;
 
     if( val.type->typeid == valtyp_null )
         ret.proper.u = 0;
@@ -187,7 +140,7 @@ struct value_nativeobj ConvertToUlong(struct value_nativeobj val)
 struct value_nativeobj ConvertToLong(struct value_nativeobj val)
 {
     struct value_nativeobj ret;
-    ret.type = type_nativeobj_ulong;
+    ret.type = (const void *)&type_nativeobj_ulong;
 
     if( val.type->typeid == valtyp_null )
         ret.proper.l = 0;
@@ -229,7 +182,7 @@ struct value_nativeobj Logic2ValueNativeObj(int logic)
     // Otherwise it'll be verbose.
     return (struct value_nativeobj){
         .proper.l = logic ? 1 : 0,
-        .type = type_nativeobj_long };
+        .type = (const void *)&type_nativeobj_long };
 }
 
 bool IsInteger(struct value_nativeobj val)
@@ -270,10 +223,7 @@ bool IsNull(struct value_nativeobj val)
     }
     else
     {
-        assert( 0 );
-
-        // 2025-10-02: this ought to be considered an internal error.
-        return true;
+        return false;
     }
 }
 
@@ -288,6 +238,20 @@ bool IsNullish(struct value_nativeobj val)
     else return IsNull(val);
 }
 
+bool ValueNativeObj2Logic(struct value_nativeobj val)
+{
+    if( IsNullish(val) ) return false;
+    else if( IsInteger(val) ) return val.proper.u != 0;
+    else
+    {
+        if( val.type->typeid == valtyp_double )
+        {
+            return val.proper.f != 0;
+        }
+        else return true; // an object.
+    }
+}
+
 struct lvalue_nativeobj GetValProperty(
     struct value_nativeobj obj,
     struct value_nativeobj key)
@@ -298,14 +262,14 @@ struct lvalue_nativeobj GetValProperty(
 
     const char *name;
 
-    if( key.type != type_nativeobj_s2data_str )
+    if( key.type != (const void *)&type_nativeobj_s2impl_str )
     {
-        CxingDiagnose("Unrecognized implementation of the string type.\n"
+        CxingDiagnose("Unrecognized implementation of the string type. "
                       "Does this object come from another runtime?");
         return (struct lvalue_nativeobj){
             .value = {
                 .proper.p = NULL,
-                .type = type_nativeobj_morgoth },
+                .type = (const void *)&type_nativeobj_morgoth },
             .scope = obj,
             .key = (s2data_t *)NULL,
         };
@@ -342,7 +306,7 @@ struct lvalue_nativeobj GetValProperty(
         return (struct lvalue_nativeobj){
             .value = {
                 .proper.p = NULL,
-                .type = type_nativeobj_morgoth },
+                .type = (const void *)&type_nativeobj_morgoth },
             .scope = obj,
             .key = (s2data_t *)key.proper.p,
         };
@@ -356,7 +320,7 @@ struct lvalue_nativeobj GetValProperty(
         return (struct lvalue_nativeobj){
             .value = {
                 .proper.p = NULL,
-                .type = type_nativeobj_morgoth },
+                .type = (const void *)&type_nativeobj_morgoth },
             .scope = obj,
             .key = (s2data_t *)key.proper.p,
         };
@@ -397,16 +361,26 @@ struct value_nativeobj SetValProperty(
 
     // no setter.
     if( !setter.proper.p || setter.type->typeid != valtyp_method )
+    {
+        CxingWarning("Setting a member of an object that "
+                     "doesn't have a setter property.\n");
         return (struct value_nativeobj){
-            .proper.p = NULL, .type = type_nativeobj_null };
+            .proper.p = NULL, .type = (const void *)&type_nativeobj_null };
+    }
 
+    // 2026-01-06:
+    // It is anticipated an envisioned that certain setter method
+    // implementations would operate on and derive from the rvalue
+    // rather than actually copying it before storing it.
+    // As such, it's the setter implementation's responsibility
+    // to perform the copying in whatever fashion it finds appropriate.
     return ((cxing_call_proto)setter.proper.p)(3, args);
 }
 
 struct value_nativeobj ValueCopy(struct value_nativeobj val)
 {
     struct value_nativeobj mprop =
-        GetValProperty(val, CxingPropName_final).value;
+        GetValProperty(val, CxingPropName_copy).value;
 
     // Check that '__copy__' is indeed a method.
 
@@ -426,7 +400,7 @@ struct value_nativeobj ValueCopy(struct value_nativeobj val)
         // objects from which they're called on.
         CxingFatal("FFI Methods are an Implementation Impossibility!");
         return (struct value_nativeobj){
-            .proper.p = NULL, .type = type_nativeobj_morgoth };
+            .proper.p = NULL, .type = (const void *)&type_nativeobj_morgoth };
     }
     else
     {
@@ -437,7 +411,7 @@ struct value_nativeobj ValueCopy(struct value_nativeobj val)
         // recognize. Otherwise, it's not something that can be
         // correctly invoked as a function.
         return (struct value_nativeobj){
-            .proper.p = NULL, .type = type_nativeobj_morgoth };
+            .proper.p = NULL, .type = (const void *)&type_nativeobj_morgoth };
     }
 }
 

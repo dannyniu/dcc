@@ -3,10 +3,7 @@
 #include "fpcalc-grammar.h"
 #include "fpcalc.h"
 #include <math.h>
-#include "../lalr-common/print-prod.c.h"
 
-void print_token(lex_token_t *tn, int indentlevel);
-void print_prod(lalr_prod_t *prod, int indentlevel, strvec_t *ns);
 #define eprintf(...) // fprintf(stderr, __VA_ARGS__)
 
 static inline lalr_rule_t rules(int32_t r)
@@ -15,11 +12,6 @@ static inline lalr_rule_t rules(int32_t r)
 }
 
 #define theRule rules(sp->body->semantic_rule)
-
-#define prod_expect_next(rulefunc, n) do {                      \
-        eprintf("ri:%d\n", x->rule);                            \
-        if( rules(x->rule) != rulefunc ) return NULL;           \
-        else x = x->terms[n].production; } while( false )
 
 static s2data_t *resolve_id_from_expr(lalr_prod_t *addexpr)
 {
@@ -116,7 +108,9 @@ static lalr_prod_t *find_def_from_id(s2data_t *id)
 
     if( s2dict_get_T(lalr_prod_t)(globaldefs, id, &def) != s2_access_success)
         return NULL;
-    else return print_prod(def, 0, ns_rules_fpcalc), def;
+    else return
+             // print_prod(def, 0, ns_rules_fpcalc),
+             def;
 }
 
 int remember_definition(lalr_prod_t *expr, int semantic)

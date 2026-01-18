@@ -1,19 +1,19 @@
-/* DannyNiu/NJF, 2025-03-29. Public Domain. */
+/* DannyNiu/NJF, 2025-12-30. Public Domain. */
 
-// Checks the consistency of a grammar by parsing something using it.
+// Execute the `main` function in a cxing source code.
+
+#include "../langlex/langlex-cxing.h"
+#include "cxing-grammar.h"
+#define GRAMMAR_RULES cxing_grammar_rules
+#define NS_RULES ns_rules_cxing
+#define var_lex_elems LexElems
 
 #include "../lex-common/rope.h"
-#if !defined(NS_RULES) || !defined(GRAMMAR_RULES) || !defined(var_lex_elems)
-// 2025-03-29:
-// included by parent source.
-// expects `GRAMMAR_RULES` and `NS_RULES`.
-//#error Expects `GRAMMAR_RULES` and `NS_RULES` to be defined!
 #include "../infra/strvec.h"
-#include "lalr.h"
-static strvec_t *NS_RULES = NULL;
-static lalr_rule_t *GRAMMAR_RULES = NULL;
-static lex_elem_t *var_lex_elems = NULL;
-#endif // !defined(NS_RULES) || !defined(GRAMMAR_RULES)
+#include "../lalr-common/lalr.h"
+
+#include "runtime.h"
+#include "cxing-interp.h"
 
 #if false // no need to link with readline
 #if __has_include(<readline/readline.h>)
@@ -84,12 +84,20 @@ int main(int argc, char *argv[])
     int indentlevel = 0;
     int subret = 0, i;
 
+    struct value_nativeobj args[1] = {
+        { .proper.l= 6, .type = (const void *)&type_nativeobj_long }
+    };
+    struct value_nativeobj fret;
+
 #if INTERCEPT_MEM_CALLS
     long acq_before = 0;
     long rel_before = 0;
     long acq_after = 0;
     long rel_after = 0;
 #endif /* INTERCEPT_MEM_CALLS */
+
+    CXParserInit();
+    CxingRuntimeInit();
 
     assert( argc > 2 );
 
@@ -104,13 +112,6 @@ int main(int argc, char *argv[])
     rope = CreateRopeFromGetc(&expr_getc.base, 0);
     RegexLexFromRope_Init(&lexer, rope);
 
-    for(i=0; var_lex_elems[i].pattern; i++)
-    {
-        subret = libregcomp(
-            &var_lex_elems[i].preg,
-            var_lex_elems[i].pattern,
-            var_lex_elems[i].cflags);
-    }
     lexer.regices = var_lex_elems;
     lexer.logger_base = (struct logging_ctxbase){
         .logger = (logger_func)logger,
@@ -120,8 +121,6 @@ int main(int argc, char *argv[])
     acq_before = allocs;
     rel_before = frees;
 #endif /* INTERCEPT_MEM_CALLS */
-
-    NS_RULES = strvec_create();
 
     i = lalr_parse(&parsed, GRAMMAR_RULES, NULL, NS_RULES,
                (token_shifter_t)RegexLexFromRope_Shift, (void *)&lexer);
@@ -142,14 +141,26 @@ int main(int argc, char *argv[])
         te = te->up;
     }
 
-    for(i=0; var_lex_elems[i].pattern; i++)
+    //if( false )
+    fret = CxingExecuteFunction(
+        NULL,
+        parsed->bottom->production->terms[3].production,
+        parsed->bottom->production->terms[2].production, 1, args);
+    printf("return value type: %lld ", fret.type->typeid);
+    if( fret.type == (const void *)&type_nativeobj_s2impl_str )
     {
-        libregfree(&var_lex_elems[i].preg);
+        printf("and is a string: %s\n",
+               (const char *)s2data_weakmap(fret.proper.p));
     }
+    else if( fret.type->typeid == valtyp_double )
+    {
+        printf("and is a floating-point number: %g\n", fret.proper.f);
+    }
+    else printf("and its hex is: %llx\n", fret.proper.u);
 
-    lalr_parse_accel_cache_clear();
     s2obj_release(parsed->pobj);
-    s2obj_release(NS_RULES->pobj);
+    CxingRuntimeFinal();
+    CXParserFinal();
     subret = EXIT_SUCCESS;
 
 #if INTERCEPT_MEM_CALLS

@@ -1,10 +1,12 @@
-subr long foo(long x)
+subr foo(x)
 {
     while( x )
     {
         x /= x _Fallback break;
         x -= 1;
     }
+
+    hello: for(0;0;0) { if( 1 ) { break hello; } }
 
     return x;
 }

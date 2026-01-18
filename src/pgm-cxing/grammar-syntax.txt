@@ -9,6 +9,13 @@ identifier % ident
 : langlex_identifier % ident
 ;
 
+string-literal % strlit
+: langlex_strlit % strlit
+| langlex_rawlit % rawlit
+| string-literal langlex_strlit % strlitcat
+| string-literal langlex_rawlit % rawlitcat
+;
+
 constant % const
 : "true" % true
 | "false" % false
@@ -20,8 +27,7 @@ constant % const
 | langlex_decfplit % decfplit
 | langlex_hexfplit % hexfplit
 | langlex_charlit % charlit
-| langlex_strlit % strlit
-| langlex_rawlit % rawlit
+| string-literal % strlit
 ;
 
 primary-expr % primary
@@ -34,11 +40,21 @@ postfix-expr % postfix
 : primary-expr % degenerate
 | postfix-expr "=?" primary-expr % nullcoalesce
 | postfix-expr "[" assign-expr "]" % indirect
-| postfix-expr "(" expressions-list ")" % funccall
 | postfix-expr "." identifier % member
 | postfix-expr "++" % inc
 | postfix-expr "--" % dec
+| function-call % funccall
 | object-notation % objdef
+;
+
+function-call % funccall
+: postfix-expr "(" ")" % noarg
+| funccall-start-nocomma ")" % somearg
+;
+
+funccall-start-nocomma % funcinvokenocomma
+: postfix-expr "(" assign-expr % base
+| funccall-start-nocomma "," assign-expr % genrule
 ;
 
 unary-expr % unary
@@ -139,49 +155,55 @@ expressions-list % exprlist
 | expressions-list "," assign-expr % exprlist
 ;
 
-and-phrase-ion % and_phrase_ion
-: expressions-list "and" % exprlist
-| and-phrase-atom "and" % ionize
+conj-ion % and_phrase_ion
+: conj-atom "and" % and
+| conj-atom "_Then" % then
 ;
 
-and-phrase-atom % and_phrase_atom
-: and-phrase-ion expressions-list % atomize
+conj-atom % and_phrase_atom
+: expressions-list % degenerate
+| conj-ion expressions-list % atomize
 ;
 
-or-phrase-ion % or_phrase_ion
-: expressions-list "or" % exprlist_or
-| expressions-list "_Fallback" % exprlist_nullcoalesce
-| control-flow-operator "or" % op_or
-| control-flow-operator "_Fallback" % op_nullcoalesce
-| control-flow-operator label "or" % labelledop_or
-| control-flow-operator label "_Fallback" % labelledop_nullcoalesce
-| "return" "or" % returnnull_or
-| "return" "_Fallback" % returnnull_nullcoalesce
-| "return" expression "or" % returnexpr_or
-| "return" expression "_Fallback" % returnexpr_nullcoalesce
-| and-phrase-atom "or" % andphra_or
-| and-phrase-atom "_Fallback" % andphra_nullcoalesce
-| or-phrase-atom "or" % ionize_or
-| or-phrase-atom "_Fallback" % ionize_nullcoalesce
+disj-ion % or_phrase_ion
+: disj-atom "or" % or
+| disj-atom "_Fallback" % nc
+| conj-ion control-flow-ions % ctrl_flow
 ;
 
-or-phrase-atom % or_phrase_atom
-: or-phrase-ion and-phrase-atom % atomize
-;
-
-seq-phrase-molecule % seq_phrase_atom
-: expressions-list ";" % exprlist
-| control-flow-operator ";" % op
-| control-flow-operator label ";" % labelledop
-| "return" ";" % returnnull
-| "return" expressions-list ";" % returnexpr
-| or-phrase-atom ";" % orphra
+disj-atom % or_phrase_atom
+: conj-atom % degenerate
+| disj-ion conj-atom % atomize
 ;
 
 phrase-stmt % phrase_stmt
-: seq-phrase-molecule % degenerate
-| and-phrase-ion seq-phrase-molecule % andphra
-| or-phrase-ion seq-phrase-molecule % orphra
+: disj-atom ";" % base
+| control-flow-molecule % ctrl_flow
+| conj-ion control-flow-molecule % conj_ctrl_flow
+| disj-ion control-flow-molecule % disj_ctrl_flow
+;
+
+control-flow-ions % ctrl_flow_ion
+: control-flow-operator "or" % op_or
+| control-flow-operator "_Fallback" % op_nc
+| control-flow-operator identifier "or" % labelledop_or
+| control-flow-operator identifier "_Fallback" % labelledop_nc
+| "return" "or" % returnnull_or
+| "return" "_Fallback" % returnnull_nc
+| "return" expressions-list "or" % returnexpr_or
+| "return" expressions-list "_Fallback" % returnexpr_nc
+;
+
+control-flow-molecule % ctrl_flow_molecule
+: control-flow-operator ";" % op
+| control-flow-operator identifier ";" % labelledop
+| "return" ";" % returnnull
+| "return" expressions-list ";" % returnexpr
+;
+
+control-flow-operator % flowctrlop
+: "break" % break
+| "continue" % continue
 ;
 
 statement % stmt
@@ -215,13 +237,38 @@ do-while-loop % dowhile
 ;
 
 for-loop % for
-: "for" "(" expressions-list ";"
+: "for" "(" ";" ";" ")" statement % forever
+
+| "for" "(" ";" ";" expressions-list ")" statement % iterated
+
+| "for" "(" ";" expressions-list ";" ")" statement % conditioned
+
+| "for" "(" ";" expressions-list ";"
+                expressions-list ")" statement % controlled
+
+| "for" "(" expressions-list ";" ";" ")" statement % initonly
+
+| "for" "(" expressions-list ";" ";"
+            expressions-list ")" statement % nocond
+
+| "for" "(" expressions-list ";"
+            expressions-list ";" ")" statement % noiter
+
+| "for" "(" expressions-list ";"
             expressions-list ";"
             expressions-list ")" statement % classic
 
+| "for" "(" declaration ";" ";" ")" statement % vardecl
+
+| "for" "(" declaration ";" ";"
+            expressions-list ")" statement % vardecl_nocond
+
+| "for" "(" declaration ";"
+            expressions-list ";" ")" statement % vardecl_noiter
+
 | "for" "(" declaration ";"
             expressions-list ";"
-            expressions-list ")" statement % vardecl
+            expressions-list ")" statement % vardecl_controlled
 ;
 
 statements-list % stmtlist
@@ -231,14 +278,14 @@ statements-list % stmtlist
 
 declaration % decl
 : "decl" identifier % singledecl
-| "decl" identifier "=" assign-expr % signledeclinit
+| "decl" identifier "=" assign-expr % singledeclinit
 | declaration "," identifier % declarelist1
 | declaration "," identifier "=" assign-expr % declarelist2
 ;
 
 function-declaration % funcdecl
-: "subr" type-keyword identifier arguments-list statement % subr
-| "method" type-keyword identifier arguments-list statement % method
+: "subr" identifier arguments-list statement % subr
+| "method" identifier arguments-list statement % method
 ;
 
 arguments-list % arglist
@@ -247,19 +294,8 @@ arguments-list % arglist
 ;
 
 arguments-begin % args
-: "(" type-keyword identifier % base
-| arguments-begin "," type-keyword identifier % genrule
-;
-
-type-keyword % typekw
-: "val" % val
-| "obj" % obj
-| "in" % in
-| "out" % out
-| "void" % void
-| "long" % long
-| "ulong" % ulong
-| "double" % double
+: "(" identifier % base
+| arguments-begin "," identifier % genrule
 ;
 
 entity-declaration % entdecl

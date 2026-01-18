@@ -12,22 +12,39 @@
 #define s2_is_prod(obj)  (((s2obj_t *)obj)->type == S2_OBJ_TYPE_PRODUCTION)
 #define s2_is_stack(obj) (((s2obj_t *)obj)->type == S2_OBJ_TYPE_STACK)
 
+// 2025-01-27:
+// This is the result of a reduce. It consist of
+// a number (the `production` member) indicating
+// its left-hand side name, and `terms_count` number
+// of elements representing what's reduced on the
+// right-hand side.
 typedef struct lalr_production lalr_prod_t;
-typedef struct lalr_term       lalr_term_t;
-typedef struct lalr_stack      lalr_stack_t;
-typedef struct lalr_rulesym    lalr_rule_symbol_t;
 
-// non-SafeTypes2 types.
+// 2025-01-27:
+// This represents an element on the parsing stack.
+// It's a bi-directional linked-list.
+typedef struct lalr_term lalr_term_t;
+
+// 2025-01-27:
+// This is the type definition for the parsing stack.
+typedef struct lalr_stack lalr_stack_t;
+
+// 2025-01-27:
+// In a rule definition (an `lalr_rule_t` instance), this represents
+// an element of the right-hand side of the production.
+typedef struct lalr_rulesym lalr_rule_symbol_t;
+
+void fprint_token(FILE *fp, lex_token_t *tn, int indentlevel);
+void fprint_prod(FILE *fp, lalr_prod_t *prod, int indentlevel, strvec_t *ns);
+
+#define print_token(...) fprint_token(stdout, __VA_ARGS__)
+#define print_prod(...) fprint_prod(stdout, __VA_ARGS__)
+
+// finalizers for non-SafeTypes2 types.
 void lalr_term_free(lalr_term_t *term);
 void lalr_rule_symbol_free(lalr_rule_symbol_t *chain);
 
 struct lalr_production {
-    // 2025-01-27:
-    // This is the result of a reduce. It consist of
-    // a number (the `production` member) indicating
-    // its left-hand side name, and `terms_count` number
-    // of elements representing what's reduced on the
-    // right-hand side.
     s2obj_base;
 
     int32_t production; // for to be recognized in matching,
@@ -48,10 +65,6 @@ struct lalr_production {
 };
 
 struct lalr_term {
-    // 2025-01-27:
-    // This represents an element on the parsing stack.
-    // It's a bi-directional linked-list.
-
     lalr_stack_t *container; // unretained (weak ref).
 
     // down towards the bottom, up towards top.
@@ -70,17 +83,11 @@ struct lalr_term {
 };
 
 struct lalr_stack {
-    // 2025-01-27:
-    // This is the type definition for the parsing stack.
     s2obj_base;
     lalr_term_t *bottom, *top;
 };
 
 struct lalr_rulesym {
-    // 2025-01-27:
-    // In a rule definition (an `lalr_rule_t` instance), this represents
-    // an element of the right-hand side of the production.
-
     enum {
         // reserved for end-of-list.
         lalr_symtype_invalid = 0,
@@ -174,8 +181,6 @@ void *lalr_rule_actions_generic(
     // `ctx` is used by rules themselves, to e.g. build semantics.
     lalr_rule_t rules[restrict],
     strvec_t *restrict ns_rules);
-
-typedef lex_token_t *(*token_shifter_t)(void *);
 
 int lalr_parse(
     lalr_stack_t *restrict *restrict out,

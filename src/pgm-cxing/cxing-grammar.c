@@ -48,6 +48,52 @@ void *ident_ident(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
+void *strlit_strlit(lalr_rule_params)
+{
+    int32_t production = hRule("string-literal");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_vtoken, .vtype = langlex_strlit, },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *strlit_rawlit(lalr_rule_params)
+{
+    int32_t production = hRule("string-literal");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_vtoken, .vtype = langlex_rawlit, },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *strlit_strlitcat(lalr_rule_params)
+{
+    int32_t production = hRule("string-literal");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "string-literal", },
+        { symtype_vtoken, .vtype = langlex_strlit, },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *strlit_rawlitcat(lalr_rule_params)
+{
+    int32_t production = hRule("string-literal");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "string-literal", },
+        { symtype_vtoken, .vtype = langlex_rawlit, },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
 void *const_true(lalr_rule_params)
 {
     int32_t production = hRule("constant");
@@ -162,18 +208,7 @@ void *const_strlit(lalr_rule_params)
 {
     int32_t production = hRule("constant");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_strlit, },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *const_rawlit(lalr_rule_params)
-{
-    int32_t production = hRule("constant");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_rawlit, },
+        { symtype_prod, .value = "string-literal", },
         {0},
     };
     (void)ctx;
@@ -253,20 +288,6 @@ void *postfix_indirect(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *postfix_funccall(lalr_rule_params)
-{
-    int32_t production = hRule("postfix-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "postfix-expr", },
-        { symtype_stoken, .value = "(", },
-        { symtype_prod, .value = "expressions-list", },
-        { symtype_stoken, .value = ")", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
 void *postfix_member(lalr_rule_params)
 {
     int32_t production = hRule("postfix-expr");
@@ -304,11 +325,73 @@ void *postfix_dec(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
+void *postfix_funccall(lalr_rule_params)
+{
+    int32_t production = hRule("postfix-expr");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "function-call", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
 void *postfix_objdef(lalr_rule_params)
 {
     int32_t production = hRule("postfix-expr");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_prod, .value = "object-notation", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *funccall_noarg(lalr_rule_params)
+{
+    int32_t production = hRule("function-call");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "postfix-expr", },
+        { symtype_stoken, .value = "(", },
+        { symtype_stoken, .value = ")", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *funccall_somearg(lalr_rule_params)
+{
+    int32_t production = hRule("function-call");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "funccall-start-nocomma", },
+        { symtype_stoken, .value = ")", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *funcinvokenocomma_base(lalr_rule_params)
+{
+    int32_t production = hRule("funccall-start-nocomma");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "postfix-expr", },
+        { symtype_stoken, .value = "(", },
+        { symtype_prod, .value = "assign-expr", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *funcinvokenocomma_genrule(lalr_rule_params)
+{
+    int32_t production = hRule("funccall-start-nocomma");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "funccall-start-nocomma", },
+        { symtype_stoken, .value = ",", },
+        { symtype_prod, .value = "assign-expr", },
         {0},
     };
     (void)ctx;
@@ -1011,11 +1094,11 @@ void *exprlist_exprlist(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *and_phrase_ion_exprlist(lalr_rule_params)
+void *and_phrase_ion_and(lalr_rule_params)
 {
-    int32_t production = hRule("and-phrase-ion");
+    int32_t production = hRule("conj-ion");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "expressions-list", },
+        { symtype_prod, .value = "conj-atom", },
         { symtype_stoken, .value = "and", },
         {0},
     };
@@ -1023,12 +1106,23 @@ void *and_phrase_ion_exprlist(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *and_phrase_ion_ionize(lalr_rule_params)
+void *and_phrase_ion_then(lalr_rule_params)
 {
-    int32_t production = hRule("and-phrase-ion");
+    int32_t production = hRule("conj-ion");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "and-phrase-atom", },
-        { symtype_stoken, .value = "and", },
+        { symtype_prod, .value = "conj-atom", },
+        { symtype_stoken, .value = "_Then", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *and_phrase_atom_degenerate(lalr_rule_params)
+{
+    int32_t production = hRule("conj-atom");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "expressions-list", },
         {0},
     };
     (void)ctx;
@@ -1037,9 +1131,9 @@ void *and_phrase_ion_ionize(lalr_rule_params)
 
 void *and_phrase_atom_atomize(lalr_rule_params)
 {
-    int32_t production = hRule("and-phrase-atom");
+    int32_t production = hRule("conj-atom");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "and-phrase-ion", },
+        { symtype_prod, .value = "conj-ion", },
         { symtype_prod, .value = "expressions-list", },
         {0},
     };
@@ -1047,11 +1141,11 @@ void *and_phrase_atom_atomize(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *or_phrase_ion_exprlist_or(lalr_rule_params)
+void *or_phrase_ion_or(lalr_rule_params)
 {
-    int32_t production = hRule("or-phrase-ion");
+    int32_t production = hRule("disj-ion");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "expressions-list", },
+        { symtype_prod, .value = "disj-atom", },
         { symtype_stoken, .value = "or", },
         {0},
     };
@@ -1059,11 +1153,11 @@ void *or_phrase_ion_exprlist_or(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *or_phrase_ion_exprlist_nullcoalesce(lalr_rule_params)
+void *or_phrase_ion_nc(lalr_rule_params)
 {
-    int32_t production = hRule("or-phrase-ion");
+    int32_t production = hRule("disj-ion");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "expressions-list", },
+        { symtype_prod, .value = "disj-atom", },
         { symtype_stoken, .value = "_Fallback", },
         {0},
     };
@@ -1071,148 +1165,23 @@ void *or_phrase_ion_exprlist_nullcoalesce(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *or_phrase_ion_op_or(lalr_rule_params)
+void *or_phrase_ion_ctrl_flow(lalr_rule_params)
 {
-    int32_t production = hRule("or-phrase-ion");
+    int32_t production = hRule("disj-ion");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "control-flow-operator", },
-        { symtype_stoken, .value = "or", },
+        { symtype_prod, .value = "conj-ion", },
+        { symtype_prod, .value = "control-flow-ions", },
         {0},
     };
     (void)ctx;
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *or_phrase_ion_op_nullcoalesce(lalr_rule_params)
+void *or_phrase_atom_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("or-phrase-ion");
+    int32_t production = hRule("disj-atom");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "control-flow-operator", },
-        { symtype_stoken, .value = "_Fallback", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *or_phrase_ion_labelledop_or(lalr_rule_params)
-{
-    int32_t production = hRule("or-phrase-ion");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "control-flow-operator", },
-        { symtype_prod, .value = "label", },
-        { symtype_stoken, .value = "or", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *or_phrase_ion_labelledop_nullcoalesce(lalr_rule_params)
-{
-    int32_t production = hRule("or-phrase-ion");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "control-flow-operator", },
-        { symtype_prod, .value = "label", },
-        { symtype_stoken, .value = "_Fallback", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *or_phrase_ion_returnnull_or(lalr_rule_params)
-{
-    int32_t production = hRule("or-phrase-ion");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "return", },
-        { symtype_stoken, .value = "or", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *or_phrase_ion_returnnull_nullcoalesce(lalr_rule_params)
-{
-    int32_t production = hRule("or-phrase-ion");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "return", },
-        { symtype_stoken, .value = "_Fallback", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *or_phrase_ion_returnexpr_or(lalr_rule_params)
-{
-    int32_t production = hRule("or-phrase-ion");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "return", },
-        { symtype_prod, .value = "expression", },
-        { symtype_stoken, .value = "or", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *or_phrase_ion_returnexpr_nullcoalesce(lalr_rule_params)
-{
-    int32_t production = hRule("or-phrase-ion");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "return", },
-        { symtype_prod, .value = "expression", },
-        { symtype_stoken, .value = "_Fallback", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *or_phrase_ion_andphra_or(lalr_rule_params)
-{
-    int32_t production = hRule("or-phrase-ion");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "and-phrase-atom", },
-        { symtype_stoken, .value = "or", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *or_phrase_ion_andphra_nullcoalesce(lalr_rule_params)
-{
-    int32_t production = hRule("or-phrase-ion");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "and-phrase-atom", },
-        { symtype_stoken, .value = "_Fallback", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *or_phrase_ion_ionize_or(lalr_rule_params)
-{
-    int32_t production = hRule("or-phrase-ion");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "or-phrase-atom", },
-        { symtype_stoken, .value = "or", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *or_phrase_ion_ionize_nullcoalesce(lalr_rule_params)
-{
-    int32_t production = hRule("or-phrase-ion");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "or-phrase-atom", },
-        { symtype_stoken, .value = "_Fallback", },
+        { symtype_prod, .value = "conj-atom", },
         {0},
     };
     (void)ctx;
@@ -1221,21 +1190,21 @@ void *or_phrase_ion_ionize_nullcoalesce(lalr_rule_params)
 
 void *or_phrase_atom_atomize(lalr_rule_params)
 {
-    int32_t production = hRule("or-phrase-atom");
+    int32_t production = hRule("disj-atom");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "or-phrase-ion", },
-        { symtype_prod, .value = "and-phrase-atom", },
+        { symtype_prod, .value = "disj-ion", },
+        { symtype_prod, .value = "conj-atom", },
         {0},
     };
     (void)ctx;
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *seq_phrase_atom_exprlist(lalr_rule_params)
+void *phrase_stmt_base(lalr_rule_params)
 {
-    int32_t production = hRule("seq-phrase-molecule");
+    int32_t production = hRule("phrase-stmt");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "expressions-list", },
+        { symtype_prod, .value = "disj-atom", },
         { symtype_stoken, .value = ";", },
         {0},
     };
@@ -1243,9 +1212,144 @@ void *seq_phrase_atom_exprlist(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *seq_phrase_atom_op(lalr_rule_params)
+void *phrase_stmt_ctrl_flow(lalr_rule_params)
 {
-    int32_t production = hRule("seq-phrase-molecule");
+    int32_t production = hRule("phrase-stmt");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "control-flow-molecule", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *phrase_stmt_conj_ctrl_flow(lalr_rule_params)
+{
+    int32_t production = hRule("phrase-stmt");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "conj-ion", },
+        { symtype_prod, .value = "control-flow-molecule", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *phrase_stmt_disj_ctrl_flow(lalr_rule_params)
+{
+    int32_t production = hRule("phrase-stmt");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "disj-ion", },
+        { symtype_prod, .value = "control-flow-molecule", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *ctrl_flow_ion_op_or(lalr_rule_params)
+{
+    int32_t production = hRule("control-flow-ions");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "control-flow-operator", },
+        { symtype_stoken, .value = "or", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *ctrl_flow_ion_op_nc(lalr_rule_params)
+{
+    int32_t production = hRule("control-flow-ions");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "control-flow-operator", },
+        { symtype_stoken, .value = "_Fallback", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *ctrl_flow_ion_labelledop_or(lalr_rule_params)
+{
+    int32_t production = hRule("control-flow-ions");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "control-flow-operator", },
+        { symtype_prod, .value = "identifier", },
+        { symtype_stoken, .value = "or", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *ctrl_flow_ion_labelledop_nc(lalr_rule_params)
+{
+    int32_t production = hRule("control-flow-ions");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "control-flow-operator", },
+        { symtype_prod, .value = "identifier", },
+        { symtype_stoken, .value = "_Fallback", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *ctrl_flow_ion_returnnull_or(lalr_rule_params)
+{
+    int32_t production = hRule("control-flow-ions");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_stoken, .value = "return", },
+        { symtype_stoken, .value = "or", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *ctrl_flow_ion_returnnull_nc(lalr_rule_params)
+{
+    int32_t production = hRule("control-flow-ions");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_stoken, .value = "return", },
+        { symtype_stoken, .value = "_Fallback", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *ctrl_flow_ion_returnexpr_or(lalr_rule_params)
+{
+    int32_t production = hRule("control-flow-ions");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_stoken, .value = "return", },
+        { symtype_prod, .value = "expressions-list", },
+        { symtype_stoken, .value = "or", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *ctrl_flow_ion_returnexpr_nc(lalr_rule_params)
+{
+    int32_t production = hRule("control-flow-ions");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_stoken, .value = "return", },
+        { symtype_prod, .value = "expressions-list", },
+        { symtype_stoken, .value = "_Fallback", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *ctrl_flow_molecule_op(lalr_rule_params)
+{
+    int32_t production = hRule("control-flow-molecule");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_prod, .value = "control-flow-operator", },
         { symtype_stoken, .value = ";", },
@@ -1255,12 +1359,12 @@ void *seq_phrase_atom_op(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *seq_phrase_atom_labelledop(lalr_rule_params)
+void *ctrl_flow_molecule_labelledop(lalr_rule_params)
 {
-    int32_t production = hRule("seq-phrase-molecule");
+    int32_t production = hRule("control-flow-molecule");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_prod, .value = "control-flow-operator", },
-        { symtype_prod, .value = "label", },
+        { symtype_prod, .value = "identifier", },
         { symtype_stoken, .value = ";", },
         {0},
     };
@@ -1268,9 +1372,9 @@ void *seq_phrase_atom_labelledop(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *seq_phrase_atom_returnnull(lalr_rule_params)
+void *ctrl_flow_molecule_returnnull(lalr_rule_params)
 {
-    int32_t production = hRule("seq-phrase-molecule");
+    int32_t production = hRule("control-flow-molecule");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_stoken, .value = "return", },
         { symtype_stoken, .value = ";", },
@@ -1280,9 +1384,9 @@ void *seq_phrase_atom_returnnull(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *seq_phrase_atom_returnexpr(lalr_rule_params)
+void *ctrl_flow_molecule_returnexpr(lalr_rule_params)
 {
-    int32_t production = hRule("seq-phrase-molecule");
+    int32_t production = hRule("control-flow-molecule");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_stoken, .value = "return", },
         { symtype_prod, .value = "expressions-list", },
@@ -1293,47 +1397,22 @@ void *seq_phrase_atom_returnexpr(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *seq_phrase_atom_orphra(lalr_rule_params)
+void *flowctrlop_break(lalr_rule_params)
 {
-    int32_t production = hRule("seq-phrase-molecule");
+    int32_t production = hRule("control-flow-operator");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "or-phrase-atom", },
-        { symtype_stoken, .value = ";", },
+        { symtype_stoken, .value = "break", },
         {0},
     };
     (void)ctx;
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *phrase_stmt_degenerate(lalr_rule_params)
+void *flowctrlop_continue(lalr_rule_params)
 {
-    int32_t production = hRule("phrase-stmt");
+    int32_t production = hRule("control-flow-operator");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "seq-phrase-molecule", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *phrase_stmt_andphra(lalr_rule_params)
-{
-    int32_t production = hRule("phrase-stmt");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "and-phrase-ion", },
-        { symtype_prod, .value = "seq-phrase-molecule", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *phrase_stmt_orphra(lalr_rule_params)
-{
-    int32_t production = hRule("phrase-stmt");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "or-phrase-ion", },
-        { symtype_prod, .value = "seq-phrase-molecule", },
+        { symtype_stoken, .value = "continue", },
         {0},
     };
     (void)ctx;
@@ -1533,6 +1612,127 @@ void *dowhile_rule(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
+void *for_forever(lalr_rule_params)
+{
+    int32_t production = hRule("for-loop");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_stoken, .value = "for", },
+        { symtype_stoken, .value = "(", },
+        { symtype_stoken, .value = ";", },
+        { symtype_stoken, .value = ";", },
+        { symtype_stoken, .value = ")", },
+        { symtype_prod, .value = "statement", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *for_iterated(lalr_rule_params)
+{
+    int32_t production = hRule("for-loop");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_stoken, .value = "for", },
+        { symtype_stoken, .value = "(", },
+        { symtype_stoken, .value = ";", },
+        { symtype_stoken, .value = ";", },
+        { symtype_prod, .value = "expressions-list", },
+        { symtype_stoken, .value = ")", },
+        { symtype_prod, .value = "statement", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *for_conditioned(lalr_rule_params)
+{
+    int32_t production = hRule("for-loop");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_stoken, .value = "for", },
+        { symtype_stoken, .value = "(", },
+        { symtype_stoken, .value = ";", },
+        { symtype_prod, .value = "expressions-list", },
+        { symtype_stoken, .value = ";", },
+        { symtype_stoken, .value = ")", },
+        { symtype_prod, .value = "statement", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *for_controlled(lalr_rule_params)
+{
+    int32_t production = hRule("for-loop");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_stoken, .value = "for", },
+        { symtype_stoken, .value = "(", },
+        { symtype_stoken, .value = ";", },
+        { symtype_prod, .value = "expressions-list", },
+        { symtype_stoken, .value = ";", },
+        { symtype_prod, .value = "expressions-list", },
+        { symtype_stoken, .value = ")", },
+        { symtype_prod, .value = "statement", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *for_initonly(lalr_rule_params)
+{
+    int32_t production = hRule("for-loop");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_stoken, .value = "for", },
+        { symtype_stoken, .value = "(", },
+        { symtype_prod, .value = "expressions-list", },
+        { symtype_stoken, .value = ";", },
+        { symtype_stoken, .value = ";", },
+        { symtype_stoken, .value = ")", },
+        { symtype_prod, .value = "statement", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *for_nocond(lalr_rule_params)
+{
+    int32_t production = hRule("for-loop");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_stoken, .value = "for", },
+        { symtype_stoken, .value = "(", },
+        { symtype_prod, .value = "expressions-list", },
+        { symtype_stoken, .value = ";", },
+        { symtype_stoken, .value = ";", },
+        { symtype_prod, .value = "expressions-list", },
+        { symtype_stoken, .value = ")", },
+        { symtype_prod, .value = "statement", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *for_noiter(lalr_rule_params)
+{
+    int32_t production = hRule("for-loop");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_stoken, .value = "for", },
+        { symtype_stoken, .value = "(", },
+        { symtype_prod, .value = "expressions-list", },
+        { symtype_stoken, .value = ";", },
+        { symtype_prod, .value = "expressions-list", },
+        { symtype_stoken, .value = ";", },
+        { symtype_stoken, .value = ")", },
+        { symtype_prod, .value = "statement", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
 void *for_classic(lalr_rule_params)
 {
     int32_t production = hRule("for-loop");
@@ -1553,6 +1753,59 @@ void *for_classic(lalr_rule_params)
 }
 
 void *for_vardecl(lalr_rule_params)
+{
+    int32_t production = hRule("for-loop");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_stoken, .value = "for", },
+        { symtype_stoken, .value = "(", },
+        { symtype_prod, .value = "declaration", },
+        { symtype_stoken, .value = ";", },
+        { symtype_stoken, .value = ";", },
+        { symtype_stoken, .value = ")", },
+        { symtype_prod, .value = "statement", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *for_vardecl_nocond(lalr_rule_params)
+{
+    int32_t production = hRule("for-loop");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_stoken, .value = "for", },
+        { symtype_stoken, .value = "(", },
+        { symtype_prod, .value = "declaration", },
+        { symtype_stoken, .value = ";", },
+        { symtype_stoken, .value = ";", },
+        { symtype_prod, .value = "expressions-list", },
+        { symtype_stoken, .value = ")", },
+        { symtype_prod, .value = "statement", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *for_vardecl_noiter(lalr_rule_params)
+{
+    int32_t production = hRule("for-loop");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_stoken, .value = "for", },
+        { symtype_stoken, .value = "(", },
+        { symtype_prod, .value = "declaration", },
+        { symtype_stoken, .value = ";", },
+        { symtype_prod, .value = "expressions-list", },
+        { symtype_stoken, .value = ";", },
+        { symtype_stoken, .value = ")", },
+        { symtype_prod, .value = "statement", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *for_vardecl_controlled(lalr_rule_params)
 {
     int32_t production = hRule("for-loop");
     static lalr_rule_symbol_t symbolseq[] = {
@@ -1606,7 +1859,7 @@ void *decl_singledecl(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *decl_signledeclinit(lalr_rule_params)
+void *decl_singledeclinit(lalr_rule_params)
 {
     int32_t production = hRule("declaration");
     static lalr_rule_symbol_t symbolseq[] = {
@@ -1653,7 +1906,6 @@ void *funcdecl_subr(lalr_rule_params)
     int32_t production = hRule("function-declaration");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_stoken, .value = "subr", },
-        { symtype_prod, .value = "type-keyword", },
         { symtype_prod, .value = "identifier", },
         { symtype_prod, .value = "arguments-list", },
         { symtype_prod, .value = "statement", },
@@ -1668,7 +1920,6 @@ void *funcdecl_method(lalr_rule_params)
     int32_t production = hRule("function-declaration");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_stoken, .value = "method", },
-        { symtype_prod, .value = "type-keyword", },
         { symtype_prod, .value = "identifier", },
         { symtype_prod, .value = "arguments-list", },
         { symtype_prod, .value = "statement", },
@@ -1707,7 +1958,6 @@ void *args_base(lalr_rule_params)
     int32_t production = hRule("arguments-begin");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_stoken, .value = "(", },
-        { symtype_prod, .value = "type-keyword", },
         { symtype_prod, .value = "identifier", },
         {0},
     };
@@ -1721,96 +1971,7 @@ void *args_genrule(lalr_rule_params)
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_prod, .value = "arguments-begin", },
         { symtype_stoken, .value = ",", },
-        { symtype_prod, .value = "type-keyword", },
         { symtype_prod, .value = "identifier", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *typekw_val(lalr_rule_params)
-{
-    int32_t production = hRule("type-keyword");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "val", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *typekw_obj(lalr_rule_params)
-{
-    int32_t production = hRule("type-keyword");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "obj", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *typekw_in(lalr_rule_params)
-{
-    int32_t production = hRule("type-keyword");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "in", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *typekw_out(lalr_rule_params)
-{
-    int32_t production = hRule("type-keyword");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "out", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *typekw_void(lalr_rule_params)
-{
-    int32_t production = hRule("type-keyword");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "void", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *typekw_long(lalr_rule_params)
-{
-    int32_t production = hRule("type-keyword");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "long", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *typekw_ulong(lalr_rule_params)
-{
-    int32_t production = hRule("type-keyword");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "ulong", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *typekw_double(lalr_rule_params)
-{
-    int32_t production = hRule("type-keyword");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "double", },
         {0},
     };
     (void)ctx;
@@ -1853,11 +2014,15 @@ void *entdecl_implicit(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-lalr_rule_t cxing_grammar_rules[] = {//*
-    goal_translation_unit,//*/
+lalr_rule_t cxing_grammar_rules[] = {
+    goal_translation_unit,
     TU_base,
     TU_genrule,
     ident_ident,
+    strlit_strlit,
+    strlit_rawlit,
+    strlit_strlitcat,
+    strlit_rawlitcat,
     const_true,
     const_false,
     const_null,
@@ -1869,18 +2034,21 @@ lalr_rule_t cxing_grammar_rules[] = {//*
     const_hexfplit,
     const_charlit,
     const_strlit,
-    const_rawlit,
     primary_paren,
     primary_ident,
     primary_const,
     postfix_degenerate,
     postfix_nullcoalesce,
     postfix_indirect,
-    postfix_funccall,
     postfix_member,
     postfix_inc,
     postfix_dec,
+    postfix_funccall,
     postfix_objdef,
+    funccall_noarg,
+    funccall_somearg,
+    funcinvokenocomma_base,
+    funcinvokenocomma_genrule,
     unary_degenerate,
     unary_inc,
     unary_dec,
@@ -1937,33 +2105,33 @@ lalr_rule_t cxing_grammar_rules[] = {//*
     assignment_orassign,
     exprlist_degenerate,
     exprlist_exprlist,
-    and_phrase_ion_exprlist,
-    and_phrase_ion_ionize,
+    and_phrase_ion_and,
+    and_phrase_ion_then,
+    and_phrase_atom_degenerate,
     and_phrase_atom_atomize,
-    or_phrase_ion_exprlist_or,
-    or_phrase_ion_exprlist_nullcoalesce,
-    or_phrase_ion_op_or,
-    or_phrase_ion_op_nullcoalesce,
-    or_phrase_ion_labelledop_or,
-    or_phrase_ion_labelledop_nullcoalesce,
-    or_phrase_ion_returnnull_or,
-    or_phrase_ion_returnnull_nullcoalesce,
-    or_phrase_ion_returnexpr_or,
-    or_phrase_ion_returnexpr_nullcoalesce,
-    or_phrase_ion_andphra_or,
-    or_phrase_ion_andphra_nullcoalesce,
-    or_phrase_ion_ionize_or,
-    or_phrase_ion_ionize_nullcoalesce,
+    or_phrase_ion_or,
+    or_phrase_ion_nc,
+    or_phrase_ion_ctrl_flow,
+    or_phrase_atom_degenerate,
     or_phrase_atom_atomize,
-    seq_phrase_atom_exprlist,
-    seq_phrase_atom_op,
-    seq_phrase_atom_labelledop,
-    seq_phrase_atom_returnnull,
-    seq_phrase_atom_returnexpr,
-    seq_phrase_atom_orphra,
-    phrase_stmt_degenerate,
-    phrase_stmt_andphra,
-    phrase_stmt_orphra,
+    phrase_stmt_base,
+    phrase_stmt_ctrl_flow,
+    phrase_stmt_conj_ctrl_flow,
+    phrase_stmt_disj_ctrl_flow,
+    ctrl_flow_ion_op_or,
+    ctrl_flow_ion_op_nc,
+    ctrl_flow_ion_labelledop_or,
+    ctrl_flow_ion_labelledop_nc,
+    ctrl_flow_ion_returnnull_or,
+    ctrl_flow_ion_returnnull_nc,
+    ctrl_flow_ion_returnexpr_or,
+    ctrl_flow_ion_returnexpr_nc,
+    ctrl_flow_molecule_op,
+    ctrl_flow_molecule_labelledop,
+    ctrl_flow_molecule_returnnull,
+    ctrl_flow_molecule_returnexpr,
+    flowctrlop_break,
+    flowctrlop_continue,
     stmt_emptystmt,
     stmt_labelled,
     stmt_phrase,
@@ -1979,12 +2147,22 @@ lalr_rule_t cxing_grammar_rules[] = {//*
     predclause_genrule,
     while_rule,
     dowhile_rule,
+    for_forever,
+    for_iterated,
+    for_conditioned,
+    for_controlled,
+    for_initonly,
+    for_nocond,
+    for_noiter,
     for_classic,
     for_vardecl,
+    for_vardecl_nocond,
+    for_vardecl_noiter,
+    for_vardecl_controlled,
     stmtlist_base,
     stmtlist_genrule,
     decl_singledecl,
-    decl_signledeclinit,
+    decl_singledeclinit,
     decl_declarelist1,
     decl_declarelist2,
     funcdecl_subr,
@@ -1993,14 +2171,6 @@ lalr_rule_t cxing_grammar_rules[] = {//*
     arglist_some,
     args_base,
     args_genrule,
-    typekw_val,
-    typekw_obj,
-    typekw_in,
-    typekw_out,
-    typekw_void,
-    typekw_long,
-    typekw_ulong,
-    typekw_double,
     entdecl_srcinc,
     entdecl_extern,
     entdecl_implicit,

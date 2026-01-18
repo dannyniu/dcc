@@ -52,6 +52,7 @@ source_rope_t *CreateRopeFromGetc(lex_getc_base_t *getcctx, int flags)
 
             else
             {
+                s2data_putfin(src);
                 p = s2data_len(src);
                 s2data_puts(lin, &p, sizeof(p));
             }
@@ -61,6 +62,7 @@ source_rope_t *CreateRopeFromGetc(lex_getc_base_t *getcctx, int flags)
             s2data_putc(src, c);
             if( c == '\n' )
             {
+                s2data_putfin(src);
                 p = s2data_len(src);
                 s2data_puts(lin, &p, sizeof(p));
             }

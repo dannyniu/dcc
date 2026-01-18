@@ -1,0 +1,7 @@
+subr main(arg0, arg1, arg2, arg3)
+{
+    decl hello = 3, world;
+    while( 1 ){ 1&&2 _Then break; }
+    return hello;
+    return 2025;
+}

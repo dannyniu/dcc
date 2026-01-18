@@ -3,9 +3,6 @@
 #include "fpcalc.h"
 #include "../langlex/langlex-c.h"
 
-void print_token(lex_token_t *tn, int indentlevel);
-void print_prod(lalr_prod_t *prod, int indentlevel, strvec_t *ns);
-
 const char *quadratic_func = "f(x) = x*x";
 const char *derivative = "g(x,h,d) = (h(x+d)-h(x))/d";
 
@@ -61,7 +58,7 @@ int main()
         NULL, ns_rules_fpcalc,
         (token_shifter_t)RegexLexFromRope_Shift,
         &lexer);
-    print_prod(ps->bottom->production, 0, ns_rules_fpcalc);
+    //print_prod(ps->bottom->production, 0, ns_rules_fpcalc);
     printf("%d is returned from parsing the quadratic function.\n", subret);
 
     subret = remember_definition(ps->bottom->production, s2_setter_kept);
@@ -78,7 +75,7 @@ int main()
         NULL, ns_rules_fpcalc,
         (token_shifter_t)RegexLexFromRope_Shift,
         &lexer);
-    print_prod(ps->bottom->production, 0, ns_rules_fpcalc);
+    //print_prod(ps->bottom->production, 0, ns_rules_fpcalc);
     printf("%d is returned from parsing the derivative function.\n", subret);
 
     subret = remember_definition(ps->bottom->production, s2_setter_kept);

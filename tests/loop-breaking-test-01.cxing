@@ -1,0 +1,9 @@
+subr main(arg0, arg1, arg2, arg3)
+{
+    decl hello = 3, world;
+    1 and 1 and 1 or 1 and 1 and 1 or 1 and 1 and 1;
+    1 or 1 or 1 and 1 or 1 or 1 and 1 or 1 or 1;
+    while( 1 ){ 0 and break; 0 _Then return 21 _Fallback return 31; }
+    return hello;
+    return 2025;
+}

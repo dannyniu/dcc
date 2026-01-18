@@ -68,9 +68,41 @@ static void dump_parsing_stack(
 
 #endif /* DCC_LALR_LOGGING */
 
+void fprint_token(FILE *fp, lex_token_t *tn, int indentlevel)
+{
+    (void)indentlevel;
+    fprintf(fp, "%s\n", (char *)s2data_weakmap(tn->str));
+}
+
+void fprint_prod(FILE *fp, lalr_prod_t *prod, int indentlevel, strvec_t *ns)
+{
+    size_t t;
+    fprintf(fp, "%d:%s<%d:%s>\n",
+           prod->rule,
+           strvec_i2str(ns, prod->production),
+           prod->semantic_rule,
+           strvec_i2str(ns, prod->semantic_production));
+
+    for(t=0; t<prod->terms_count; t++)
+    {
+        if( s2_is_prod(prod->terms[t].production) )
+        {
+            fprintf(fp, "%*s [%zi] ", indentlevel * 2 + 3, "", t);
+            fprint_prod(fp, prod->terms[t].production, indentlevel + 1, ns);
+        }
+        else
+        {
+            lex_token_t *tn = prod->terms[t].terminal;
+            assert( s2_is_token(tn) );
+            fprintf(fp, "%*s _%zi_ ", indentlevel * 2 + 3, "", t);
+            fprint_token(fp, tn, indentlevel);
+        }
+    }
+}
+
 static void lalr_prod_final(lalr_prod_t *ctx)
 {
-    int32_t t;
+    size_t t;
 
     if( ctx->value ) s2obj_release(ctx->value);
 
@@ -356,7 +388,7 @@ static int lalr_parse_accel_cache_insert(
 static int lalr_parse_accel_cache_query(
     lalr_rule_symbol_t const *restrict symbolseq,
     lalr_rule_symbol_t const *restrict expected_sym)
-{//return -1;
+{
     s2data_t *query_result;
     s2data_t *cache_key;
     int ret = -1;
@@ -442,10 +474,9 @@ static bool begins_with_expected(
 
         query_result = lalr_parse_accel_cache_query(
             rchain, expected_sym);
-        //if( tmp == true ) return tmp; else
         if( query_result == false ) continue;
 
-        lhs = (int32_t)(long)(*subsrule)(
+        lhs = (int32_t)(ptrdiff_t)(*subsrule)(
             lalr_rule_inspect_lhs,
             NULL, -1, NULL,
             grammar_rules, ns_rules);
@@ -531,7 +562,7 @@ void *lalr_rule_actions_generic(
             production, terms, rules, ns_rules);
 
     case lalr_rule_inspect_lhs:
-        return (void *)(long)production;
+        return (void *)(ptrdiff_t)production;
 
     case lalr_rule_inspect_symseq:
         return symbolseq;
