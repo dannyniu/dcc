@@ -7,8 +7,11 @@
 #include "langsem.h"
 #include <s2dict.h>
 
-bool CXParserInit();
-void CXParserFinal();
+// does:
+// 1. compile regices for lexer,
+// 2. creates string indicies table for grammar rules.
+bool CXParserInitCommon();
+void CXParserFinalCommon();
 
 #define S2_OBJ_TYPE_CXING_MODULE 0x2111
 #define s2_is_cxing_module(obj)                                 \
@@ -16,6 +19,9 @@ void CXParserFinal();
 
 typedef struct cxing_module {
     s2obj_base;
+
+    // The original filename.
+    char *filename;
 
     // The ones defined in the source code.
     s2dict_t *entities;
@@ -26,8 +32,8 @@ typedef struct cxing_module {
     size_t func_defs_cnt;
     uint8_t *CallStubs;
     s2data_t **SymTab;
-    
-    // ... TODO (2025-12-13).
+
+    // ... TODO (2025-12-13, 2026-01-25).
 } cxing_module_t;
 
 #define S2_OBJ_TYPE_SYM_INFO 0x2112
@@ -49,7 +55,7 @@ void CxingModuleDump(cxing_module_t *restrict module);
 
 // 2026-01-02:
 // This would require creating assembly-written function stub to invoke
-// `CxingExecuteFunction` over the parse-compiled function body. 
+// `CxingExecuteFunction` over the parse-compiled function body.
 void *CXSym(cxing_module_t *restrict module, const char *restrict sym);
 
 bool CXExpose(

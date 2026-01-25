@@ -1,6 +1,8 @@
 /* DannyNiu/NJF, 2025-11-22. Public Domain. */
 
 // 0 is reserved for `lex_token_complete` as end-of-list.
+LEX_ENUM(langlex_comment)
+
 LEX_ENUM(langlex_keyword)
 LEX_ENUM(langlex_identifier)
 
@@ -14,4 +16,5 @@ LEX_ENUM(langlex_hexfplit)
 LEX_ENUM(langlex_charlit)
 LEX_ENUM(langlex_strlit)
 LEX_ENUM(langlex_rawlit)
+LEX_ENUM(langlex_str_cooked)
 LEX_ENUM(langlex_punct)

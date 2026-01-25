@@ -1,0 +1,5 @@
+subr main(){ return print(
+"Hello World!\t"
+"This is a \"\e[42;33mGreen Text\e[0m\"\n"
+"This is another piece of \033[42;33mGreen\033[0m Text.\x0a - End Of Output. -\n"
+); }

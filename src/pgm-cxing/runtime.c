@@ -6,14 +6,26 @@
 #include <SafeTypes2.h>
 #include <stdarg.h>
 
-static s2data_t *PropName_copy_dat;
-static s2data_t *PropName_final_dat;
-static s2data_t *PropName_equals_dat;
-static s2data_t *PropName_cmpwith_dat;
 struct value_nativeobj CxingPropName_copy;
 struct value_nativeobj CxingPropName_final;
 struct value_nativeobj CxingPropName_equals;
 struct value_nativeobj CxingPropName_cmpwith;
+struct value_nativeobj CxingPropName_InitSet;
+struct value_nativeobj CxingPropName_Proto;
+
+struct {
+    const char *istr;
+    s2data_t *pdat;
+    struct value_nativeobj *pvar;
+} CxingPropNames[] = {
+    { .istr = "__copy__", .pvar = &CxingPropName_copy },
+    { .istr = "__final__", .pvar = &CxingPropName_final },
+    { .istr = "equals", .pvar = &CxingPropName_equals },
+    { .istr = "cmpwith", .pvar = &CxingPropName_cmpwith },
+    { .istr = "__initset__", .pvar = &CxingPropName_InitSet },
+    { .istr = "__proto__", .pvar = &CxingPropName_Proto },
+    {0},
+};
 
 bool CxingRuntimeInit()
 {
@@ -54,68 +66,28 @@ bool CxingRuntimeInit()
     //
     // Initialize value native objects for string constants.
 
-    i = 0;
-
-    PropName_copy_dat = s2data_from_str("__copy__");
-    if( !PropName_copy_dat )
+    for(i=0; CxingPropNames[i].istr; i++)
     {
-        CxingFatal("String constant '__copy__' failed to allocate!");
-        ret = false;
-        goto strings_dealloc;
-    }
-    CxingPropName_copy = (struct value_nativeobj){
-        .proper.p = PropName_copy_dat,
-        .type = (const void *)&type_nativeobj_s2impl_str,
-    };
-    i++;
+        CxingPropNames[i].pdat = s2data_from_str(CxingPropNames[i].istr);
+        if( !CxingPropNames[i].istr )
+        {
+            CxingFatal("String constant '%s' failed to allocate!",
+                       CxingPropNames[i].istr);
+            ret = false;
+            goto strings_dealloc;
+        }
 
-    PropName_final_dat = s2data_from_str("__final__");
-    if( !PropName_final_dat )
-    {
-        CxingFatal("String constant '__final__' failed to allocate!");
-        ret = false;
-        goto strings_dealloc;
+        CxingPropNames[i].pvar->proper.p = CxingPropNames[i].pdat;
+        CxingPropNames[i].pvar->type =
+            (const void *)&type_nativeobj_s2impl_str;
     }
-    CxingPropName_final = (struct value_nativeobj){
-        .proper.p = PropName_final_dat,
-        .type = (const void *)&type_nativeobj_s2impl_str,
-    };
-    i++;
-
-    PropName_equals_dat = s2data_from_str("equals");
-    if( !PropName_equals_dat )
-    {
-        CxingFatal("String constant 'equals' failed to allocate!");
-        ret = false;
-        goto strings_dealloc;
-    }
-    CxingPropName_equals = (struct value_nativeobj){
-        .proper.p = PropName_equals_dat,
-        .type = (const void *)&type_nativeobj_s2impl_str,
-    };
-    i++;
-
-    PropName_cmpwith_dat = s2data_from_str("cmpwith");
-    if( !PropName_cmpwith_dat )
-    {
-        CxingFatal("String constant 'cmpwith' failed to allocate!");
-        ret = false;
-        goto strings_dealloc;
-    }
-    CxingPropName_cmpwith = (struct value_nativeobj){
-        .proper.p = PropName_cmpwith_dat,
-        .type = (const void *)&type_nativeobj_s2impl_str,
-    };
-    i++;
 
     return ret;
 
 strings_dealloc:
-    switch( i ) {
-    case 4: s2obj_release(PropName_cmpwith_dat->pobj); // FALLTHRU.
-    case 3: s2obj_release(PropName_equals_dat->pobj); // FALLTHRU.
-    case 2: s2obj_release(PropName_final_dat->pobj); // FALLTHRU.
-    case 1: s2obj_release(PropName_copy_dat->pobj); // FALLTHRU.
+    while( i --> 0 )
+    {
+        s2obj_release(CxingPropNames[i].pdat->pobj);
     }
 
     return ret;
@@ -123,10 +95,16 @@ strings_dealloc:
 
 void CxingRuntimeFinal()
 {
-    s2obj_release(PropName_cmpwith_dat->pobj);
-    s2obj_release(PropName_equals_dat->pobj);
-    s2obj_release(PropName_final_dat->pobj);
-    s2obj_release(PropName_copy_dat->pobj);
+    int i;
+    for(i=0; CxingPropNames[i].istr; i++)
+    {
+        if( CxingPropNames[i].pdat )
+        {
+            s2obj_release(CxingPropNames[i].pdat->pobj);
+            CxingPropNames[i].pdat = NULL;
+        }
+    }
+
 }
 
 void CxingDebug(const char *msg, ...)
@@ -191,14 +169,6 @@ const type_nativeobj_struct_p0 type_nativeobj_subr = {
 const type_nativeobj_struct_p0 type_nativeobj_method = {
     .typeid = valtyp_method, .n_entries = 0, .static_members[0] = {} };
 
-const type_nativeobj_struct_p8 type_nativeobj_s2impl_str = {
-    .typeid = valtyp_obj,
-    .n_entries = 0, // Will be 8 (or bigger) during release engineering,
-    .static_members = {
-        // 2025-12-13: TODO.
-    },
-};
-
 #define Cxing_s2Type_MethodImpl(s2type, name)                   \
     struct value_nativeobj CxingImpl_##s2type##_##name(         \
         int argn, struct value_nativeobj args[]);               \
@@ -213,6 +183,9 @@ Cxing_s2Type_MethodImpl(s2Dict, Copy);
 Cxing_s2Type_MethodImpl(s2Dict, Final);
 Cxing_s2Type_MethodImpl(s2Dict, Unset);
 
+Cxing_s2Type_MethodImpl(s2Data, Copy);
+Cxing_s2Type_MethodImpl(s2Data, Final);
+
 const type_nativeobj_struct_p6 type_nativeobj_s2impl_dict = {
     .typeid = valtyp_obj,
     .n_entries = 5, // Will be 7 (or bigger) during release engineering,
@@ -222,6 +195,16 @@ const type_nativeobj_struct_p6 type_nativeobj_s2impl_dict = {
         { .name = "__copy__", .member = &CxingValue_s2Dict_Copy },
         { .name = "__final__", .member = &CxingValue_s2Dict_Final },
         { .name = "__unset__", .member = &CxingValue_s2Dict_Unset },
+    },
+};
+
+const type_nativeobj_struct_p8 type_nativeobj_s2impl_str = {
+    .typeid = valtyp_obj,
+    .n_entries = 2, // Will be 8 (or bigger) during release engineering,
+    .static_members = {
+        { .name = "__copy__", .member = &CxingValue_s2Data_Copy },
+        { .name = "__final__", .member = &CxingValue_s2Data_Final },
+        // 2025-12-13: TODO.
     },
 };
 
@@ -294,7 +277,7 @@ struct value_nativeobj CxingImpl_s2Dict_Get(
 {
     int x;
     s2cxing_value_t *ret_wrapped;
-    
+
     if( argn < 2 ) return (struct value_nativeobj){
             .proper.p = NULL,
             .type = (const void *)&type_nativeobj_morgoth };
@@ -336,7 +319,7 @@ struct value_nativeobj CxingImpl_s2Dict_Set(
 {
     int x;
     s2cxing_value_t *ret_wrapped;
-    
+
     if( argn < 3 ) return (struct value_nativeobj){
             .proper.p = NULL,
             .type = (const void *)&type_nativeobj_morgoth };
@@ -437,7 +420,7 @@ struct value_nativeobj CxingImpl_s2Dict_Final(
     }
 
     s2obj_leave(args[0].proper.p);
-    
+
     return (struct value_nativeobj){
         .proper.p = NULL,
         .type = (const void *)&type_nativeobj_morgoth };
@@ -447,7 +430,7 @@ struct value_nativeobj CxingImpl_s2Dict_Unset(
     int argn, struct value_nativeobj args[])
 {
     int x;
-    
+
     if( argn < 2 ) return (struct value_nativeobj){
             .proper.p = NULL,
             .type = (const void *)&type_nativeobj_morgoth };
@@ -469,7 +452,7 @@ struct value_nativeobj CxingImpl_s2Dict_Unset(
         CxingDiagnose("Cxing Runtime Internal Error: "
                       "SafeTypes2 Dictionary Getter Failure!");
     }
-    
+
     return (struct value_nativeobj){
         .proper.p = NULL,
         .type = (const void *)&type_nativeobj_morgoth };
@@ -499,3 +482,47 @@ struct value_nativeobj CxingImpl_s2Dict_Create(
 }
 
 // 2026-01-02 TODO: the `__initset__` and the `__keys__` methods.
+
+struct value_nativeobj CxingImpl_s2Data_Copy(
+    int argn, struct value_nativeobj args[])
+{
+    if( argn < 1 ) return (struct value_nativeobj){
+            .proper.p = NULL,
+            .type = (const void *)&type_nativeobj_morgoth };
+
+    if( args[0].type != (const void *)&type_nativeobj_s2impl_str )
+    {
+        CxingDiagnose("Unrecognized implementation of the string type. "
+                      "Does this object come from another runtime?");
+        return (struct value_nativeobj){
+            .proper.p = NULL,
+            .type = (const void *)&type_nativeobj_morgoth };
+    }
+
+    s2obj_keep(args[0].proper.p);
+
+    return args[0];
+}
+
+struct value_nativeobj CxingImpl_s2Data_Final(
+    int argn, struct value_nativeobj args[])
+{
+    if( argn < 1 ) return (struct value_nativeobj){
+            .proper.p = NULL,
+            .type = (const void *)&type_nativeobj_morgoth };
+
+    if( args[0].type != (const void *)&type_nativeobj_s2impl_str )
+    {
+        CxingDiagnose("Unrecognized implementation of the string type. "
+                      "Does this object come from another runtime?");
+        return (struct value_nativeobj){
+            .proper.p = NULL,
+            .type = (const void *)&type_nativeobj_morgoth };
+    }
+
+    s2obj_leave(args[0].proper.p);
+
+    return (struct value_nativeobj){
+        .proper.p = NULL,
+        .type = (const void *)&type_nativeobj_morgoth };
+}

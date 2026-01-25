@@ -9,13 +9,6 @@ identifier % ident
 : langlex_identifier % ident
 ;
 
-string-literal % strlit
-: langlex_strlit % strlit
-| langlex_rawlit % rawlit
-| string-literal langlex_strlit % strlitcat
-| string-literal langlex_rawlit % rawlitcat
-;
-
 constant % const
 : "true" % true
 | "false" % false
@@ -27,7 +20,7 @@ constant % const
 | langlex_decfplit % decfplit
 | langlex_hexfplit % hexfplit
 | langlex_charlit % charlit
-| string-literal % strlit
+| langlex_str_cooked % strlit
 ;
 
 primary-expr % primary
@@ -296,6 +289,36 @@ arguments-list % arglist
 arguments-begin % args
 : "(" identifier % base
 | arguments-begin "," identifier % genrule
+;
+
+objdef-start % objdefstart
+: objdef-start-comma % comma
+| objdef-start-nocomma % nocomma
+;
+
+objdef-start-comma % objdefstartcomma
+: objdef-start-nocomma "," % genrule
+;
+
+objdef-start-nocomma % objdefstartnocomma
+: postfix-expr "{" postfix-expr ":" assign-expr % base
+| objdef-start-nocomma "," postfix-expr ":" assign-expr % genrule
+;
+
+object-notation % objdef
+: postfix-expr "{" "}" % empty
+| objdef-start "}" % some
+| auto-index % array
+;
+
+auto-index-start-comma % array_piece
+: postfix-expr "[" assign-expr "," % base
+| auto-index-start-comma assign-expr "," % genrule
+;
+
+auto-index % array
+: auto-index-start-comma "]" % complete
+| auto-index-start-comma assign-expr "]" % streamline
 ;
 
 entity-declaration % entdecl

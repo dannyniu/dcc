@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
         lex_getc_str_t fromstr;
     } expr_getc;
     source_rope_t *rope;
-    RegexLexContext lexer;
+    cxing_tokenizer tokenizer;
 
     lalr_stack_t *parsed;
     lalr_term_t *te;
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
     long rel_after = 0;
 #endif /* INTERCEPT_MEM_CALLS */
 
-    CXParserInit();
+    CXParserInitCommon();
     CxingRuntimeInit();
 
     assert( argc > 2 );
@@ -110,10 +110,9 @@ int main(int argc, char *argv[])
         lex_getc_init_from_str(&expr_getc.fromstr, argv[2]);
     }
     rope = CreateRopeFromGetc(&expr_getc.base, 0);
-    RegexLexFromRope_Init(&lexer, rope);
+    CxingTokenizerInit(&tokenizer, rope);
 
-    lexer.regices = var_lex_elems;
-    lexer.logger_base = (struct logging_ctxbase){
+    tokenizer.cmtstrip.lexer.logger_base = (struct logging_ctxbase){
         .logger = (logger_func)logger,
     };
 
@@ -123,7 +122,7 @@ int main(int argc, char *argv[])
 #endif /* INTERCEPT_MEM_CALLS */
 
     i = lalr_parse(&parsed, GRAMMAR_RULES, NULL, NS_RULES,
-               (token_shifter_t)RegexLexFromRope_Shift, (void *)&lexer);
+               (token_shifter_t)CxingTokenizer_Shifter, (void *)&tokenizer);
     printf("parsing returned: %d, stack:\n", i);
     s2obj_release(rope->pobj);
 
@@ -160,7 +159,7 @@ int main(int argc, char *argv[])
 
     s2obj_release(parsed->pobj);
     CxingRuntimeFinal();
-    CXParserFinal();
+    CXParserFinalCommon();
     subret = EXIT_SUCCESS;
 
 #if INTERCEPT_MEM_CALLS

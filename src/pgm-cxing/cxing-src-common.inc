@@ -6,7 +6,9 @@ cxing-interp-misc.c
 cxing-grammar.c
 expr-arith.c
 expr-bits.c
+expr-lex.c
 expr-unary.c
+cxing-stdlib-io.c
 langsem.c
 runtime.c
 lalr-common/lalr.c

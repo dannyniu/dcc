@@ -1,0 +1,1 @@
+subr main(){ return print("Hello World!\n"); }

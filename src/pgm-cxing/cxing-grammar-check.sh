@@ -11,7 +11,8 @@ testfunc()
     #export LLVM_PROFILE_FILE="$HOME/deleteme.instrprof"
     #lldb -- \
     #time $exec -f ../tests/langlex-test-src.cxing
-    time $exec -f ../tests/phrase-experiment.cxing
+    #time $exec -f ../tests/phrase-experiment.cxing
+    time $exec -f ../tests/hello-world-01.cxing
 }
 
 cd "$(dirname "$0")"

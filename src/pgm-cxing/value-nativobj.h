@@ -51,10 +51,10 @@ struct lvalue_nativeobj {
     // 2026-01-01:
     // because different kind of scopes needs different accessors,
     // a mere pointer to the scope is not enough - it needs
-    // accessor properties, therefore this is changed to 
+    // accessor properties, therefore this is changed to
     // a value native object.
     struct value_nativeobj scope;
-    
+
     // 2026-01-01:
     // the reference implementation uses `s2data_t` from the SafeTypes2
     // library, other implementations may have a different choice,

@@ -26,4 +26,8 @@ struct logging_ctxbase {
     void *aux;
 };
 
+#if '0' != 0x30 || 'A' != 0x41
+#error Non-ASCII environments need adaptation!
+#endif /* Testing for ASCII character set. */
+
 #endif /* dcc_common_h */

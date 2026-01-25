@@ -6,7 +6,7 @@
 #define NS_RULES ns_rules_cxing
 #define var_lex_elems LexElems
 
-bool CXParserInit()
+bool CXParserInitCommon()
 {
     int subret = 0, i;
     for(i=0; var_lex_elems[i].pattern; i++)
@@ -40,7 +40,7 @@ cleanup:
     return false;
 }
 
-void CXParserFinal()
+void CXParserFinalCommon()
 {
     int i;
 

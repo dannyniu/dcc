@@ -17,6 +17,7 @@
 
 static void cxing_module_final(cxing_module_t *module)
 {
+    if( module->filename ) free(module->filename);
     if( module->entities ) s2obj_release(module->entities->pobj);
     if( module->linked ) s2obj_release(module->linked->pobj);
 
@@ -40,7 +41,7 @@ static void cxing_module_final(cxing_module_t *module)
     }
 }
 
-static cxing_module_t *cxing_module_create()
+static cxing_module_t *cxing_module_create(const char *filename)
 {
     cxing_module_t *ret;
 
@@ -50,15 +51,17 @@ static cxing_module_t *cxing_module_create()
 
     if( !ret ) return NULL;
 
+    ret->filename = calloc(1, strlen(filename)+1);
     ret->entities = s2dict_create();
     ret->linked = s2dict_create();
 
-    if( !ret->entities || !ret->linked )
+    if( !ret->filename || !ret->entities || !ret->linked )
     {
         cxing_module_final(ret);
         return NULL;
     }
 
+    strcpy(ret->filename, filename);
     ret->base.finalf = (s2func_final_t)cxing_module_final;
     return ret;
 }
@@ -454,7 +457,7 @@ cxing_module_t *CXOpen(const char *restrict CxingModulePath)
     cxing_module_t *ret = NULL;
     lex_getc_fp_t getcx;
     source_rope_t *rope = NULL;
-    RegexLexContext lexer;
+    cxing_tokenizer tokenizer;
 
     lalr_stack_t *parsed = NULL;
 
@@ -464,12 +467,11 @@ cxing_module_t *CXOpen(const char *restrict CxingModulePath)
     rope = CreateRopeFromGetc(&getcx.base, 0);
     if( !rope ) goto cleanup;
 
-    lexer.regices = var_lex_elems;
-    RegexLexFromRope_Init(&lexer, rope);
+    CxingTokenizerInit(&tokenizer, rope);
 
     subret = lalr_parse(
         &parsed, GRAMMAR_RULES, NULL, NS_RULES,
-        (token_shifter_t)RegexLexFromRope_Shift, (void *)&lexer);
+        (token_shifter_t)CxingTokenizer_Shifter, (void *)&tokenizer);
 
     if( subret != 0 )
     {
@@ -481,7 +483,7 @@ cxing_module_t *CXOpen(const char *restrict CxingModulePath)
         goto cleanup;
     }
 
-    if( !(ret = cxing_module_create()) )
+    if( !(ret = cxing_module_create(CxingModulePath)) )
     {
         CxingFatal("[CXOpen]: Unable to create module "
                    "for translation unit from "
@@ -515,10 +517,6 @@ cleanup:
     lalr_parse_accel_cache_clear();
 
     if( parsed ) s2obj_release(parsed->pobj);
-
-    CxingRuntimeFinal();
-    CXParserFinal();
-
     if( rope ) s2obj_release(rope->pobj);
     if( getcx.fp ) fclose(getcx.fp);
 
@@ -628,6 +626,7 @@ bool CXExpose(
 
     // 2026-01-17 (TODO: come back later):
     // This copy is per spec section "Automatic Resource Management".
+    // 2026-01-25 TODO: @dannyniu intends linkee to mean something else.
     v = s2cxing_value_create(ValueCopy(linkee));
     if( !v )
     {

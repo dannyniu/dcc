@@ -7,7 +7,7 @@
 #include "expr.h"
 #include "../lex-common/lex.h"
 
-#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#define eprintf(...) 0 // fprintf(stderr, __VA_ARGS__)
 #define Reached() eprintf("Reached %d! flags: %d, spind: %zd, ri: %i; opind: %u.\n", __LINE__, instruction->flags, pc.spind, instruction->node_body->semantic_rule, instruction->operand_index);
 #define CapturePoint() eprintf("CapturePoint %d! flags: %d, spind: %zd, ri: %i; opind: %u.\n", __LINE__, instruction->flags, pc.spind, instruction->node_body->semantic_rule, instruction->operand_index);
 
@@ -135,7 +135,7 @@ static struct value_nativeobj PcStackPop(cxing_program_counter_t *pc)
     // letting funccall rule processor(s) handle resource management.
     pc->instructions[pc->spind - 1].fargs = pc->instructions[pc->spind].fargs;
     pc->instructions[pc->spind - 1].fargn = pc->instructions[pc->spind].fargn;
-    
+
     pc->instructions[pc->spind - 1].flags = pc->instructions[pc->spind].flags;
     // `pc->instructions[pc->spind - 1].opts` is unaltered.
     eprintf("popped: %llu t=%lli\n",
@@ -561,6 +561,32 @@ start_eval_1term:;
     //
     // lexicons for literals.
 
+    // scalar literals.
+
+    if( theRule == const_true )
+    {
+        Reached();
+        instruction->ax = (struct value_nativeobj){
+            .proper.l = 1,
+            .type = (const void *)&type_nativeobj_long };
+    }
+
+    if( theRule == const_false )
+    {
+        Reached();
+        instruction->ax = (struct value_nativeobj){
+            .proper.l = 0,
+            .type = (const void *)&type_nativeobj_long };
+    }
+
+    if( theRule == const_null )
+    {
+        Reached();
+        instruction->ax = (struct value_nativeobj){
+            .proper.p = NULL,
+            .type = (const void *)&type_nativeobj_morgoth };
+    }
+
     if( theRule == const_declit )
     {
         Reached();
@@ -573,13 +599,82 @@ start_eval_1term:;
 
     if( theRule == const_octlit )
     {
+        char *t;
         Reached();
-        // TODO: support `0o` notation.
+        t = s2data_weakmap(instruction->node_body->terms[0].terminal->str);
+        if( strncmp(t, "0o", 2) == 0 ||
+            strncmp(t, "0O", 2) == 0 )
+        {
+            // support `0o` notation.
+            t += 2;
+        }
+        else if( strlen(t) > 1 )
+        {
+            CxingDebug("Integer literals with leading digits are octal! "
+                       "Use `0o` prefix to silence this warning.\n");
+        }
+
         instruction->ax = (struct value_nativeobj){
-            .proper.l = strtoll(s2data_weakmap(
-                                    instruction->node_body
-                                    ->terms[0].terminal->str), NULL, 8),
+            .proper.u = strtoll(t, NULL, 8),
             .type = (const void *)&type_nativeobj_long };
+    }
+
+    if( theRule == const_hexlit )
+    {
+        Reached();
+        instruction->ax = (struct value_nativeobj){
+            .proper.u = strtoll(s2data_weakmap(
+                                    instruction->node_body
+                                    ->terms[0].terminal->str), NULL, 16),
+            .type = (const void *)&type_nativeobj_ulong };
+    }
+
+    if( theRule == const_r64lit )
+    {
+        Reached();
+        instruction->ax = (struct value_nativeobj){
+            .proper.u = Radix64Literal(s2data_weakmap(
+                                           instruction->node_body
+                                           ->terms[0].terminal->str)),
+            .type = (const void *)&type_nativeobj_ulong };
+    }
+
+    if( theRule == const_decfplit ||
+        theRule == const_hexfplit )
+    {
+        Reached();
+        instruction->ax = (struct value_nativeobj){
+            .proper.f = strtod(s2data_weakmap(
+                                   instruction->node_body
+                                   ->terms[0].terminal->str), NULL),
+            .type = (const void *)&type_nativeobj_double };
+    }
+
+    if( theRule == const_charlit )
+    {
+        Reached();
+        assert( 0 ); // TODO (2026-01-24).
+    }
+
+    if( theRule == const_strlit )
+    {
+        size_t litlen;
+        s2data_t *litsrc = instruction->node_body->terms[0].terminal->str;
+        s2data_t *litobj = s2data_create(litlen = s2data_len(litsrc));
+        Reached();
+        if( !litobj )
+        {
+            CxingFatal("Unable to instantiate string literal!\n");
+            goto func_exec_abort;
+        }
+
+        s2obj_keep(litobj->pobj);
+        s2obj_release(litobj->pobj);
+        memcpy(s2data_weakmap(litobj), s2data_weakmap(litsrc), litlen);
+
+        instruction->ax = (struct value_nativeobj){
+            .proper.p = litobj,
+            .type = (const void *)&type_nativeobj_s2impl_str };
     }
 
     //
@@ -655,14 +750,12 @@ start_eval_1term:;
             // pointer arithmetic to ignore it for subroutines.
             //- instruction->fargs[0] = ...;
 
-            eprintf("a.%d: %p, ", __LINE__, valreg.proper.p);
-            if( varreg.key ) valreg = ValueCopy(valreg);
-            eprintf("%d: %p.\n", __LINE__, valreg.proper.p);
+            valreg = ValueCopy(valreg);
             instruction->fargs[1] = valreg;
         }
         else assert( 0 );
     }
-    
+
     if( theRule == funcinvokenocomma_genrule )
     {
         Reached();
@@ -695,13 +788,13 @@ start_eval_1term:;
             Reached();
             instruction->fargs = tmp;
 
-            if( varreg.key ) valreg = ValueCopy(valreg);
+            valreg = ValueCopy(valreg);
             instruction->fargs[
                 instruction->fargn ++] = valreg;
         }
         else assert( 0 );
     }
-    
+
     if( theRule == funccall_somearg )
     {
         Reached();
@@ -906,7 +999,7 @@ start_eval_1term:;
                 // The right operand is managed by the epilogue.
                 instruction->opts = ast_node_lvalue_operand;
             }
-            
+
             instruction->ax = valreg;
             PcStack_PushOrAbandon();
         }
@@ -1080,7 +1173,7 @@ start_eval_1term:;
                 // See note dated 2026-01-18 in binary expressions' processor.
                 instruction->opts = ast_node_lvalue_operand;
             }
-            
+
             instruction->ax = valreg;
             eprintf("rhs: %llu t=%lli\n",
                     instruction->ax.proper.u,
@@ -1591,6 +1684,359 @@ start_eval_1term:;
             CxingFatal("Variable declaration failure.");
             goto func_exec_abort;
         }
+    }
+
+    //
+    // Type Definition and Object Initialization Syntax
+
+    if( theRule == objdefstartnocomma_genrule )
+    {
+        Reached();
+        if( instruction->operand_index == 0 )
+        {
+            Reached();
+            PcStack_PushOrAbandon();
+        }
+        else if( instruction->operand_index ==
+                 instruction->node_body->terms_count )
+        {
+            // nop.
+        }
+        else assert( 0 );
+    }
+
+    if( theRule == objdefstartnocomma_base ||
+        theRule == objdefstartnocomma_genrule )
+    {
+        Reached();
+        if( instruction->operand_index == 0 )
+        {
+            Reached();
+            PcStack_PushOrAbandon();
+        }
+
+        else if( instruction->operand_index == 2 )
+        {
+            Reached();
+
+            if( theRule == objdefstartnocomma_base )
+            {
+                // for the duration of obj-def,
+                // `instruction->bx` is the type object.
+                instruction->bx = valreg;
+            }
+
+            PcStack_PushOrAbandon();
+        }
+
+        else if( instruction->operand_index == 4 )
+        {
+            Reached();
+            instruction->ax = valreg;
+            PcStack_PushOrAbandon();
+        }
+
+        else if( instruction->operand_index ==
+                 instruction->node_body->terms_count )
+        {
+            struct value_nativeobj InitSetMethod =
+                // A possibility is considered where
+                // `__initset__` member is replaced
+                // during the evaluation of the notation.
+                GetValProperty(
+                    instruction->bx,
+                    CxingPropName_InitSet).value;
+
+            if( InitSetMethod.type->typeid != valtyp_method )
+            {
+                if( theRule == objdefstartnocomma_base )
+                    CxingDiagnose("The postfix expression identified by "
+                                  "the token at line %d column %d "
+                                  "in source code file \"%s\" "
+                                  "is not a method as required by "
+                                  "object definition notation.\n",
+                                  instruction->node_body
+                                  ->terms[0].terminal->lineno,
+                                  instruction->node_body
+                                  ->terms[0].terminal->column,
+                                  module->filename);
+                else CxingDiagnose("The postfix expression used "
+                                   "in the object definition notation "
+                                   "was not a method.");
+            }
+            else
+            {
+                struct value_nativeobj args[3] = {
+                    instruction->bx,
+                    instruction->ax,
+                    valreg };
+                ((cxing_call_proto)InitSetMethod.proper.p)(
+                    3, args);
+            }
+        }
+
+        else assert( 0 );
+    }
+
+    if( theRule == objdef_some ||
+        theRule == objdef_empty )
+    {
+        Reached();
+        if( instruction->operand_index == 0 )
+        {
+            Reached();
+            PcStack_PushOrAbandon();
+        }
+
+        else if( instruction->operand_index ==
+                 instruction->node_body->terms_count )
+        {
+            struct value_nativeobj InitSetMethod =
+                // A possibility is considered where
+                // `__initset__` member is replaced
+                // during the evaluation of the notation.
+                GetValProperty(
+                    instruction->bx,
+                    CxingPropName_InitSet).value;
+
+            if( InitSetMethod.type->typeid != valtyp_method )
+            {
+                CxingDiagnose("The postfix expression used "
+                              "in the object definition notation "
+                              "was not a method.");
+            }
+            else
+            {
+                struct value_nativeobj args[3] = {
+                    instruction->bx,
+                    CxingPropName_Proto,
+                    instruction->bx };
+                ((cxing_call_proto)InitSetMethod.proper.p)(
+                    3, args);
+            }
+        }
+
+        else assert( 0 );
+    }
+
+    // auto-indexed arrays.
+
+    if( theRule == array_piece_base )
+    {
+        Reached();
+        if( instruction->operand_index == 0 )
+        {
+            Reached();
+            PcStack_PushOrAbandon();
+        }
+
+        else if( instruction->operand_index == 2 )
+        {
+            Reached();
+
+            // for the duration of obj-def,
+            // `instruction->bx` is the type object.
+            instruction->bx = valreg;
+
+            // zero-based indexing.
+            instruction->ax.proper.l = 0;
+            instruction->ax.type = (const void *)&type_nativeobj_long;
+
+            PcStack_PushOrAbandon();
+        }
+
+        else if( instruction->operand_index ==
+                 instruction->node_body->terms_count )
+        {
+            struct value_nativeobj InitSetMethod =
+                // A possibility is considered where
+                // `__initset__` member is replaced
+                // during the evaluation of the notation.
+                GetValProperty(
+                    instruction->bx,
+                    CxingPropName_InitSet).value;
+
+            if( InitSetMethod.type->typeid != valtyp_method )
+            {
+                CxingDiagnose("The postfix expression identified by "
+                              "the token at line %d column %d "
+                              "in source code file \"%s\" "
+                              "is not a method as required by "
+                              "object definition notation.\n",
+                              instruction->node_body
+                              ->terms[0].terminal->lineno,
+                              instruction->node_body
+                              ->terms[0].terminal->column,
+                              module->filename);
+            }
+            else
+            {
+                struct value_nativeobj args[3] = {
+                    instruction->bx,
+                    instruction->ax,
+                    valreg };
+                ((cxing_call_proto)InitSetMethod.proper.p)(
+                    3, args);
+            }
+        }
+
+        else assert( 0 );
+    }
+
+    if( theRule == array_piece_genrule )
+    {
+        Reached();
+        if( instruction->operand_index == 0 )
+        {
+            Reached();
+            PcStack_PushOrAbandon();
+        }
+
+        else if( instruction->operand_index == 1 )
+        {
+            Reached();
+
+            // for the duration of obj-def,
+            // `instruction->bx` is the type object.
+            // ---
+
+            // zero-based indexing.
+            instruction->ax = valreg;
+            instruction->ax.proper.l ++;
+
+            PcStack_PushOrAbandon();
+        }
+
+        else if( instruction->operand_index ==
+                 instruction->node_body->terms_count )
+        {
+            struct value_nativeobj InitSetMethod =
+                // A possibility is considered where
+                // `__initset__` member is replaced
+                // during the evaluation of the notation.
+                GetValProperty(
+                    instruction->bx,
+                    CxingPropName_InitSet).value;
+
+            if( InitSetMethod.type->typeid != valtyp_method )
+            {
+                CxingDiagnose("The postfix expression used "
+                              "in the object definition notation "
+                              "was not a method.");
+            }
+            else
+            {
+                struct value_nativeobj args[3] = {
+                    instruction->bx,
+                    instruction->ax,
+                    valreg };
+                ((cxing_call_proto)InitSetMethod.proper.p)(
+                    3, args);
+            }
+        }
+
+        else assert( 0 );
+    }
+
+    if( theRule == array_streamline )
+    {
+        Reached();
+        if( instruction->operand_index == 0 )
+        {
+            Reached();
+            PcStack_PushOrAbandon();
+        }
+
+        else if( instruction->operand_index == 1 )
+        {
+            Reached();
+
+            // for the duration of obj-def,
+            // `instruction->bx` is the type object.
+            // ---
+
+            // zero-based indexing.
+            instruction->ax = valreg;
+            instruction->ax.proper.l ++;
+
+            PcStack_PushOrAbandon();
+        }
+
+        else if( instruction->operand_index ==
+                 instruction->node_body->terms_count )
+        {
+            struct value_nativeobj InitSetMethod =
+                // A possibility is considered where
+                // `__initset__` member is replaced
+                // during the evaluation of the notation.
+                GetValProperty(
+                    instruction->bx,
+                    CxingPropName_InitSet).value;
+
+            if( InitSetMethod.type->typeid != valtyp_method )
+            {
+                CxingDiagnose("The postfix expression used "
+                              "in the object definition notation "
+                              "was not a method.");
+            }
+            else
+            {
+                struct value_nativeobj args[3] = {
+                    instruction->bx,
+                    instruction->ax,
+                    valreg };
+                ((cxing_call_proto)InitSetMethod.proper.p)(
+                    3, args);
+
+                // a 2nd call for end of list
+                args[1] = CxingPropName_Proto;
+                args[2] = instruction->bx;
+                ((cxing_call_proto)InitSetMethod.proper.p)(
+                    3, args);
+            }
+        }
+
+        else assert( 0 );
+    }
+
+    if( theRule == array_complete )
+    {
+        Reached();
+        if( instruction->operand_index == 0 )
+        {
+            Reached();
+            PcStack_PushOrAbandon();
+        }
+
+        else if( instruction->operand_index ==
+                 instruction->node_body->terms_count )
+        {
+            struct value_nativeobj InitSetMethod =
+                // A possibility is considered where
+                // `__initset__` member is replaced
+                // during the evaluation of the notation.
+                GetValProperty(
+                    instruction->bx,
+                    CxingPropName_InitSet).value;
+
+            if( InitSetMethod.type->typeid != valtyp_method )
+            {
+                CxingDiagnose("The postfix expression used "
+                              "in the object definition notation "
+                              "was not a method.");
+            }
+            else
+            {
+                struct value_nativeobj args[3] = {
+                    instruction->bx,
+                    CxingPropName_Proto,
+                    instruction->bx };
+                ((cxing_call_proto)InitSetMethod.proper.p)(
+                    3, args);
+            }
+        }
+
+        else assert( 0 );
     }
 
     //
@@ -2179,7 +2625,7 @@ finish_eval_1term:
         // doesn't produce further lvalues.
         varreg.key = NULL;
     }
-    
+
     valreg = PcStackPop(&pc);
     pc.instructions[pc.spind].operand_index ++;
     goto start_eval_1term;

@@ -4,7 +4,6 @@
 
 #if DCC_LALR_LOGGING == 1
 
-#error Logging?
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 
 static void symbol_print_expect_chain(lalr_rule_symbol_t *chain)

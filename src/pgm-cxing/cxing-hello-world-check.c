@@ -2,6 +2,7 @@
 
 #include "cxing-interp.h"
 #include "runtime.h"
+#include "cxing-stdlib.h"
 
 extern bool trace;
 
@@ -12,7 +13,7 @@ int main(int argc, char *argv[])
     cxing_call_proto func = {};
     struct value_nativeobj funcarg;
     struct value_nativeobj funcret;
-    
+
 #if INTERCEPT_MEM_CALLS
     long acq_before = 0;
     long rel_before = 0;
@@ -30,24 +31,24 @@ int main(int argc, char *argv[])
     CxingRuntimeInit();
 
     module = CXOpen(argv[1]);
-    CXExpose(module, "dict", (struct value_nativeobj){
-            .proper.p = CxingImpl_s2Dict_Create,
+    CXExpose(module, "print", (struct value_nativeobj){
+            .proper.p = CxingStdlibFunc_Print,
             .type = (const void *)&type_nativeobj_subr,
         });
     CxingModuleDump(module);
 
-    func = CXSym(module, "found");
+    func = CXSym(module, "main");
     printf("args: %p, func: %p, module: %p.\n", &funcarg, func, module);
-    
+
     funcret = func(0, &funcarg);
-    printf("Execution of function `found` returned: %lld.\n",
+    printf("Execution of function `main` returned: %lld.\n",
            funcret.proper.l);
-    
+
     s2obj_release(module->pobj);
 
     CxingRuntimeFinal();
     CXParserFinalCommon();
-    
+
     subret = EXIT_SUCCESS;
 
 #if INTERCEPT_MEM_CALLS

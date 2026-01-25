@@ -48,52 +48,6 @@ void *ident_ident(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *strlit_strlit(lalr_rule_params)
-{
-    int32_t production = hRule("string-literal");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_strlit, },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *strlit_rawlit(lalr_rule_params)
-{
-    int32_t production = hRule("string-literal");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_rawlit, },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *strlit_strlitcat(lalr_rule_params)
-{
-    int32_t production = hRule("string-literal");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "string-literal", },
-        { symtype_vtoken, .vtype = langlex_strlit, },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *strlit_rawlitcat(lalr_rule_params)
-{
-    int32_t production = hRule("string-literal");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "string-literal", },
-        { symtype_vtoken, .vtype = langlex_rawlit, },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
 void *const_true(lalr_rule_params)
 {
     int32_t production = hRule("constant");
@@ -208,7 +162,7 @@ void *const_strlit(lalr_rule_params)
 {
     int32_t production = hRule("constant");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "string-literal", },
+        { symtype_vtoken, .vtype = langlex_str_cooked, },
         {0},
     };
     (void)ctx;
@@ -1978,6 +1932,158 @@ void *args_genrule(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
+void *objdefstart_comma(lalr_rule_params)
+{
+    int32_t production = hRule("objdef-start");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "objdef-start-comma", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *objdefstart_nocomma(lalr_rule_params)
+{
+    int32_t production = hRule("objdef-start");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "objdef-start-nocomma", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *objdefstartcomma_genrule(lalr_rule_params)
+{
+    int32_t production = hRule("objdef-start-comma");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "objdef-start-nocomma", },
+        { symtype_stoken, .value = ",", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *objdefstartnocomma_base(lalr_rule_params)
+{
+    int32_t production = hRule("objdef-start-nocomma");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "postfix-expr", },
+        { symtype_stoken, .value = "{", },
+        { symtype_prod, .value = "postfix-expr", },
+        { symtype_stoken, .value = ":", },
+        { symtype_prod, .value = "assign-expr", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *objdefstartnocomma_genrule(lalr_rule_params)
+{
+    int32_t production = hRule("objdef-start-nocomma");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "objdef-start-nocomma", },
+        { symtype_stoken, .value = ",", },
+        { symtype_prod, .value = "postfix-expr", },
+        { symtype_stoken, .value = ":", },
+        { symtype_prod, .value = "assign-expr", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *objdef_empty(lalr_rule_params)
+{
+    int32_t production = hRule("object-notation");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "postfix-expr", },
+        { symtype_stoken, .value = "{", },
+        { symtype_stoken, .value = "}", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *objdef_some(lalr_rule_params)
+{
+    int32_t production = hRule("object-notation");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "objdef-start", },
+        { symtype_stoken, .value = "}", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *objdef_array(lalr_rule_params)
+{
+    int32_t production = hRule("object-notation");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "auto-index", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *array_piece_base(lalr_rule_params)
+{
+    int32_t production = hRule("auto-index-start-comma");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "postfix-expr", },
+        { symtype_stoken, .value = "[", },
+        { symtype_prod, .value = "assign-expr", },
+        { symtype_stoken, .value = ",", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *array_piece_genrule(lalr_rule_params)
+{
+    int32_t production = hRule("auto-index-start-comma");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "auto-index-start-comma", },
+        { symtype_prod, .value = "assign-expr", },
+        { symtype_stoken, .value = ",", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *array_complete(lalr_rule_params)
+{
+    int32_t production = hRule("auto-index");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "auto-index-start-comma", },
+        { symtype_stoken, .value = "]", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *array_streamline(lalr_rule_params)
+{
+    int32_t production = hRule("auto-index");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "auto-index-start-comma", },
+        { symtype_prod, .value = "assign-expr", },
+        { symtype_stoken, .value = "]", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
 void *entdecl_srcinc(lalr_rule_params)
 {
     int32_t production = hRule("entity-declaration");
@@ -2019,10 +2125,6 @@ lalr_rule_t cxing_grammar_rules[] = {
     TU_base,
     TU_genrule,
     ident_ident,
-    strlit_strlit,
-    strlit_rawlit,
-    strlit_strlitcat,
-    strlit_rawlitcat,
     const_true,
     const_false,
     const_null,
@@ -2171,6 +2273,18 @@ lalr_rule_t cxing_grammar_rules[] = {
     arglist_some,
     args_base,
     args_genrule,
+    objdefstart_comma,
+    objdefstart_nocomma,
+    objdefstartcomma_genrule,
+    objdefstartnocomma_base,
+    objdefstartnocomma_genrule,
+    objdef_empty,
+    objdef_some,
+    objdef_array,
+    array_piece_base,
+    array_piece_genrule,
+    array_complete,
+    array_streamline,
     entdecl_srcinc,
     entdecl_extern,
     entdecl_implicit,

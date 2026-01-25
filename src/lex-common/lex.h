@@ -95,4 +95,10 @@ lex_getc_base_t *lex_getc_init_from_fp(lex_getc_fp_t *ctx, FILE *fp);
 // To be implemented externally.
 typedef lex_token_t *(*token_shifter_t)(void *);
 
+// Added 2026-01-24: pre-processor chain.
+typedef struct {
+    token_shifter_t pp_shifter;
+    void *pp_context;
+} PP_Chain;
+
 #endif /* dcc_lex_h */

@@ -2,6 +2,7 @@
 
 #include <librematch.h>
 #include "langlex-cxing.h"
+#include "../pgm-cxing/expr.h"
 
 #define LEX_ENUM(e) { .enumerant = e, .str = #e },
 const struct lex_enum_strtab langlex_token_strtab[] = {
@@ -20,7 +21,7 @@ const struct lex_enum_strtab langlex_token_strtab[] = {
 
 #define IntSuffixOpt "u?"
 
-#define EscSeq "\\\\([\\\"\'?abfnrtv]|[0-7]{1,3}|o\\{[0-7]+\\}|x[0-9A-Fa-f]+|x\\{[0-9A-Fa-f]+\\})"
+#define EscSeq "\\\\([\\\"\'?abefnrtv]|[0-7]{1,3}|o\\{[0-7]+\\}|x[0-9A-Fa-f]+|x\\{[0-9A-Fa-f]+\\})"
 
 lex_elem_t LexElems[] = {
     { .pattern = "\'([^\\\']|"EscSeq")*\'",
@@ -35,6 +36,14 @@ lex_elem_t LexElems[] = {
       "return|break|continue|and|_Then|or|_Fallback|decl|"
       "if|else|elif|while|do|for|subr|method|this|_Include|extern",
       .cflags = LIBREG_EXTENDED, .completion = langlex_keyword },
+
+    { .pattern = "/\\*([!*]|\\*[^/])\\*/",
+      .cflags = LIBREG_EXTENDED,
+      .completion = langlex_comment },
+
+    { .pattern = "(#|//)[^\n]\n",
+      .cflags = LIBREG_EXTENDED,
+      .completion = langlex_comment },
 
     { .pattern = Identifier, .cflags = LIBREG_EXTENDED,
       .completion = langlex_identifier },
@@ -53,7 +62,7 @@ lex_elem_t LexElems[] = {
 
     { .pattern = DecFracLit"(e[-+]"DecDigitSeq")?",
       .cflags = LIBREG_ICASE|LIBREG_EXTENDED,
-      .completion = langlex_decfplit },
+       .completion = langlex_decfplit },
 
     { .pattern = DecDigitSeq"(e[-+]"DecDigitSeq")",
       .cflags = LIBREG_ICASE|LIBREG_EXTENDED,
@@ -75,3 +84,72 @@ lex_elem_t LexElems[] = {
 
     {},
 };
+
+lex_token_t *PP_StripComments_Cxing(pp_strip_comments_ctx *ctx)
+{
+    lex_token_t *ret;
+    while( true )
+    {
+        ret = RegexLexFromRope_Shift(&ctx->lexer);
+        if( !ret ) return NULL;
+
+        if( ret->completion == langlex_comment )
+        {
+            s2obj_release(ret->pobj);
+            continue;
+        }
+
+        return ret;
+    }
+}
+
+lex_token_t *PP_StrLitConcat_Cxing(pp_strlit_concat_ctx *ctx)
+{
+    lex_token_t *ret;
+    lex_token_t *cooked = NULL;
+
+    if( ctx->buffer )
+    {
+        ret = ctx->buffer;
+        ctx->buffer = NULL;
+        return ret;
+    }
+
+    ret = PP_StripComments_Cxing(&ctx->cmtstrip);
+    if( !ret ) return NULL;
+
+    while( ret->completion == langlex_strlit ||
+           ret->completion == langlex_rawlit )
+    {
+        if( !cooked )
+        {
+            cooked = lex_token_create(); // TODO 2026-01-25: handle error.
+            cooked->lineno = ret->lineno;
+            cooked->column = ret->column;
+            cooked->completion = langlex_str_cooked;
+        }
+
+        if( ret->completion == langlex_strlit )
+            StrLit_Unquote(cooked->str, ret->str);
+        else StrLit_CookRaw(cooked->str, ret->str);
+
+        s2obj_release(ret->pobj);
+
+        ret = PP_StripComments_Cxing(&ctx->cmtstrip);
+        if( !ret ) break;
+    }
+
+    if( cooked )
+    {
+        ctx->buffer = ret;
+        return cooked;
+    }
+    else return ret;
+}
+
+void CxingTokenizerInit(cxing_tokenizer *shifter, source_rope_t *rope)
+{
+    memset(shifter, 0, sizeof *shifter);
+    shifter->cmtstrip.lexer.regices = LexElems;
+    RegexLexFromRope_Init(&shifter->cmtstrip.lexer, rope);
+}

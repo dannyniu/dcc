@@ -37,6 +37,8 @@ extern struct value_nativeobj CxingPropName_copy;
 extern struct value_nativeobj CxingPropName_final;
 extern struct value_nativeobj CxingPropName_equals;
 extern struct value_nativeobj CxingPropName_cmpwith;
+extern struct value_nativeobj CxingPropName_InitSet;
+extern struct value_nativeobj CxingPropName_Proto;
 
 bool CxingRuntimeInit();
 void CxingRuntimeFinal();

@@ -4,7 +4,8 @@ optimize=debug
 testfunc()
 {
     #lldb \
-       time $exec ../tests/for-loop-test-01.cxing
+       #time $exec ../tests/for-loop-test-01.cxing
+       time $exec ../tests/hello-world-01.cxing
 }
 
 cd "$(dirname "$0")"
@@ -15,7 +16,9 @@ src_common="\
 lex-common/lex.c
 lex-common/rope.c
 ./../contrib/SafeTypes2/src/s2data.c
+./../contrib/SafeTypes2/src/s2dict.c
 ./../contrib/SafeTypes2/src/s2obj.c
+./../contrib/SafeTypes2/src/siphash.c
 ./../contrib/librematch/src/librematch.c
 ./../contrib/librematch/src/regcomp-brackets.c
 ./../contrib/librematch/src/regcomp-bre.c
@@ -35,6 +38,9 @@ srcset="Plain C for CXING"
 src="\
 langlex-cxing-check.c
 langlex-cxing.c
+pgm-cxing/expr-lex.c
+pgm-cxing/runtime.c
+pgm-cxing/langsem.c
 "
 
 tests_run

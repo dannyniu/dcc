@@ -107,4 +107,11 @@ struct value_nativeobj BitXorExpr(
 // are short-circuit, as such they're not suitable to be implemented
 // at here as functions that take already-evaluated operands.
 
+// -- miscellaneous lexicons. -- //
+
+uint64_t Radix64Literal(const char *x);
+int ChrLit_Unquote(const uint8_t **esc);
+s2data_t *StrLit_Unquote(s2data_t *base, s2data_t *lit);
+s2data_t *StrLit_CookRaw(s2data_t *base, s2data_t *lit);
+
 #endif /* cxing_expr_h */

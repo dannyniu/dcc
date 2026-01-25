@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
 vtokens = {
+    'langlex_comment'
+
+    'langlex_keyword',
     'langlex_identifier',
 
     'langlex_declit',
@@ -13,5 +16,6 @@ vtokens = {
     'langlex_charlit',
     'langlex_strlit',
     'langlex_rawlit',
+    'langlex_str_cooked',
     'langlex_punct',
 }
