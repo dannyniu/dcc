@@ -1,1 +1,3 @@
-This project provides a simple command-line interactie calculator.
+Danny's Compiler for CXING.
+
+Other stuff underway.

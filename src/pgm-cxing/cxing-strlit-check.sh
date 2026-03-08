@@ -1,4 +1,5 @@
 #!/bin/sh
+# <CXING-check003(2026-01-10)> #
 
 optimize=debug
 testfunc()
@@ -28,7 +29,7 @@ cflags_common="\
 
 arch_family=defaults
 srcset="Plain C"
-cflags="-D INTERCEPT_MEM_CALLS -fsanitize=address"
-ldflags="-fsanitize=address -lreadline"
+cflags="-D INTERCEPT_MEM_CALLS $sanitizers"
+ldflags="$sanitizers -lreadline"
 
 tests_run

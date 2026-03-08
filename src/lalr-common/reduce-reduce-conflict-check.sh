@@ -22,6 +22,7 @@ lalr-common/lalr.c
 lex-common/shifter.c
 lex-common/lex.c
 langlex/langlex-c.c
+infra/s2bools.c
 infra/strvec.c
 ./../contrib/SafeTypes2/src/s2data.c
 ./../contrib/SafeTypes2/src/s2obj.c

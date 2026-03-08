@@ -261,7 +261,9 @@ static int *OrderingOfObjects(
         else /* assume arithmetic values. */                    \
         {                                                       \
             if( !OrderingOfArithVal(a, b, &order) )             \
-                return Logic2ValueNativeObj(false);             \
+                return (struct value_nativeobj){                \
+                    .proper.p = NULL,                           \
+                    .type = (void *)&type_nativeobj_morgoth};   \
             else return Logic2ValueNativeObj(order CmpOp 0);    \
         }                                                       \
     }

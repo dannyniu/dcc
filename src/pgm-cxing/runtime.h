@@ -59,7 +59,7 @@ s2cxing_value_t *s2cxing_value_create(struct value_nativeobj val);
 typedef struct TYPE_NATIVEOBJ_STRUCT(1) type_nativeobj_struct_p0;
 typedef struct TYPE_NATIVEOBJ_STRUCT(7) type_nativeobj_struct_p6;
 typedef struct TYPE_NATIVEOBJ_STRUCT(8) type_nativeobj_struct_p7;
-typedef struct TYPE_NATIVEOBJ_STRUCT(9) type_nativeobj_struct_p8;
+typedef struct TYPE_NATIVEOBJ_STRUCT(10) type_nativeobj_struct_p9;
 
 // The "Morgoth" null.
 extern const type_nativeobj_struct_p0 type_nativeobj_morgoth;
@@ -72,13 +72,32 @@ extern const type_nativeobj_struct_p0 type_nativeobj_long;
 extern const type_nativeobj_struct_p0 type_nativeobj_ulong;
 extern const type_nativeobj_struct_p0 type_nativeobj_double;
 
+// Functions.
 extern const type_nativeobj_struct_p0 type_nativeobj_subr;
 extern const type_nativeobj_struct_p0 type_nativeobj_method;
 
-extern const type_nativeobj_struct_p8 type_nativeobj_s2impl_str;
+// Built-in objects.
+extern const type_nativeobj_struct_p9 type_nativeobj_s2impl_str;
 extern const type_nativeobj_struct_p6 type_nativeobj_s2impl_dict;
 
 struct value_nativeobj CxingImpl_s2Dict_Create(
     int argn, struct value_nativeobj args[]);
+
+// Table entry type for runtime and 3rd party libraries to
+// inject built-in definitions into the language environment,
+// by iterating over the table, and setting the definition
+// into a 'global' hash table.
+typedef struct {
+    const char *name;
+
+    // Among the 3 alternatives for 'global' built-ins:
+    // 1. use actual **atomic** reference counts,
+    // 2. not having the `__copy__` and the `__final__` methods,
+    // 3. do actual copies (over immutable internal data structures),
+    // Option 2 is preferred.
+    struct value_nativeobj val;
+} cxing_builtin_def_t;
+
+extern s2dict_t *CxingBuiltins;
 
 #endif /* cxing2c_runtime_h */

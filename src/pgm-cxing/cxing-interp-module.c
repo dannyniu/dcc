@@ -8,16 +8,19 @@
 
 #include "../lex-common/rope.h"
 #include "../infra/strvec.h"
+#include "../infra/s2bools.h"
 #include "../lalr-common/lalr.h"
 
 #include "runtime.h"
 #include "cxing-interp.h"
 #include <s2list.h>
 #include <stdio.h>
+#include "../pathutils/pathutils.h"
 
 static void cxing_module_final(cxing_module_t *module)
 {
     if( module->filename ) free(module->filename);
+    if( module->oncehad ) s2obj_release(module->oncehad->pobj);
     if( module->entities ) s2obj_release(module->entities->pobj);
     if( module->linked ) s2obj_release(module->linked->pobj);
 
@@ -83,8 +86,8 @@ static bool CheckFuncDefConflict(
         if( entRule(de->terms[3].production) == stmt_brace )
         {
             CxingDebug("[CheckFuncDefConflict]: Redefinition of "
-                       "function '%s' at line %d column %d\n",
-                       ss->str, ss->lineno, ss->column);
+                       "function `%s` at line %d column %d\n",
+                       s2data_weakmap(ss->str), ss->lineno, ss->column);
             return false;
         }
     }
@@ -94,8 +97,8 @@ static bool CheckFuncDefConflict(
     {
         CxingDebug("[CheckFuncDefConflict]: A function cannot be "
                    "both subroutine and method at the same time: "
-                   "'%s' at line %d column %d\n",
-                   ss->str, ss->lineno, ss->column);
+                   "`%s` at line %d column %d\n",
+                   s2data_weakmap(ss->str), ss->lineno, ss->column);
         return false;
     }
 
@@ -103,8 +106,8 @@ static bool CheckFuncDefConflict(
         entRule(de->terms[3].production) != stmt_emptystmt )
     {
         CxingDebug("[CheckFuncDefConflict]: Malformed function body: "
-                   "'%s' at line %d column %d\n",
-                   ss->str, ss->lineno, ss->column);
+                   "`%s` at line %d column %d\n",
+                   s2data_weakmap(ss->str), ss->lineno, ss->column);
         return false;
     }
 
@@ -113,18 +116,43 @@ static bool CheckFuncDefConflict(
     {
         CxingDebug("[CheckFuncDefConflict]: A previously undiagnosed "
                    "malformed function body: "
-                   "'%s' at line %d column %d\n",
-                   ss->str, ss->lineno, ss->column);
+                   "`%s` at line %d column %d\n",
+                   s2data_weakmap(ss->str), ss->lineno, ss->column);
         return false;
     }
 
     return true;
 }
 
+static bool PopulateModule(
+    cxing_module_t *module, const char *restrict TUFilePath, s2data_t *pathkey);
+
+#define IfClause_AssertGetterSuccess                                    \
+    if( subret == s2_access_error ) {                                   \
+        CxingFatal(                                                     \
+            "[ProcessTU] Runtime getter error occured in \"%s\":%d\n",  \
+            __FILE__, __LINE__);                                        \
+        ret = cont = false; continue; }
+
+#define IfClause_AssertSetterSuccess                                    \
+    if( subret != s2_access_success ) {                                 \
+        CxingFatal(                                                     \
+            "[ProcessTU] Runtime setter error occured in \"%s\":%d\n",  \
+            __FILE__, __LINE__);                                        \
+        ret = cont = false; continue; }
+
+#define IfClause_AssertCreateSuccess(expr)                              \
+    if( !(expr) ) {                                                     \
+        CxingFatal(                                                     \
+            "[ProcessTU] Failed to allocate memory at \"%s\":%d\n",     \
+            __FILE__, __LINE__);                                        \
+        ret = cont = false; continue; }
+
 static bool ProcessTU(
     cxing_module_t *restrict module,
     lalr_stack_t *restrict parsed,
-    long *func_defs_cnt)
+    long *restrict func_defs_cnt,
+    s2data_t *restrict name_self)
 {
     lalr_prod_t *de; // the definition.
     lalr_prod_t *fe; // subject to release.
@@ -179,15 +207,9 @@ static bool ProcessTU(
             continue;
         }
 
-        if( subret == s2_access_error )
-        {
-            CxingFatal("[ProcessTU]: Unable to shift entity declaration(s) "
-                       "from the buffer list.");
-            ret = cont = false;
-            continue;
-        }
+        IfClause_AssertGetterSuccess;
 
-        if( entRule(de) == funcdecl_subr ||
+        if( entRule(de) == funcdecl_subr || //>RULEIMPL<//
             entRule(de) == funcdecl_method )
         {
             // no linkage specifier.
@@ -195,13 +217,7 @@ static bool ProcessTU(
             ss = de->terms[1].production->terms[0].terminal;
             subret = s2dict_get_T(lalr_prod_t)(module->entities, ss->str, &se);
 
-            if( subret == s2_access_error )
-            {
-                CxingFatal(
-                    "[ProcessTU]: Module object internal error 01!\n");
-                ret = cont = false;
-                continue;
-            }
+            IfClause_AssertGetterSuccess
 
             else if( subret == s2_access_nullval )
             {
@@ -210,13 +226,7 @@ static bool ProcessTU(
                 ++ *func_defs_cnt;
                 subret = s2dict_set(module->entities, ss->str,
                                     de->pobj, s2_setter_kept);
-                if( subret != s2_access_success )
-                {
-                    CxingFatal(
-                        "[ProcessTU]: Unable to remember entity 01!\n");
-                    ret = cont = false;
-                    continue;
-                }
+                IfClause_AssertSetterSuccess;
 
                 continue;
             }
@@ -243,13 +253,7 @@ static bool ProcessTU(
                 ++ *func_defs_cnt;
                 subret = s2dict_set(module->entities, ss->str,
                                     de->pobj, s2_setter_kept);
-                if( subret != s2_access_success )
-                {
-                    CxingFatal(
-                        "[ProcessTU]: Unable to remember entity 02!\n");
-                    ret = cont = false;
-                    continue;
-                }
+                IfClause_AssertSetterSuccess;
             }
 
             continue;
@@ -268,13 +272,7 @@ static bool ProcessTU(
             ss = de->terms[1].production->terms[0].terminal;
             subret = s2dict_get_T(lalr_prod_t)(module->entities, ss->str, &se);
 
-            if( subret == s2_access_error )
-            {
-                CxingFatal(
-                    "[ProcessTU]: Module object internal error 02!\n");
-                ret = cont = false;
-                continue;
-            }
+            IfClause_AssertGetterSuccess
 
             else if( subret == s2_access_nullval )
             {
@@ -293,13 +291,7 @@ static bool ProcessTU(
                 ++ *func_defs_cnt;
                 subret = s2dict_set(module->entities, ss->str,
                                     de->pobj, s2_setter_kept);
-                if( subret != s2_access_success )
-                {
-                    CxingFatal(
-                        "[ProcessTU]: Unable to remember entity 03!\n");
-                    ret = cont = false;
-                    continue;
-                }
+                IfClause_AssertSetterSuccess;
 
                 continue;
             }
@@ -332,19 +324,13 @@ static bool ProcessTU(
                     continue;
                 }
                 ((cxing_syminfo_t *)de->value)->flags |=
-                module_syminfo_extern;
+                    module_syminfo_extern;
 
                 // remembering the definition.
                 ++ *func_defs_cnt;
                 subret = s2dict_set(module->entities, ss->str,
                                     de->pobj, s2_setter_kept);
-                if( subret != s2_access_success )
-                {
-                    CxingFatal(
-                        "[ProcessTU]: Unable to remember entity 04!\n");
-                    ret = cont = false;
-                    continue;
-                }
+                IfClause_AssertSetterSuccess;
             }
 
             else
@@ -363,15 +349,83 @@ static bool ProcessTU(
                     continue;
                 }
                 ((cxing_syminfo_t *)se->value)->flags |=
-                module_syminfo_extern;
+                    module_syminfo_extern;
             }
 
             continue;
         }
 
+        else if( entRule(de) == entdecl_constdef )
+        {
+            // constant definition.
+
+            ss = de->terms[1].production->terms[0].terminal;
+            subret = s2dict_get_T(lalr_prod_t)(module->entities, ss->str, &se);
+
+            IfClause_AssertGetterSuccess
+
+            else if( subret == s2_access_nullval )
+            {
+                subret = s2dict_set(module->entities, ss->str,
+                                    de->pobj, s2_setter_kept);
+                IfClause_AssertSetterSuccess;
+
+                continue;
+            }
+
+            assert( subret == s2_access_success );
+
+            // Conflicting Definition of a Constant.
+
+            CxingSemanticErr(
+                module, "[ProcessTU]: Redefinition of constant: "
+                "`%s` at line %d column %d\n",
+                s2data_weakmap(ss->str), ss->lineno, ss->column);
+
+            ret = cont = false;
+            continue;
+        }
+
+        else if( entRule(de) == entdecl_srcinc )
+        {
+            char *nominal = NULL; // ought to be const-qualified.
+            char *incpath = NULL; // ought to be const-qualified.
+            ss = de->terms[1].terminal;
+            nominal = s2data_weakmap(ss->str);
+
+            if( PathCountSlashes(nominal) )
+            {
+                incpath = PathReplaceBasename(
+                    s2data_weakmap(name_self), nominal);
+            }
+            else
+            {
+                CxingFatal("Predefined paths hadn't been implemented yet.\n");
+                abort();
+            }
+
+            if( !(incpath ?
+                  PopulateModule(module, incpath, NULL) :
+                  PopulateModule(module, NULL, ss->str)) )
+            {
+                if( incpath ) (free)(incpath);
+                CxingDebug("[ProcessTU]: Unable to process "
+                           "source code file for inclusion: \"%s\".\n",
+                           (const char *)s2data_weakmap(ss->str));
+                ret = cont = false;
+                continue;
+            }
+
+            // `incpath` was allocated from a TU without mem-intercept.
+            // Parenthesize it to avoid relevant macro-expandsion.
+            if( incpath ) (free)(incpath);
+        }
+
         else assert( 0 );
 
-        // 2026-01-10 TODO: '_Include' and others.
+        // 2026-03-01 TODO:
+        // '_Include' (done 2026-03-08) and
+        // '_Load' (yet todo 2026-03-08).
     }
 
     s2obj_release(tu->pobj);
@@ -449,19 +503,57 @@ static bool CreateCallStubs(cxing_module_t *module, long func_defs_cnt)
         module->CallStubs, func_defs_cnt, cxing_callxfer_bridge.sz_callstub);
 }
 
-cxing_module_t *CXOpen(const char *restrict CxingModulePath)
+static bool PopulateModule(
+    cxing_module_t *module, const char *restrict TUFilePath, s2data_t *pathkey)
 {
     int subret = 0;
     long func_defs_cnt = 0;
 
-    cxing_module_t *ret = NULL;
     lex_getc_fp_t getcx;
     source_rope_t *rope = NULL;
     cxing_tokenizer tokenizer;
 
     lalr_stack_t *parsed = NULL;
 
-    lex_getc_init_from_fp(&getcx, fopen(CxingModulePath, "r"));
+    s2data_t *dummy;
+    if( !pathkey ) pathkey = s2data_from_str(TUFilePath);
+
+    subret = s2dict_get_T(s2data_t)(module->oncehad, pathkey, &dummy);
+    if( subret == s2_access_error )
+    {
+        CxingFatal("[PopulateModule]: Error while checking for "
+                   "already-included source code files.\n");
+        goto cleanup;
+    }
+    else if( subret == s2_access_nullval )
+    {
+        subret = s2dict_set(
+            module->oncehad, pathkey,
+            s2_true, s2_setter_kept);
+    }
+    else
+    {
+        assert( subret == s2_access_success );
+
+        if( (s2obj_t *)dummy == s2_true )
+        {
+            return true;
+        }
+        else
+        {
+            CxingWarning("[PopulateModule]: Unexpected value found "
+                         "in bookkeeping of already-included files.\n");
+        }
+    }
+
+    if( subret != s2_access_success )
+    {
+        CxingFatal("[PopulateModule]: Error while remembering "
+                   "already-included source code files.\n");
+        goto cleanup;
+    }
+
+    lex_getc_init_from_fp(&getcx, fopen(TUFilePath, "r"));
     if( !getcx.fp ) goto cleanup;
 
     rope = CreateRopeFromGetc(&getcx.base, 0);
@@ -475,13 +567,42 @@ cxing_module_t *CXOpen(const char *restrict CxingModulePath)
 
     if( subret != 0 )
     {
-        CxingFatal("[CXOpen]: Parsing "
+        CxingFatal("[PopulateModule]: Parsing "
                    "of source code file %s "
                    "encountered error, "
                    "return value was: %d.\n",
-                   CxingModulePath, subret);
+                   TUFilePath, subret);
         goto cleanup;
     }
+
+    if( !ProcessTU(module, parsed, &func_defs_cnt, pathkey) )
+    {
+        CxingFatal("[PopulateModule]: Processing of "
+                   "source code file: %s failed.\n",
+                   TUFilePath);
+        goto cleanup;
+    }
+    if( TUFilePath ) s2obj_release(pathkey->pobj);
+
+    module->func_defs_cnt += func_defs_cnt;
+
+    s2obj_release(parsed->pobj);
+    s2obj_release(rope->pobj);
+    fclose(getcx.fp);
+    return module;
+
+cleanup:
+    if( parsed ) s2obj_release(parsed->pobj);
+    if( rope ) s2obj_release(rope->pobj);
+    if( getcx.fp ) fclose(getcx.fp);
+    if( TUFilePath ) s2obj_release(pathkey->pobj);
+
+    return false;
+}
+
+cxing_module_t *CXOpen(const char *restrict CxingModulePath)
+{
+    cxing_module_t *ret = NULL;
 
     if( !(ret = cxing_module_create(CxingModulePath)) )
     {
@@ -491,39 +612,36 @@ cxing_module_t *CXOpen(const char *restrict CxingModulePath)
         goto cleanup;
     }
 
-    if( !ProcessTU(ret, parsed, &func_defs_cnt) )
+    if( !(ret->oncehad = s2dict_create()) )
     {
-        CxingFatal("[CXOpen]: Processing of "
-                   "source code file: %s failed.\n",
-                   CxingModulePath);
+        CxingFatal("[CXOpen]: Filename hashtable failed to create "
+                   "thus unable to remember already-included files.\n");
         goto cleanup;
     }
 
-    ret->func_defs_cnt = func_defs_cnt;
+    if( !PopulateModule(ret, CxingModulePath, NULL) )
+    {
+        goto cleanup;
+    }
 
-    if( !CreateCallStubs(ret, func_defs_cnt) )
+    if( !CreateCallStubs(ret, ret->func_defs_cnt) )
     {
         CxingFatal("[CXOpen]: Failed to create function call stubs "
                    "for source code file %s.\n", CxingModulePath);
         goto cleanup;
     }
 
-    s2obj_release(parsed->pobj);
-    s2obj_release(rope->pobj);
-    fclose(getcx.fp);
     return ret;
 
 cleanup:
     lalr_parse_accel_cache_clear();
 
-    if( parsed ) s2obj_release(parsed->pobj);
-    if( rope ) s2obj_release(rope->pobj);
-    if( getcx.fp ) fclose(getcx.fp);
-
+    if( ret ) s2obj_release(ret->pobj);
     return ret;
 }
 
-void CxingModuleDump(cxing_module_t *restrict module)
+bool CxingModuleInspectDefinitions(
+    cxing_module_t *restrict module, FILE *dumper)
 {
     int i;
     s2iter_t *ei;
@@ -536,18 +654,36 @@ void CxingModuleDump(cxing_module_t *restrict module)
         lalr_prod_t *ent = (lalr_prod_t *)ei->value;
         s2data_t *ss = ei->key;
 
-        printf("ent: %p, ss: %p.\n", ent, ss);
-        printf("Defintion for '%s' ",
-               (const char *)s2data_weakmap(ss));
-
-        if( ent->value )
+        if( dumper )
         {
-            printf("(flags: %d)\n",
-                   ((cxing_syminfo_t *)ent->value)->flags);
-        }
-        else printf("(flags: -)\n");
+            fprintf(dumper, "ent: %p, ss: %p.\n", ent, ss);
+            fprintf(dumper, "Defintion for '%s' ",
+                    (const char *)s2data_weakmap(ss));
+            if( ent->value )
+            {
+                fprintf(dumper, "(flags: %d)\n",
+                        ((cxing_syminfo_t *)ent->value)->flags);
+            }
+            else fprintf(dumper, "(flags: -)\n");
 
-        print_prod(ent, 0, NS_RULES);
+            fprint_prod(dumper, ent, 0, NS_RULES);
+        }
+        else
+        {
+            // wasn't going to dump the definitions.
+
+            if( entRule(ent) == funcdecl_subr ||
+                entRule(ent) == funcdecl_method )
+            {
+                CxingFuncEval(
+                    module,
+                    ent->terms[3].production,
+                    ent->terms[2].production,
+                    0, NULL, cxing_func_eval_mode_dryrun);
+            }
+
+            // 2026-02-07 TODO: other kinds of definitions/declarations.
+        }
     }
 
 #if INTERCEPT_MEM_CALLS
@@ -558,6 +694,16 @@ void CxingModuleDump(cxing_module_t *restrict module)
 #else
     ei->final(ei);
 #endif /* INTERCEPT_MEM_CALLS */
+
+    return module->error_count == 0;
+}
+
+void CxingModuleDump(cxing_module_t *restrict module)
+{
+    int i;
+    s2iter_t *ei;
+
+    CxingModuleInspectDefinitions(module, stdout);
 
     ei = s2obj_iter_create(module->linked->pobj);
     assert( ei );
@@ -573,15 +719,14 @@ void CxingModuleDump(cxing_module_t *restrict module)
                (int)ext->cxing_value.type->typeid);
     }
 
-    #if INTERCEPT_MEM_CALLS
+#if INTERCEPT_MEM_CALLS
     // s2dict assigned the non-macro implementation of `free`
     // to the iterator finalizer, which didn't intercept
     // memory allocations.
     free(ei);
-    #else
+#else
     ei->final(ei);
-    #endif /* INTERCEPT_MEM_CALLS */
-
+#endif /* INTERCEPT_MEM_CALLS */
 }
 
 void *CXSym(cxing_module_t *restrict module, const char *restrict sym)
@@ -610,7 +755,7 @@ void *CXSym(cxing_module_t *restrict module, const char *restrict sym)
 bool CXExpose(
     cxing_module_t *restrict module,
     const char *restrict name,
-    struct value_nativeobj linkee)
+    struct value_nativeobj referent)
 {
     int subret;
     s2data_t *k;
@@ -624,10 +769,8 @@ bool CXExpose(
         return false;
     }
 
-    // 2026-01-17 (TODO: come back later):
     // This copy is per spec section "Automatic Resource Management".
-    // 2026-01-25 TODO: @dannyniu intends linkee to mean something else.
-    v = s2cxing_value_create(ValueCopy(linkee));
+    v = s2cxing_value_create(ValueCopy(referent));
     if( !v )
     {
         s2obj_release(k->pobj);

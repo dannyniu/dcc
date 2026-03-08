@@ -12,13 +12,15 @@ int main(int argc, char *argv[])
     cxing_call_proto func = {};
     struct value_nativeobj funcarg;
     struct value_nativeobj funcret;
-    
+
 #if INTERCEPT_MEM_CALLS
     long acq_before = 0;
     long rel_before = 0;
     long acq_after = 0;
     long rel_after = 0;
 #endif /* INTERCEPT_MEM_CALLS */
+
+    //trace = 1;
 
     if( argc < 2 )
     {
@@ -35,19 +37,24 @@ int main(int argc, char *argv[])
             .type = (const void *)&type_nativeobj_subr,
         });
     CxingModuleDump(module);
+    if( !CxingModuleInspectDefinitions(module, NULL) )
+    {
+        printf("Program code contains error, exiting.\n");
+        exit(1);
+    }
 
     func = CXSym(module, "found");
     printf("args: %p, func: %p, module: %p.\n", &funcarg, func, module);
-    
+
     funcret = func(0, &funcarg);
     printf("Execution of function `found` returned: %lld.\n",
            funcret.proper.l);
-    
+
     s2obj_release(module->pobj);
 
     CxingRuntimeFinal();
     CXParserFinalCommon();
-    
+
     subret = EXIT_SUCCESS;
 
 #if INTERCEPT_MEM_CALLS

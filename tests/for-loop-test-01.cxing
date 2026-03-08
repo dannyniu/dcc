@@ -6,7 +6,7 @@ subr main(arg0, arg1, arg2, arg3)
     for(;0;) continue;
     for(;x;x=0) continue;
     for(x=5;;) break;
-    for(x=3;; x=0) continue;
+    for(x=3;; x=0) if( !x ) break;
     for(x=2;x;x=x-1);
     for(decl c=0;; c=3) break;
     for(decl c=0; c; ) continue;

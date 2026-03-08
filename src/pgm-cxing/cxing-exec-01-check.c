@@ -156,6 +156,7 @@ int main(int argc, char *argv[])
         printf("and is a floating-point number: %g\n", fret.proper.f);
     }
     else printf("and its hex is: %llx\n", fret.proper.u);
+    ValueDestroy(fret);
 
     s2obj_release(parsed->pobj);
     CxingRuntimeFinal();

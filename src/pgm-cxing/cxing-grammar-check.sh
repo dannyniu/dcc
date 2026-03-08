@@ -1,4 +1,5 @@
 #!/bin/sh
+# <CXING-check001(2025-11-29)> #
 
 #CC='clang-mp-21'
 #cflags_common='-fprofile-instr-generate'

@@ -4,5 +4,6 @@ langlex/langlex-c.c
 lex-common/lex.c
 lex-common/rope.c
 infra/strvec.c
+infra/s2bools.c
 $src_proj
 "

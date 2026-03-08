@@ -61,7 +61,13 @@ struct lalr_production {
     // 2025-01-30:
     // Semantics are evaluated during reduce operations during parse,
     // and are assigned to `value`.
+    // 2026-03-04: ?? what was with the above comment ??
     s2obj_t *value;
+
+    // 2026-03-04:
+    // Enabling traversal of certain parts of the AST tree
+    // without pushing on the interpreter stack.
+    lalr_prod_t *parent;
 };
 
 struct lalr_term {

@@ -15,7 +15,10 @@ lalr-common/lalr.c
 langlex/langlex-cxing.c
 lex-common/lex.c
 lex-common/rope.c
+infra/s2bools.c
 infra/strvec.c
+infra/rfdict.c
+pathutils/pathutils.c
 ./../contrib/SafeTypes2/src/s2data.c
 ./../contrib/SafeTypes2/src/s2dict.c
 ./../contrib/SafeTypes2/src/s2list.c
@@ -28,5 +31,7 @@ infra/strvec.c
 ./../contrib/librematch/src/regcomp-ere.c
 ./../contrib/librematch/src/regcomp-interval.c
 "
+
+sanitizers='-fsanitize=address'
 
 if [ X"$(uname -s)" = XLinux ] ; then ldflags_common=-lm ; fi

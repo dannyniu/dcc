@@ -2,17 +2,20 @@ subr found()
 {
     decl x = dict();
     func2(x);
-    x.v += 1;
+    x["v"] += 1;
     func3(x);
+    iden();
     return x.w;
 }
 
 subr func2(x)
 {
-    x.v = 5;
+    x.v = 5 + null;
 }
 
 subr func3(x)
 {
-    x.w = x.v * 2;
+    x["w"] = x.v * 2;
 }
+
+subr iden(){ 0; }

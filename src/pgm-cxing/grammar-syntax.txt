@@ -114,6 +114,7 @@ bit-or % bitor
 logic-and % logicand
 : bit-or % degenerate
 | logic-and "&&" bit-or % logicand
+| logic-and "&?" bit-or % then
 ;
 
 logic-or % logicor
@@ -322,7 +323,9 @@ auto-index % array
 ;
 
 entity-declaration % entdecl
-: "_Include" langlex_strlit ";" % srcinc
+: "_Include" langlex_str_cooked ";" % srcinc
+| "_Load" langlex_str_cooked ";" % soload
+| "const" identifier constant ";" % constdef
 | "extern" function-declaration % extern
 | function-declaration % implicit
 ;

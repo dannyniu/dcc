@@ -142,6 +142,8 @@ lex_token_t *RegexLexFromRope_Shift(RegexLexContext *ctx)
                     1, &matched, ctx->regices[i].eflags);
                 if( subret == 0 && matched.rm_so == 0 )
                 {
+                    // Lex elements earlier in the list have
+                    // higher precedence, so don't use `>=`.
                     if( matched.rm_eo > best )
                     {
                         best = matched.rm_eo;
@@ -150,9 +152,7 @@ lex_token_t *RegexLexFromRope_Shift(RegexLexContext *ctx)
                 }
             }
 
-            // Lex elements earlier in the list have
-            // higher precedence, so don't use `>=`.
-            if( record > 0 )
+            if( record >= 0 )
             {
                 i = record;
                 matched.rm_so = 0;

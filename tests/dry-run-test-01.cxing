@@ -1,0 +1,25 @@
+subr foo(a, b)
+{
+    x = c+d;
+    for(y=0; y<10; y++)
+    {
+        if( nodef(x, y) > 3 )
+            break bar;
+        while( true )
+        {
+            for(; placeholder; )
+            {
+                break;
+
+                for(decl v; ; u++);
+            }
+
+            for(decl v; w>0; ) { for(;;) break; w = 5; }
+            out: for(iter++;;) { for(;;level--) break out; }
+            done: for(; False; None) { if( Nihao ) continue done; else break; }
+        }
+    }
+
+    retrospect(g, h, i, j, k);
+    return dict();
+}

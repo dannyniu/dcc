@@ -34,14 +34,15 @@ lex_elem_t LexElems[] = {
     { .pattern =
       "true|false|null|"
       "return|break|continue|and|_Then|or|_Fallback|decl|"
-      "if|else|elif|while|do|for|subr|method|this|_Include|extern",
+      "if|else|elif|while|do|for|subr|method|this|"
+      "_Include|_Load|extern|const",
       .cflags = LIBREG_EXTENDED, .completion = langlex_keyword },
 
     { .pattern = "/\\*([!*]|\\*[^/])\\*/",
       .cflags = LIBREG_EXTENDED,
       .completion = langlex_comment },
 
-    { .pattern = "(#|//)[^\n]\n",
+    { .pattern = "(#|//)[^\n]*(\n|$)",
       .cflags = LIBREG_EXTENDED,
       .completion = langlex_comment },
 
@@ -78,7 +79,7 @@ lex_elem_t LexElems[] = {
 
     { .pattern =
       "(<<|>>>?|[-+*/%&^|])=|=[?]|"
-      "[+][+]|--|<<|>>>?|[<>=!]=|&&|[|][|]|[?][?]|"
+      "[+][+]|--|<<|>>>?|[<>=!]=|&&|[|][|]|[&?][?]|"
       "[[.].][.[.](){}.&*+[.-.]~!/%<>\\^|?:;=,#]",
       .cflags = LIBREG_EXTENDED, .completion = langlex_punct },
 

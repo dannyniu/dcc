@@ -1,1 +1,2 @@
-subr found(){ return 19491001; }
+const foundingyear 19491001;
+subr found(){ return foundingyear; }

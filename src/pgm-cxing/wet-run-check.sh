@@ -1,4 +1,5 @@
 #!/bin/sh
+# <CXING-check002(2025-12-30)> #
 
 optimize=debug
 testfunc()
@@ -17,7 +18,6 @@ unitest_sh=../unitest.sh
 src="\
 cxing-exec-01-check.c
 "
-#src="cxing-grammar-check.c"
 
 cflags_common="\
 -D SAFETYPES2_BUILD_WITHOUT_GC
@@ -27,7 +27,7 @@ cflags_common="\
 
 arch_family=defaults
 srcset="Plain C"
-cflags="-D INTERCEPT_MEM_CALLS -fsanitize=address"
-ldflags="-fsanitize=address"
+cflags="-D INTERCEPT_MEM_CALLS $sanitizers"
+ldflags="$sanitizers"
 
 tests_run

@@ -1,8 +1,15 @@
 /* DannyNiu/NJF, 2025-03-29. Public Domain. */
 
+#include <time.h>
+
 // Checks the consistency of a grammar by parsing something using it.
 
+#if !defined(LexerDecl) || !defined(LexerInit)
 #include "../lex-common/rope.h"
+#define LexerDecl RegexLexContext lexer
+#define LexerInit rope = CreateRopeFromGetc(&expr_getc.base, 0)
+#endif // !defined(LexerDecl) || !defined(LexerInit)
+
 #if !defined(NS_RULES) || !defined(GRAMMAR_RULES) || !defined(var_lex_elems)
 // 2025-03-29:
 // included by parent source.
@@ -13,7 +20,7 @@
 static strvec_t *NS_RULES = NULL;
 static lalr_rule_t *GRAMMAR_RULES = NULL;
 static lex_elem_t *var_lex_elems = NULL;
-#endif // !defined(NS_RULES) || !defined(GRAMMAR_RULES)
+#endif // !defined(NS_RULES) || !defined(GRAMMAR_RULES) || !defined(var_lex_elems)
 
 #if false // no need to link with readline
 #if __has_include(<readline/readline.h>)
@@ -77,12 +84,14 @@ int main(int argc, char *argv[])
         lex_getc_str_t fromstr;
     } expr_getc;
     source_rope_t *rope;
-    RegexLexContext lexer;
+    LexerDecl;
 
     lalr_stack_t *parsed;
     lalr_term_t *te;
     int indentlevel = 0;
     int subret = 0, i;
+
+    clock_t perfcounter;
 
 #if INTERCEPT_MEM_CALLS
     long acq_before = 0;
@@ -102,7 +111,7 @@ int main(int argc, char *argv[])
         lex_getc_init_from_str(&expr_getc.fromstr, argv[2]);
     }
     rope = CreateRopeFromGetc(&expr_getc.base, 0);
-    RegexLexFromRope_Init(&lexer, rope);
+    LexerInit;
 
     for(i=0; var_lex_elems[i].pattern; i++)
     {
@@ -123,9 +132,11 @@ int main(int argc, char *argv[])
 
     NS_RULES = strvec_create();
 
+    perfcounter = clock();
     i = lalr_parse(&parsed, GRAMMAR_RULES, NULL, NS_RULES,
                (token_shifter_t)RegexLexFromRope_Shift, (void *)&lexer);
-    printf("parsing returned: %d, stack:\n", i);
+    printf("parsing returned: %d after %ld clock cycles, stack:\n",
+           i, clock() - perfcounter);
     s2obj_release(rope->pobj);
 
     te = parsed->bottom;

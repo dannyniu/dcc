@@ -13,6 +13,13 @@ struct value_nativeobj CxingPropName_cmpwith;
 struct value_nativeobj CxingPropName_InitSet;
 struct value_nativeobj CxingPropName_Proto;
 
+struct value_nativeobj CxingPropName_Len;
+struct value_nativeobj CxingPropName_Trunc;
+struct value_nativeobj CxingPropName_Putc;
+struct value_nativeobj CxingPropName_Puts;
+struct value_nativeobj CxingPropName_Putfin;
+struct value_nativeobj CxingPropName_Map;
+
 struct {
     const char *istr;
     s2data_t *pdat;
@@ -24,88 +31,16 @@ struct {
     { .istr = "cmpwith", .pvar = &CxingPropName_cmpwith },
     { .istr = "__initset__", .pvar = &CxingPropName_InitSet },
     { .istr = "__proto__", .pvar = &CxingPropName_Proto },
+
+    { .istr = "len", .pvar = &CxingPropName_Len },
+    { .istr = "trunc", .pvar = &CxingPropName_Trunc },
+    { .istr = "putc", .pvar = &CxingPropName_Putc },
+    { .istr = "puts", .pvar = &CxingPropName_Puts },
+    { .istr = "putfin", .pvar = &CxingPropName_Putfin },
+    { .istr = "map", .pvar = &CxingPropName_Map },
+
     {0},
 };
-
-bool CxingRuntimeInit()
-{
-    FILE *csprng;
-    uint8_t seed[16] = {0};
-    bool ret = true;
-    int i;
-
-    //
-    // Initialize seed for SipHash.
-
-    csprng = fopen("/dev/urandom", "rb");
-    if( csprng )
-    {
-        fread(seed, 1, sizeof(seed), csprng);
-        fclose(csprng);
-        if( ferror(csprng) )
-        {
-            CxingWarning("IO error when reading CSPRNG for seeding SipHash.");
-        }
-        siphash_setkey(seed, sizeof(seed));
-    }
-    else
-    {
-#ifdef _WIN32
-        unsigned int buf; // Eventhough we know the size of int on windows.
-        size_t t = 0;
-        while( t < sizeof(seed) )
-        {
-            rand_s(&buf);
-            seed[t++] = buf;
-        }
-#else // Not Win32 platform.
-        CxingWarning("IO error when opening CSPRNG for seeding SipHash.");
-#endif // _WIN32
-    }
-
-    //
-    // Initialize value native objects for string constants.
-
-    for(i=0; CxingPropNames[i].istr; i++)
-    {
-        CxingPropNames[i].pdat = s2data_from_str(CxingPropNames[i].istr);
-        if( !CxingPropNames[i].istr )
-        {
-            CxingFatal("String constant '%s' failed to allocate!",
-                       CxingPropNames[i].istr);
-            ret = false;
-            goto strings_dealloc;
-        }
-
-        CxingPropNames[i].pvar->proper.p = CxingPropNames[i].pdat;
-        CxingPropNames[i].pvar->type =
-            (const void *)&type_nativeobj_s2impl_str;
-    }
-
-    return ret;
-
-strings_dealloc:
-    while( i --> 0 )
-    {
-        s2obj_release(CxingPropNames[i].pdat->pobj);
-    }
-
-    return ret;
-}
-
-void CxingRuntimeFinal()
-{
-    int i;
-    for(i=0; CxingPropNames[i].istr; i++)
-    {
-        if( CxingPropNames[i].pdat )
-        {
-            s2obj_release(CxingPropNames[i].pdat->pobj);
-            CxingPropNames[i].pdat = NULL;
-        }
-    }
-
-}
 
 void CxingDebug(const char *msg, ...)
 {
@@ -185,10 +120,18 @@ Cxing_s2Type_MethodImpl(s2Dict, Unset);
 
 Cxing_s2Type_MethodImpl(s2Data, Copy);
 Cxing_s2Type_MethodImpl(s2Data, Final);
+Cxing_s2Type_MethodImpl(s2Data, Len);
+Cxing_s2Type_MethodImpl(s2Data, Trunc);
+Cxing_s2Type_MethodImpl(s2Data, Putc);
+Cxing_s2Type_MethodImpl(s2Data, Puts);
+Cxing_s2Type_MethodImpl(s2Data, Putfin);
+Cxing_s2Type_MethodImpl(s2Data, Map);
+Cxing_s2Type_MethodImpl(s2Data, CmpWith);
+Cxing_s2Type_MethodImpl(s2Data, Equals);
 
 const type_nativeobj_struct_p6 type_nativeobj_s2impl_dict = {
     .typeid = valtyp_obj,
-    .n_entries = 5, // Will be 7 (or bigger) during release engineering,
+    .n_entries = 5,
     .static_members = {
         { .name = "__get__", .member = &CxingValue_s2Dict_Get },
         { .name = "__set__", .member = &CxingValue_s2Dict_Set },
@@ -198,12 +141,20 @@ const type_nativeobj_struct_p6 type_nativeobj_s2impl_dict = {
     },
 };
 
-const type_nativeobj_struct_p8 type_nativeobj_s2impl_str = {
+const type_nativeobj_struct_p9 type_nativeobj_s2impl_str = {
     .typeid = valtyp_obj,
-    .n_entries = 2, // Will be 8 (or bigger) during release engineering,
+    .n_entries = 8, // Will be 8 (or bigger) during release engineering,
     .static_members = {
         { .name = "__copy__", .member = &CxingValue_s2Data_Copy },
         { .name = "__final__", .member = &CxingValue_s2Data_Final },
+        { .name = "len", .member = &CxingValue_s2Data_Len },
+        { .name = "trunc", .member = &CxingValue_s2Data_Trunc },
+        { .name = "putc", .member = &CxingValue_s2Data_Putc },
+        { .name = "puts", .member = &CxingValue_s2Data_Puts },
+        { .name = "putfin", .member = &CxingValue_s2Data_Putfin },
+        { .name = "map", .member = &CxingValue_s2Data_Map },
+        { .name = "equals", .member = &CxingValue_s2Data_Equals },
+        { .name = "cmpwith", .member = &CxingValue_s2Data_CmpWith },
         // 2025-12-13: TODO.
     },
 };
@@ -256,7 +207,7 @@ s2cxing_value_t *s2cxing_value_create(struct value_nativeobj val)
 
     if( !ret )
     {
-        CxingFatal("Unable to allocate runtime resource for value.");
+        CxingFatal("Unable to allocate runtime resource for value.\n");
         return NULL;
     }
 
@@ -272,24 +223,29 @@ s2cxing_value_t *s2cxing_value_create(struct value_nativeobj val)
     return ret;
 }
 
+#define AssertArgN(n)                                           \
+    if( argn < n ) return (struct value_nativeobj){             \
+            .proper.p = NULL,                                   \
+            .type = (const void *)&type_nativeobj_morgoth };
+
+#define AssertArgImpl(n, typ, hr)                                       \
+    if( args[n].type != (const void *)&type_nativeobj_##typ )           \
+    {                                                                   \
+        CxingDiagnose("Unrecognized implementation of the "hr" type. "  \
+                      "Does this object come from another runtime?\n"); \
+        return (struct value_nativeobj){                                \
+            .proper.p = NULL,                                           \
+            .type = (const void *)&type_nativeobj_morgoth };            \
+    }
+
 struct value_nativeobj CxingImpl_s2Dict_Get(
     int argn, struct value_nativeobj args[])
 {
     int x;
     s2cxing_value_t *ret_wrapped;
 
-    if( argn < 2 ) return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-
-    if( args[0].type != (const void *)&type_nativeobj_s2impl_dict )
-    {
-        CxingDiagnose("Unrecognized implementation of the dict type. "
-                      "Does this object come from another runtime?");
-        return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-    }
+    AssertArgN(2);
+    AssertArgImpl(0, s2impl_dict, "dict");
 
     x = s2dict_get_T(s2cxing_value_t)(
         args[0].proper.p, args[1].proper.p, &ret_wrapped);
@@ -307,7 +263,7 @@ struct value_nativeobj CxingImpl_s2Dict_Get(
     else
     {
         CxingDiagnose("Cxing Runtime Internal Error: "
-                      "SafeTypes2 Dictionary Getter Failure!");
+                      "SafeTypes2 Dictionary Getter Failure!\n");
         return (struct value_nativeobj){
             .proper.p = NULL,
             .type = (const void *)&type_nativeobj_morgoth };
@@ -320,27 +276,9 @@ struct value_nativeobj CxingImpl_s2Dict_Set(
     int x;
     s2cxing_value_t *ret_wrapped;
 
-    if( argn < 3 ) return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-
-    if( args[0].type != (const void *)&type_nativeobj_s2impl_dict )
-    {
-        CxingDiagnose("Unrecognized implementation of the dict type. "
-                      "Does this object come from another runtime?");
-        return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-    }
-
-    if( args[1].type != (const void *)&type_nativeobj_s2impl_str )
-    {
-        CxingDiagnose("Unrecognized implementation of the string type. "
-                      "Does this object come from another runtime?");
-        return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-    }
+    AssertArgN(3);
+    AssertArgImpl(0, s2impl_dict, "dict");
+    AssertArgImpl(1, s2impl_str, "string");
 
     ret_wrapped = s2cxing_value_create(
         // 2025-12-31 (TODO: come back later):
@@ -349,7 +287,7 @@ struct value_nativeobj CxingImpl_s2Dict_Set(
 
     if( !ret_wrapped )
     {
-        CxingFatal("Unable to create SafeTypes2 binding for the CXING value.");
+        CxingFatal("Unable to create SafeTypes2 binding for the CXING value.\n");
         return (struct value_nativeobj){
             .proper.p = NULL,
             .type = (const void *)&type_nativeobj_morgoth };
@@ -365,7 +303,7 @@ struct value_nativeobj CxingImpl_s2Dict_Set(
     }
     else if( x == s2_access_nullval )
     {
-        CxingDiagnose("Unexpected return value from runtime implementation.");
+        CxingDiagnose("Unexpected return value from runtime implementation.\n");
         s2obj_release(ret_wrapped->pobj);
         return (struct value_nativeobj){
             .proper.p = NULL,
@@ -374,7 +312,7 @@ struct value_nativeobj CxingImpl_s2Dict_Set(
     else
     {
         CxingDiagnose("Cxing Runtime Internal Error: "
-                      "SafeTypes2 Dictionary Setter Failure!");
+                      "SafeTypes2 Dictionary Setter Failure!\n");
         s2obj_release(ret_wrapped->pobj);
         return (struct value_nativeobj){
             .proper.p = NULL,
@@ -385,19 +323,8 @@ struct value_nativeobj CxingImpl_s2Dict_Set(
 struct value_nativeobj CxingImpl_s2Dict_Copy(
     int argn, struct value_nativeobj args[])
 {
-    if( argn < 1 ) return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-
-    if( args[0].type != (const void *)&type_nativeobj_s2impl_dict )
-    {
-        CxingDiagnose("Unrecognized implementation of the dict type. "
-                      "Does this object come from another runtime?");
-        return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-    }
-
+    AssertArgN(1);
+    AssertArgImpl(0, s2impl_dict, "dict");
     s2obj_keep(args[0].proper.p);
 
     return args[0];
@@ -406,19 +333,8 @@ struct value_nativeobj CxingImpl_s2Dict_Copy(
 struct value_nativeobj CxingImpl_s2Dict_Final(
     int argn, struct value_nativeobj args[])
 {
-    if( argn < 1 ) return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-
-    if( args[0].type != (const void *)&type_nativeobj_s2impl_dict )
-    {
-        CxingDiagnose("Unrecognized implementation of the dict type. "
-                      "Does this object come from another runtime?");
-        return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-    }
-
+    AssertArgN(1);
+    AssertArgImpl(0, s2impl_dict, "dict");
     s2obj_leave(args[0].proper.p);
 
     return (struct value_nativeobj){
@@ -431,18 +347,8 @@ struct value_nativeobj CxingImpl_s2Dict_Unset(
 {
     int x;
 
-    if( argn < 2 ) return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-
-    if( args[0].type != (const void *)&type_nativeobj_s2impl_dict )
-    {
-        CxingDiagnose("Unrecognized implementation of the dict type. "
-                      "Does this object come from another runtime?");
-        return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-    }
+    AssertArgN(2);
+    AssertArgImpl(0, s2impl_dict, "dict");
 
     x = s2dict_unset(
         args[0].proper.p, args[1].proper.p);
@@ -450,7 +356,7 @@ struct value_nativeobj CxingImpl_s2Dict_Unset(
     if( x != s2_access_success )
     {
         CxingDiagnose("Cxing Runtime Internal Error: "
-                      "SafeTypes2 Dictionary Getter Failure!");
+                      "SafeTypes2 Dictionary Getter Failure!\n");
     }
 
     return (struct value_nativeobj){
@@ -486,19 +392,8 @@ struct value_nativeobj CxingImpl_s2Dict_Create(
 struct value_nativeobj CxingImpl_s2Data_Copy(
     int argn, struct value_nativeobj args[])
 {
-    if( argn < 1 ) return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-
-    if( args[0].type != (const void *)&type_nativeobj_s2impl_str )
-    {
-        CxingDiagnose("Unrecognized implementation of the string type. "
-                      "Does this object come from another runtime?");
-        return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-    }
-
+    AssertArgN(1);
+    AssertArgImpl(0, s2impl_str, "string");
     s2obj_keep(args[0].proper.p);
 
     return args[0];
@@ -507,22 +402,265 @@ struct value_nativeobj CxingImpl_s2Data_Copy(
 struct value_nativeobj CxingImpl_s2Data_Final(
     int argn, struct value_nativeobj args[])
 {
-    if( argn < 1 ) return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-
-    if( args[0].type != (const void *)&type_nativeobj_s2impl_str )
-    {
-        CxingDiagnose("Unrecognized implementation of the string type. "
-                      "Does this object come from another runtime?");
-        return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-    }
-
+    AssertArgN(1);
+    AssertArgImpl(0, s2impl_str, "string");
     s2obj_leave(args[0].proper.p);
 
     return (struct value_nativeobj){
         .proper.p = NULL,
         .type = (const void *)&type_nativeobj_morgoth };
+}
+
+struct value_nativeobj CxingImpl_s2Data_Len(
+    int argn, struct value_nativeobj args[])
+{
+    AssertArgN(1);
+    AssertArgImpl(0, s2impl_str, "string");
+
+    return (struct value_nativeobj){
+        .proper.u = s2data_len(args[0].proper.p),
+        .type = (const void *)&type_nativeobj_ulong };
+}
+
+struct value_nativeobj CxingImpl_s2Data_Trunc(
+    int argn, struct value_nativeobj args[])
+{
+    AssertArgN(2);
+    AssertArgImpl(0, s2impl_str, "string");
+
+    // 2026-03-05 TODO:
+    // What if I want to know whether the failure was caused by
+    // reallocation failure or lingering mapping?
+
+    if( s2data_trunc(args[0].proper.p, ConvertToUlong(args[1]).proper.u) == 0 )
+        return args[0];
+    else return (struct value_nativeobj){
+            .proper.p = NULL,
+            .type = (const void *)&type_nativeobj_morgoth };
+}
+
+struct value_nativeobj CxingImpl_s2Data_Putc(
+    int argn, struct value_nativeobj args[])
+{
+    AssertArgN(2);
+    AssertArgImpl(0, s2impl_str, "string");
+
+    if( s2data_putc(args[0].proper.p, ConvertToUlong(args[1]).proper.u) == 0 )
+        return args[0];
+    else return (struct value_nativeobj){
+            .proper.p = NULL,
+            .type = (const void *)&type_nativeobj_morgoth };
+}
+
+struct value_nativeobj CxingImpl_s2Data_Puts(
+    int argn, struct value_nativeobj args[])
+{
+    AssertArgN(2);
+    AssertArgImpl(0, s2impl_str, "string");
+    AssertArgImpl(1, s2impl_str, "string");
+
+    if( s2data_puts(args[0].proper.p,
+                    s2data_weakmap(args[1].proper.p),
+                    s2data_len(args[1].proper.p)) == 0 )
+        return args[0];
+    else return (struct value_nativeobj){
+            .proper.p = NULL,
+            .type = (const void *)&type_nativeobj_morgoth };
+}
+
+struct value_nativeobj CxingImpl_s2Data_Putfin(
+    int argn, struct value_nativeobj args[])
+{
+    AssertArgN(1);
+    AssertArgImpl(0, s2impl_str, "string");
+
+    if( s2data_putfin(args[0].proper.p) == 0 )
+        return args[0];
+    else return (struct value_nativeobj){
+            .proper.p = NULL,
+            .type = (const void *)&type_nativeobj_morgoth };
+}
+
+struct value_nativeobj CxingImpl_s2Data_Map(
+    int argn, struct value_nativeobj args[])
+{
+    AssertArgN(2);
+    AssertArgImpl(0, s2impl_str, "string");
+    AssertArgImpl(1, s2impl_str, "string");
+
+    CxingFatal("The `map` method for strings had not been implemented yet\n");
+    return (struct value_nativeobj){
+        .proper.p = NULL,
+        .type = (const void *)&type_nativeobj_morgoth };
+}
+
+struct value_nativeobj CxingImpl_s2Data_CmpWith(
+    int argn, struct value_nativeobj args[])
+{
+    AssertArgN(2);
+    AssertArgImpl(0, s2impl_str, "string");
+    AssertArgImpl(1, s2impl_str, "string");
+
+    return (struct value_nativeobj){
+        .proper.l = s2data_cmp(args[0].proper.p, args[1].proper.p),
+        .type = (const void *)&type_nativeobj_long };
+}
+
+struct value_nativeobj CxingImpl_s2Data_Equals(
+    int argn, struct value_nativeobj args[])
+{
+    AssertArgN(2);
+    AssertArgImpl(0, s2impl_str, "string");
+    AssertArgImpl(1, s2impl_str, "string");
+
+    CxingFatal("The `equals` method for strings had not been _correctly_ implemented yet\n");
+
+    return (struct value_nativeobj){
+        .proper.l = s2data_cmp(args[0].proper.p, args[1].proper.p) == 0,
+        .type = (const void *)&type_nativeobj_long };
+}
+
+cxing_builtin_def_t CxingRuntimeBuiltins[] = {
+    { "dict", (struct value_nativeobj){
+            .proper.p = CxingImpl_s2Dict_Create,
+            .type = (const void *)&type_nativeobj_subr } },
+    { 0 },
+};
+
+s2dict_t *CxingBuiltins = NULL;
+
+bool CxingRuntimeInit()
+{
+    FILE *csprng;
+    uint8_t seed[16] = {0};
+    bool ret = true;
+    int i;
+
+    //
+    // Initialize seed for SipHash.
+
+    csprng = fopen("/dev/urandom", "rb");
+    if( csprng )
+    {
+        fread(seed, 1, sizeof(seed), csprng);
+        fclose(csprng);
+        if( ferror(csprng) )
+        {
+            CxingWarning("IO error when reading CSPRNG for seeding SipHash.\n");
+        }
+        siphash_setkey(seed, sizeof(seed));
+    }
+    else
+    {
+#ifdef _WIN32
+        unsigned int buf; // Eventhough we know the size of int on windows.
+        size_t t = 0;
+        while( t < sizeof(seed) )
+        {
+            rand_s(&buf);
+            seed[t++] = buf;
+        }
+#else // Not Win32 platform.
+        CxingWarning("IO error when opening CSPRNG for seeding SipHash.\n");
+#endif // _WIN32
+    }
+
+    //
+    // Initialize value native objects for string constants.
+
+    for(i=0; CxingPropNames[i].istr; i++)
+    {
+        CxingPropNames[i].pdat = s2data_from_str(CxingPropNames[i].istr);
+        if( !CxingPropNames[i].istr )
+        {
+            CxingFatal("String constant '%s' failed to allocate!\n",
+                       CxingPropNames[i].istr);
+            ret = false;
+            goto strings_dealloc;
+        }
+
+        CxingPropNames[i].pvar->proper.p = CxingPropNames[i].pdat;
+        CxingPropNames[i].pvar->type =
+            (const void *)&type_nativeobj_s2impl_str;
+    }
+
+    CxingBuiltins = s2dict_create();
+    if( !CxingBuiltins )
+    {
+        CxingFatal("Cannot create hash table for built-ins.\n");
+        ret = false;
+        goto builtin_dict_dealloc;
+    }
+
+    for(i=0; CxingRuntimeBuiltins[i].name; i++)
+    {
+        s2data_t *key;
+        s2cxing_value_t *value;
+
+        if( !(key = s2data_from_str(CxingRuntimeBuiltins[i].name)) )
+        {
+            CxingFatal("Built-in name constant '%s' failed to allocate!\n",
+                       CxingRuntimeBuiltins[i].name);
+            ret = false;
+            goto builtin_dict_dealloc;
+        }
+        if( !(value = s2cxing_value_create(CxingRuntimeBuiltins[i].val)) )
+        {
+            // Not using `ValueCopy` as outlined in comments for
+            // the `val` member of the `cxing_builtin_def_t` structure type.
+            // Enjoyed the benefit of not having to check for copying failures.
+            CxingFatal("Unable to create SafeTypes2 binding for built-in: '%s'\n",
+                       CxingRuntimeBuiltins[i].name);
+            ret = false;
+            goto builtin_dict_dealloc;
+        }
+        if( s2dict_set(CxingBuiltins, key, value->pobj, s2_setter_gave)
+            != s2_access_success )
+        {
+            CxingDiagnose("Runtime Initialization Error: "
+                          "SafeTypes2 Dictionary Setter Failure!\n");
+            ret = false;
+            goto builtin_dict_dealloc;
+        }
+        s2obj_release(key->pobj);
+    }
+
+    return ret;
+
+builtin_dict_dealloc:
+    if( CxingBuiltins )
+    {
+        s2obj_release(CxingBuiltins->pobj);
+        CxingBuiltins = NULL;
+    }
+
+strings_dealloc:
+    while( i --> 0 )
+    {
+        s2obj_release(CxingPropNames[i].pdat->pobj);
+        CxingPropNames[i].pdat = NULL;
+    }
+
+    return ret;
+}
+
+void CxingRuntimeFinal()
+{
+    int i;
+
+    if( CxingBuiltins )
+    {
+        s2obj_release(CxingBuiltins->pobj);
+        CxingBuiltins = NULL;
+    }
+
+    for(i=0; CxingPropNames[i].istr; i++)
+    {
+        if( CxingPropNames[i].pdat )
+        {
+            s2obj_release(CxingPropNames[i].pdat->pobj);
+            CxingPropNames[i].pdat = NULL;
+        }
+    }
+
 }

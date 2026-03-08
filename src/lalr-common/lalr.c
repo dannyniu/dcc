@@ -1,6 +1,7 @@
 /* DannyNiu/NJF, 2025-01-01. Public Domain. */
 
 #include "lalr.h"
+#include "../infra/s2bools.h"
 
 #if DCC_LALR_LOGGING == 1
 
@@ -266,6 +267,8 @@ static lalr_prod_t *(lalr_rule_reduce)(
             {
                 eprintf("%s, ", strvec_i2str(
                             ns_rules, terms->production->production));
+
+                terms->production->parent = newprod;
             }
             else
             {
@@ -327,15 +330,11 @@ static bool find_rule_in_traversed(
 }
 
 s2dict_t *lalr_parse_accel_cache = NULL;
-static s2data_t *s2_true, *s2_false;
 
 void lalr_parse_accel_cache_clear()
 {
     if( lalr_parse_accel_cache ) s2obj_release(lalr_parse_accel_cache->pobj);
-    if( s2_true ) s2obj_release(s2_true->pobj);
-    if( s2_false ) s2obj_release(s2_false->pobj);
     lalr_parse_accel_cache = NULL;
-    s2_true = s2_false = NULL;
 }
 
 // returns one of the `s2_access_retvals` enumeration.
@@ -352,10 +351,7 @@ static int lalr_parse_accel_cache_insert(
     if( !lalr_parse_accel_cache )
         lalr_parse_accel_cache = s2dict_create();
 
-    if( !s2_true ) s2_true = s2data_from_str("\x01");
-    if( !s2_false ) s2_false = s2data_from_str("\x00");
-
-    if( !lalr_parse_accel_cache || !s2_true || !s2_false )
+    if( !lalr_parse_accel_cache )
     {
         lalr_parse_accel_cache_clear();
         return s2_access_error;
@@ -377,7 +373,7 @@ static int lalr_parse_accel_cache_insert(
 
     ret = s2dict_set(
         lalr_parse_accel_cache, cache_key,
-        query_result ? s2_true->pobj : s2_false->pobj,
+        query_result ? s2_true : s2_false,
         s2_setter_kept);
     s2obj_release(cache_key->pobj);
     return ret;
@@ -647,6 +643,28 @@ void lalr_rule_symbol_free(lalr_rule_symbol_t *chain)
     }
 }
 
+#define Candidates_Set(ri)                      \
+    ( candidates_bitmap ?                       \
+      candidates_bitmap[ri / 32] |=             \
+      ((uint32_t)1 << (ri % 32)) : 1 )
+
+#define Candidate_Test(ri)                      \
+    ( candidates_bitmap ?                       \
+      candidates_bitmap[ri / 32] &              \
+      ((uint32_t)1 << (ri % 32)) : 1 )
+
+#define Candidate_Drop(ri)                      \
+    ( candidates_bitmap ?                       \
+      candidates_bitmap[ri / 32] ^=             \
+      ((uint32_t)1 << (ri % 32)) : 0 )
+
+#define Candidates_Clear()                              \
+    if( candidates_bitmap ){                            \
+        uint32_t ci;                                    \
+        for(ci=0; ci<ruleset_cardinality; ci+=32)       \
+            candidates_bitmap[ci / 32] = 0;             \
+    }
+
 int lalr_parse(
     lalr_stack_t *restrict *restrict out,
     lalr_rule_t rules[restrict],
@@ -667,6 +685,9 @@ int lalr_parse(
     int32_t last_resort_rule = -1, unique_rule = -1;
     int32_t candidate_rules_count, lookahead_rules_count;
     int32_t ri; // rule index.
+
+    uint32_t *candidates_bitmap = NULL;
+    uint32_t ruleset_cardinality;
 
     if( !(ps = lalr_stack_create()) ) return -1; // [host error].
 
@@ -703,6 +724,10 @@ int lalr_parse(
     // needed by the "lexer hack", it's brought up here.
     *out = ps;
 
+    for(ri=0; rules[ri]; ri++);
+    ruleset_cardinality = ri;
+    //candidates_bitmap = calloc((ri + 31)/32, sizeof(uint32_t));
+
     while( true )
     {
         if( !tn && !sv )
@@ -720,11 +745,13 @@ int lalr_parse(
         dump_parsing_stack("\n========\n", ps->bottom, te, ns_rules, "--------\n");
 
         // Enumerate rules that have matches with the parsing stack.
+        Candidates_Clear();
         candidate_rules_count = 0;
         unique_rule = -1;
         mr = NULL;
         if( !(expect = calloc(1, sizeof(lalr_rule_symbol_t))) )
         {
+            if( candidates_bitmap ) free(candidates_bitmap);
             return -1; // [host error].
         }
         expect_chain = expect;
@@ -781,10 +808,13 @@ int lalr_parse(
                       calloc(1, sizeof(lalr_rule_symbol_t))) )
                 {
                     lalr_rule_symbol_free(expect);
+                    if( candidates_bitmap ) free(candidates_bitmap);
                     return -1; // [host error].
                 }
                 expect_chain = expect_chain->next;
             }
+
+            Candidates_Set(ri);
         }
 
         assert( candidate_rules_count >= 0 );
@@ -823,6 +853,7 @@ int lalr_parse(
                 }
                 eprintf("\n");
 
+                if( candidates_bitmap ) free(candidates_bitmap);
                 return -3;
             }
             continue;
@@ -857,6 +888,7 @@ int lalr_parse(
                     {
                         // [parse error] - parsing ended without reaching
                         // the goal symbol (2025-06-01).
+                        if( candidates_bitmap ) free(candidates_bitmap);
                         return -4;
                     }
                     continue;
@@ -876,6 +908,7 @@ int lalr_parse(
                 s2obj_release(tn->pobj);
                 s2obj_release(ps->pobj);
                 *out = NULL;
+                if( candidates_bitmap ) free(candidates_bitmap);
                 return -1; // [host error].
             }
             te->container = ps;
@@ -908,12 +941,21 @@ int lalr_parse(
         lookahead_rules_count = 0;
         for(ri=0; rules[ri]; ri++)
         {
-            if( !lalr_rule_match(rules, ri, te, ctx, ns_rules) )
+            if( !Candidate_Test(ri) )
                 continue;
+
+            if( !lalr_rule_match(rules, ri, te, ctx, ns_rules) )
+            {
+                Candidate_Drop(ri);
+                continue;
+            }
 
             if( te->expecting && !lalr_rule_expect(
                     rules, ri, te, ctx, ns_rules) )
+            {
+                Candidate_Drop(ri);
                 continue;
+            }
 
             lookahead_rules_count++;
         }
@@ -993,6 +1035,7 @@ int lalr_parse(
             {
                 // 2025-06-01:
                 // See note above `assert( !sv )` added by @dannyniu.
+                if( candidates_bitmap ) free(candidates_bitmap);
                 return -5;
             }
             sv = ps->top;
@@ -1008,6 +1051,7 @@ int lalr_parse(
                 // anchored sequences. This is the same reason
                 // as -3, but whose origin warrants distinction.
                 // (2025-06-01).
+                if( candidates_bitmap ) free(candidates_bitmap);
                 return -6;
             }
             continue;
@@ -1018,6 +1062,7 @@ int lalr_parse(
         {
             // 2025-06-01:
             // See note above `assert( !sv )` added by @dannyniu.
+            if( candidates_bitmap ) free(candidates_bitmap);
             return -7;
         }
         sv = ps->top;
@@ -1041,6 +1086,7 @@ int lalr_parse(
         {
             s2obj_release(ps->pobj);
             *out = NULL;
+            if( candidates_bitmap ) free(candidates_bitmap);
             return -1; // [host error].
         }
 
@@ -1075,5 +1121,6 @@ int lalr_parse(
         continue;
     }
 
+    if( candidates_bitmap ) free(candidates_bitmap);
     return 0;
 }

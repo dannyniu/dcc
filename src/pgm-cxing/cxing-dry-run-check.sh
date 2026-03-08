@@ -1,12 +1,10 @@
 #!/bin/sh
+# <CXING-check005(2026-02-07)> #
 
 optimize=debug
 testfunc()
 {
-    #lldb -- \
-      #$exec ../tests/auto-res-man-test-01.cxing
-      $exec ../tests/xlate-unit-test-01.cxing
-      $exec ../tests/xlate-unit-test-03.cxing
+    ! $exec ../tests/dry-run-test-01.cxing
 }
 
 cd "$(dirname "$0")"

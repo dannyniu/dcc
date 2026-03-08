@@ -794,6 +794,19 @@ void *logicand_logicand(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
+void *logicand_then(lalr_rule_params)
+{
+    int32_t production = hRule("logic-and");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "logic-and", },
+        { symtype_stoken, .value = "&?", },
+        { symtype_prod, .value = "bit-or", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
 void *logicor_degenerate(lalr_rule_params)
 {
     int32_t production = hRule("logic-or");
@@ -2089,7 +2102,34 @@ void *entdecl_srcinc(lalr_rule_params)
     int32_t production = hRule("entity-declaration");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_stoken, .value = "_Include", },
-        { symtype_vtoken, .vtype = langlex_strlit, },
+        { symtype_vtoken, .vtype = langlex_str_cooked, },
+        { symtype_stoken, .value = ";", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *entdecl_soload(lalr_rule_params)
+{
+    int32_t production = hRule("entity-declaration");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_stoken, .value = "_Load", },
+        { symtype_vtoken, .vtype = langlex_str_cooked, },
+        { symtype_stoken, .value = ";", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *entdecl_constdef(lalr_rule_params)
+{
+    int32_t production = hRule("entity-declaration");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_stoken, .value = "const", },
+        { symtype_prod, .value = "identifier", },
+        { symtype_prod, .value = "constant", },
         { symtype_stoken, .value = ";", },
         {0},
     };
@@ -2187,6 +2227,7 @@ lalr_rule_t cxing_grammar_rules[] = {
     bitor_bitor,
     logicand_degenerate,
     logicand_logicand,
+    logicand_then,
     logicor_degenerate,
     logicor_logicor,
     logicor_nullcoalesce,
@@ -2286,6 +2327,8 @@ lalr_rule_t cxing_grammar_rules[] = {
     array_complete,
     array_streamline,
     entdecl_srcinc,
+    entdecl_soload,
+    entdecl_constdef,
     entdecl_extern,
     entdecl_implicit,
     NULL,
