@@ -292,23 +292,19 @@ arguments-begin % args
 | arguments-begin "," identifier % genrule
 ;
 
-objdef-start % objdefstart
-: objdef-start-comma % comma
-| objdef-start-nocomma % nocomma
-;
-
 objdef-start-comma % objdefstartcomma
 : objdef-start-nocomma "," % genrule
 ;
 
 objdef-start-nocomma % objdefstartnocomma
 : postfix-expr "{" postfix-expr ":" assign-expr % base
-| objdef-start-nocomma "," postfix-expr ":" assign-expr % genrule
+| objdef-start-comma postfix-expr ":" assign-expr % genrule
 ;
 
 object-notation % objdef
 : postfix-expr "{" "}" % empty
-| objdef-start "}" % some
+| objdef-start-comma "}" % some1
+| objdef-start-nocomma "}" % some2
 | auto-index % array
 ;
 

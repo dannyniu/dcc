@@ -1,0 +1,40 @@
+method RandomOracle(s)
+{
+    this[s] _Then return this[s] _Fallback return this[s] = ++this.count;
+}
+
+method Teller()
+{
+    print(this);
+    return this.count;
+}
+
+subr Cal(mon)
+{
+    decl foo = dict() { "q": RandomOracle, "c": Teller };
+    foo.q("Jan");
+    foo.q("Feb");
+    foo.q("Mar");
+    foo.q("Apr");
+    foo.q("May");
+    foo.q("Jun");
+    foo.q("Jul");
+    foo["q"]("Aug");
+    foo["q"]("Sep");
+    foo["q"]("Oct");
+    foo["q"]("Nov");
+    foo["q"]("Dec");
+
+    return foo;
+}
+
+subr main()
+{
+    decl foo = Cal(), bar = "baz";
+    for(decl k = foo.firstkey(); true; k = foo.nextkey(k))
+    {
+        k _Fallback break;
+        print(k);
+    }
+    return 0;
+}

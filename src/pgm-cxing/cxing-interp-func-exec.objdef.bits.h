@@ -1,11 +1,17 @@
 /* DannyNiu/NJF, 2026-02-02. Public Domain. */
 
+#define PassResultBack(...) (                                   \
+        eprintf("[objdef] PassResultBack %d.\n", __LINE__),     \
+        instruction->ax = __VA_ARGS__)
+
 #ifdef CXING_IMPLEMENT_FUNC_EXEC
+
+ReachesHere = 1;
 
 //
 // Type Definition and Object Initialization Syntax
 
-if( theRule == objdefstartnocomma_genrule ) //>RULEIMPL<//
+if( theRule == objdefstartcomma_genrule ) //>RULEIMPL<//
 {
     Reached();
     if( instruction->operand_index == 0 )
@@ -13,17 +19,14 @@ if( theRule == objdefstartnocomma_genrule ) //>RULEIMPL<//
         Reached();
         PcStack_PushOrAbandon();
     }
-    else if( instruction->operand_index ==
-             instruction->node_body->terms_count )
-    {
-        // nop.
-    }
-    else assert( 0 );
+
+    // nothing else to do here.
 }
 
 if( theRule == objdefstartnocomma_base || //>RULEIMPL<//
     theRule == objdefstartnocomma_genrule ) //>RULEIMPL<//
 {
+    unsigned opind = theRule == objdefstartnocomma_genrule ? 0 : 1;
     Reached();
     if( instruction->operand_index == 0 )
     {
@@ -31,24 +34,25 @@ if( theRule == objdefstartnocomma_base || //>RULEIMPL<//
         PcStack_PushOrAbandon();
     }
 
-    else if( instruction->operand_index == 2 )
+    else if( instruction->operand_index == opind+1 )
     {
         Reached();
-
         if( theRule == objdefstartnocomma_base )
         {
+            HoldAndClearLValue();
             // for the duration of obj-def,
             // `instruction->bx` is the type object.
-            instruction->bx = valreg;
+            instruction->bx = valreg; // To PassResultBack later.
         }
-
+        instruction->opts = ast_node_preserve_bx;
         PcStack_PushOrAbandon();
     }
 
-    else if( instruction->operand_index == 4 )
+    else if( instruction->operand_index == opind+3 )
     {
         Reached();
-        instruction->ax = valreg;
+        HoldAndClearLValue();
+        PassResultBack(valreg);
         PcStack_PushOrAbandon();
     }
 
@@ -63,6 +67,7 @@ if( theRule == objdefstartnocomma_base || //>RULEIMPL<//
                 instruction->bx,
                 CxingPropName_InitSet).value;
 
+        HoldAndClearLValue();
         if( InitSetMethod.type->typeid != valtyp_method )
         {
             if( theRule == objdefstartnocomma_base )
@@ -89,12 +94,20 @@ if( theRule == objdefstartnocomma_base || //>RULEIMPL<//
             ((cxing_call_proto)InitSetMethod.proper.p)(
                 3, args);
         }
+        ValueDestroy(instruction->ax);
+        ValueDestroy(valreg);
+
+        // PassResultBack.
+        instruction->ax = (struct value_nativeobj){
+            .proper.p = NULL,
+            .type = (void *)&type_nativeobj_morgoth };
     }
 
     else assert( 0 );
 }
 
-if( theRule == objdef_some || //>RULEIMPL<//
+if( theRule == objdef_some1 || //>RULEIMPL<//
+    theRule == objdef_some2 || //>RULEIMPL<//
     theRule == objdef_empty ) //>RULEIMPL<//
 {
     Reached();
@@ -127,15 +140,16 @@ if( theRule == objdef_some || //>RULEIMPL<//
                 instruction->bx,
                 CxingPropName_Proto,
                 instruction->bx };
-            ((cxing_call_proto)InitSetMethod.proper.p)(
-                3, args);
+            ((cxing_call_proto)InitSetMethod.proper.p)(3, args);
+            Reached();
         }
+        PassResultBack(instruction->bx);
     }
 
     else assert( 0 );
 }
 
-// auto-indexed arrays.
+// auto-indexed arrays. // 2026-03-14: TODO.
 
 if( theRule == array_piece_base ) //>RULEIMPL<//
 {
@@ -155,8 +169,9 @@ if( theRule == array_piece_base ) //>RULEIMPL<//
         instruction->bx = valreg;
 
         // zero-based indexing.
-        instruction->ax.proper.l = 0;
-        instruction->ax.type = (const void *)&type_nativeobj_long;
+        PassResultBack((struct value_nativeobj){
+                .proper.l = 0,
+                .type = (void *)&type_nativeobj_long });
 
         PcStack_PushOrAbandon();
     }
@@ -172,6 +187,7 @@ if( theRule == array_piece_base ) //>RULEIMPL<//
                 instruction->bx,
                 CxingPropName_InitSet).value;
 
+        HoldAndClearLValue();
         if( InitSetMethod.type->typeid != valtyp_method )
         {
             CxingDiagnose("The postfix expression identified by "
@@ -194,6 +210,8 @@ if( theRule == array_piece_base ) //>RULEIMPL<//
             ((cxing_call_proto)InitSetMethod.proper.p)(
                 3, args);
         }
+        ValueDestroy(instruction->ax);
+        ValueDestroy(valreg);
     }
 
     else assert( 0 );
@@ -217,7 +235,7 @@ if( theRule == array_piece_genrule ) //>RULEIMPL<//
         // ---
 
         // zero-based indexing.
-        instruction->ax = valreg;
+        PassResultBack(valreg);
         instruction->ax.proper.l ++;
 
         PcStack_PushOrAbandon();
@@ -234,6 +252,7 @@ if( theRule == array_piece_genrule ) //>RULEIMPL<//
                 instruction->bx,
                 CxingPropName_InitSet).value;
 
+        HoldAndClearLValue();
         if( InitSetMethod.type->typeid != valtyp_method )
         {
             CxingDiagnose("The postfix expression used "
@@ -249,6 +268,7 @@ if( theRule == array_piece_genrule ) //>RULEIMPL<//
             ((cxing_call_proto)InitSetMethod.proper.p)(
                 3, args);
         }
+        ValueDestroy(valreg);
     }
 
     else assert( 0 );
@@ -272,7 +292,7 @@ if( theRule == array_streamline ) //>RULEIMPL<//
         // ---
 
         // zero-based indexing.
-        instruction->ax = valreg;
+        PassResultBack(valreg);
         instruction->ax.proper.l ++;
 
         PcStack_PushOrAbandon();
@@ -289,6 +309,7 @@ if( theRule == array_streamline ) //>RULEIMPL<//
                 instruction->bx,
                 CxingPropName_InitSet).value;
 
+        HoldAndClearLValue();
         if( InitSetMethod.type->typeid != valtyp_method )
         {
             CxingDiagnose("The postfix expression used "
@@ -356,3 +377,5 @@ if( theRule == array_complete ) //>RULEIMPL<//
 }
 
 #endif /* CXING_IMPLEMENT_FUNC_EXEC */
+
+#undef PassResultBack

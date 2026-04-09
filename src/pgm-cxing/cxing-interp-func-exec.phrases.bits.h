@@ -1,6 +1,12 @@
 /* DannyNiu/NJF, 2026-02-02. Public Domain. */
 
+#define PassResultBack(...) (                                   \
+        eprintf("[phra] PassResultBack %d.\n", __LINE__),       \
+        instruction->ax = __VA_ARGS__)
+
 #ifdef CXING_IMPLEMENT_FUNC_EXEC
+
+ReachesHere = 0;
 
 //
 // phrases.
@@ -32,6 +38,25 @@ if( theRule == ctrl_flow_ion_op_or || //>RULEIMPL<//
         ->terms[1].production // the label,
         ->terms[0].terminal : // the terminal identifier.
         NULL; // not a labelled control-flow phrase.
+
+    // 2026-04-04:
+    // 
+    // Control flow operations don't exhibit values,
+    // contrasting expressions, which is the other
+    // species of phrases.
+    //
+    // This here makes it as if control flow operations
+    // had a value, whilest it is in fact destroying
+    // the intermediate values anywhere between the
+    // control flow operator and the compound statement
+    // to which it's targeted.
+    //
+    varreg = (struct lvalue_nativeobj){
+        .value.proper.p = NULL,
+        .value.type = (void *)&type_nativeobj_morgoth,
+        .scope.proper.p = NULL,
+        .scope.type = (void *)&type_nativeobj_morgoth,
+        .key = NULL};
 
     if( evalmode == cxing_func_eval_mode_dryrun )
     {
@@ -113,11 +138,15 @@ if( theRule == ctrl_flow_ion_op_or || //>RULEIMPL<//
                     rs == for_vardecl_noiter ||
                     rs == for_vardecl_controlled )
                 {
-                    if( s2data_cmp(instruction[-1].node_body
-                                   ->terms[0].production
-                                   ->terms[0].terminal->str,
-                                   label->str) == 0 )
-                        break;
+                    if( rules(instruction[-1].node_body->semantic_rule)
+                        == stmt_labelled )
+                    {
+                        if( s2data_cmp(instruction[-1].node_body
+                                       ->terms[0].production
+                                       ->terms[0].terminal->str,
+                                       label->str) == 0 )
+                            break;
+                    }
                 }
             }
             else
@@ -141,16 +170,16 @@ if( theRule == ctrl_flow_ion_op_or || //>RULEIMPL<//
             Reached();
 
             // Collects garbage - i.e. values that went out of scope.
-            ValueDestroy(
-                // Traverses the braces outwards.
-                PcStackPop(&pc)
-                );
+            (ValueDestroy) // The interception macro invoked pop twice, damn.
+                (// Traverses the braces outwards.
+                    PcStackPop(&pc) );
 
             // updates the '`instruction` pointer'.
             instruction = &pc.instructions[pc.spind];
 
             // and the local register.
             rs = theRule;
+            Reached();
         }
 
         if( rules(optype) == flowctrlop_break )
@@ -235,8 +264,8 @@ if( theRule == ctrl_flow_ion_returnexpr_or || //>RULEIMPL<//
     else if( instruction->operand_index ==
              instruction->node_body->terms_count )
     {
-        eprintf("ax-val: %lld\n", valreg.proper.u);
-        pc.instructions[0].ax = ValueCopy(valreg);
+        HoldAndClearLValue();
+        pc.instructions[0].ax = valreg;
         pc.instructions[0].flags = ast_node_action_return;
         goto finish_eval_1term;
     }
@@ -281,7 +310,11 @@ if( theRule == and_phrase_ion_and || //>RULEIMPL<//
             instruction->flags = ast_node_action_stop;
         }
 
-        instruction->ax = valreg;
+        DiscardRValue();
+        DemoteLValue();
+
+        Reached();
+        PassResultBack(valreg);
     }
 }
 
@@ -295,7 +328,14 @@ if( theRule == phrase_stmt_base ) //>RULEIMPL<//
     else if( instruction->operand_index ==
              instruction->node_body->terms_count )
     {
-        instruction->ax = valreg;
+        Reached();
+
+        DiscardRValue();
+        DemoteLValue();
+
+        valreg = (struct value_nativeobj){
+            .proper.p = NULL,
+            .type = (void *)&type_nativeobj_morgoth };
         goto finish_eval_1term;
     }
     else assert( 0 );
@@ -314,12 +354,13 @@ if( theRule == or_phrase_atom_atomize || //>RULEIMPL<//
     }
     else if( instruction->operand_index == 1 )
     {
+        assert( !varreg.key );
         if( (ast_node_action_stop == instruction->flags ||
              ast_node_action_return == pc.instructions[0].flags) &&
             evalmode == cxing_func_eval_mode_execute )
         {
             Reached();
-            instruction->ax = valreg;
+            PassResultBack(valreg);
             goto finish_eval_1term;
         }
         else
@@ -332,7 +373,8 @@ if( theRule == or_phrase_atom_atomize || //>RULEIMPL<//
              instruction->node_body->terms_count )
     {
         Reached();
-        instruction->ax = valreg;
+        assert( !varreg.key );
+        PassResultBack(valreg);
         goto finish_eval_1term;
     }
     else assert( 0 );
@@ -348,12 +390,13 @@ if( theRule == or_phrase_ion_ctrl_flow ) //>RULEIMPL<//
     }
     else if( instruction->operand_index == 1 )
     {
+        assert( !varreg.key );
         if( (ast_node_action_stop == instruction->flags ||
              ast_node_action_return == pc.instructions[0].flags) &&
             evalmode == cxing_func_eval_mode_execute )
         {
             Reached();
-            instruction->ax = valreg;
+            PassResultBack(valreg);
 
             if( instruction->flags == ast_node_action_stop )
             {
@@ -363,13 +406,31 @@ if( theRule == or_phrase_ion_ctrl_flow ) //>RULEIMPL<//
                 s2data_t *disj_op =
                     cntl->terms[cntl->terms_count - 1].terminal->str;
 
+                // 2026-04-04 retro note:
+                // 
+                // or_phrase_ion_ctrl_flow is a special ion, where
+                // two ions appear in adjacency.
+                //
+                // Normally in an atom, when the evaluation of an ion
+                // results in a short circuit, the subsequent element
+                // in the phrase is not evaluated.
+                //
+                // For or_phrase_ion_ctrl_flow however, its subsequent
+                // element may be evaluated even if the first ion
+                // evaluates to a stop value, due to the presence
+                // of the second ion.
+                //
+                // Hence the need for special treatment here.
+                //
                 if( strcmp(s2data_weakmap(disj_op), "_Fallback") == 0 &&
                     !IsNullish(valreg) )
                 {
                     Reached();
-                    // Here, the disjunction short-circuit completes
-                    // due to a non-nullish value being present at the
-                    // left-hand side of a nullish-coalescing operator.
+                }
+                else if( strcmp(s2data_weakmap(disj_op), "or") == 0 &&
+                         !ValueNativeObj2Logic(valreg) )
+                {
+                    Reached();
                 }
                 else
                 {
@@ -388,11 +449,20 @@ if( theRule == or_phrase_ion_ctrl_flow ) //>RULEIMPL<//
     else if( instruction->operand_index ==
              instruction->node_body->terms_count )
     {
-        Reached();
-        instruction->ax = valreg;
+        Reached(); // Never ...
+        assert( 0 ); // ... Actually.
+        assert( !varreg.key );
+        PassResultBack(valreg);
+
+        // Epilogue would otherwise do the destruction,
+        valreg = (struct value_nativeobj){
+            .proper.p = NULL,
+            .type = (void *)&type_nativeobj_morgoth };
         goto finish_eval_1term;
     }
     else assert( 0 );
 }
 
 #endif /* CXING_IMPLEMENT_FUNC_EXEC */
+
+#undef PassResultBack

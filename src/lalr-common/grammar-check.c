@@ -7,7 +7,7 @@
 #if !defined(LexerDecl) || !defined(LexerInit)
 #include "../lex-common/rope.h"
 #define LexerDecl RegexLexContext lexer
-#define LexerInit rope = CreateRopeFromGetc(&expr_getc.base, 0)
+#define LexerInit RegexLexFromRope_Init(&lexer, rope)
 #endif // !defined(LexerDecl) || !defined(LexerInit)
 
 #if !defined(NS_RULES) || !defined(GRAMMAR_RULES) || !defined(var_lex_elems)

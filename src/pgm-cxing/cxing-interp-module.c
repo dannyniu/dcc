@@ -567,10 +567,39 @@ static bool PopulateModule(
 
     if( subret != 0 )
     {
+        lalr_term_t *te = parsed->top;
+        if( s2_is_prod(te->production) )
+        {
+            fprint_prod(stderr, te->production, 0, NS_RULES);
+        }
+        else
+        {
+            fprintf(stderr, "line/column: %d/%d.\n",
+                    te->terminal->lineno, te->terminal->column);
+            fprint_token(stderr, te->terminal, 0);
+        }
+
+        te = parsed->bottom;
+        while( te )
+        {
+            printf("%p\t: ", te);
+
+            if( s2_is_prod(te->production) )
+            {
+                print_prod(te->production, 0, NS_RULES);
+            }
+            else print_token(te->terminal, 0);
+
+            te = te->up;
+        }
+
+        // 2026-04-04 TODO: Provide more helpful syntax error diagnoses.
         CxingFatal("[PopulateModule]: Parsing "
                    "of source code file %s "
-                   "encountered error, "
-                   "return value was: %d.\n",
+                   "encountered error. "
+                   "The top of the parsing stack "
+                   "had been dumped above. "
+                   "Parser returned: %d.\n",
                    TUFilePath, subret);
         goto cleanup;
     }
@@ -672,14 +701,23 @@ bool CxingModuleInspectDefinitions(
         {
             // wasn't going to dump the definitions.
 
-            if( entRule(ent) == funcdecl_subr ||
-                entRule(ent) == funcdecl_method )
+            if( entRule(ent) == funcdecl_subr )
             {
                 CxingFuncEval(
                     module,
                     ent->terms[3].production,
                     ent->terms[2].production,
-                    0, NULL, cxing_func_eval_mode_dryrun);
+                    0, NULL, valtyp_subr,
+                    cxing_func_eval_mode_dryrun);
+            }
+            else if( entRule(ent) == funcdecl_method )
+            {
+                CxingFuncEval(
+                    module,
+                    ent->terms[3].production,
+                    ent->terms[2].production,
+                    0, NULL, valtyp_method,
+                    cxing_func_eval_mode_dryrun);
             }
 
             // 2026-02-07 TODO: other kinds of definitions/declarations.

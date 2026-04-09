@@ -726,7 +726,7 @@ int lalr_parse(
 
     for(ri=0; rules[ri]; ri++);
     ruleset_cardinality = ri;
-    //candidates_bitmap = calloc((ri + 31)/32, sizeof(uint32_t));
+    candidates_bitmap = calloc((ri + 31)/32, sizeof(uint32_t));
 
     while( true )
     {

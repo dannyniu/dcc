@@ -4,8 +4,8 @@ optimize=debug
 testfunc()
 {
     #lldb \
-       #time $exec ../tests/for-loop-test-01.cxing
-       time $exec ../tests/hello-world-01.cxing
+       #time $exec ../tests/cxing/for-loop-test-01.cxing
+       time $exec ../tests/cxing/hello-world-01.cxing
 }
 
 cd "$(dirname "$0")"

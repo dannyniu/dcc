@@ -1,0 +1,116 @@
+subr myinfo()
+{
+    return dict() {
+        "name": "DannyNiu/NJF",
+        "gender": "male",
+        "certification": "InfoSec Engineer"
+    };
+}
+
+subr return_myinfo()
+{
+    return myinfo;
+}
+
+subr return_my_info()
+{
+    decl myinfofunc = return_myinfo();
+    decl myinfodict = myinfofunc();
+    return myinfodict;
+}
+
+subr forloops(info_returner)
+{
+    decl info = info_returner();
+
+    forever: for(;;){ if( info ) break forever; }
+
+    for(;;info)
+    {
+        if( false ) break;
+        else if( info ) break;
+    }
+
+    for(;info;)
+    {
+        if( null ) continue;
+        else break;
+    }
+
+    decl cv = 0;
+    controlled: for(; cv<2; cv++) { print(cv); }
+
+    for(cv=10;;)
+    {
+        if(cv<12) { ; }
+        else if(cv<14){ print(cv); }
+        else break;
+        ++cv;
+    }
+
+    nocond: for(cv=2;;cv*=2)
+    {
+        inner_while: while( cv < 512 )
+        {
+            print(cv);
+            cv += 8*8;
+            continue inner_while;
+        }
+
+        while( cv > 8192 )
+        {
+            break nocond;
+        }
+
+        print(cv);
+    }
+
+    noiter: for(cv="Duang"; cv.len()<10;)
+    {
+        print(cv.putc('~'));
+        continue noiter;
+    }
+
+    print(cv.len());
+
+    for(cv;cv;info)
+    {
+        print(info[cv]);
+        if( cv.len )
+            cv = 0;
+        continue;
+    }
+
+    for(decl x=0; x<7; x++)
+        print(x);
+
+    vdnc: for(decl t=0;; t++)
+    {
+        if( t < 7 ) t++;
+        print(t);
+        if( t < 29 )
+            continue vdnc;
+        else break;
+    }
+
+    vdni: for(decl s=dict(); s.__initset__; )
+    {
+        s { "Hello": "World!" };
+    }
+
+    for(decl s=info, k=s.firstkey(); k; k = s.nextkey(k))
+    {
+        decl v = "".puts(k);
+        print(v.puts(": ").puts(s[k]));
+    }
+
+    return 384;
+}
+
+subr main()
+{
+    print("Hello".puts(" World!").puts(" Login!\n"));
+    print(forloops(return_my_info));
+    print(forloops(myinfo));
+    return 0;
+}

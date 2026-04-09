@@ -59,6 +59,7 @@ s2cxing_value_t *s2cxing_value_create(struct value_nativeobj val);
 typedef struct TYPE_NATIVEOBJ_STRUCT(1) type_nativeobj_struct_p0;
 typedef struct TYPE_NATIVEOBJ_STRUCT(7) type_nativeobj_struct_p6;
 typedef struct TYPE_NATIVEOBJ_STRUCT(8) type_nativeobj_struct_p7;
+typedef struct TYPE_NATIVEOBJ_STRUCT(9) type_nativeobj_struct_p8;
 typedef struct TYPE_NATIVEOBJ_STRUCT(10) type_nativeobj_struct_p9;
 
 // The "Morgoth" null.
@@ -78,7 +79,7 @@ extern const type_nativeobj_struct_p0 type_nativeobj_method;
 
 // Built-in objects.
 extern const type_nativeobj_struct_p9 type_nativeobj_s2impl_str;
-extern const type_nativeobj_struct_p6 type_nativeobj_s2impl_dict;
+extern const type_nativeobj_struct_p8 type_nativeobj_s2impl_dict;
 
 struct value_nativeobj CxingImpl_s2Dict_Create(
     int argn, struct value_nativeobj args[]);

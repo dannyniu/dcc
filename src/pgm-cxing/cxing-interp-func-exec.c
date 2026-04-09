@@ -8,9 +8,30 @@
 #include "../lex-common/lex.h"
 #include "../infra/rfdict.h"
 
-#define eprintf(...) 0 //- fprintf(stderr, __VA_ARGS__)
-#define Reached() eprintf("Reached: flags: %d, spind: %zd, ri: %i; opind: %u. fd: %u, uf: %u (%s:%d!)\n", instruction->flags, pc.spind, instruction->node_body->semantic_rule, instruction->operand_index, instruction->folded_depth, instruction->unfolded, strrchr(__FILE__, '/'), __LINE__);
-#define CapturePoint() //- eprintf("CapturePoint %d! flags: %d, spind: %zd, ri: %i; opind: %u.\n", __LINE__, instruction->flags, pc.spind, instruction->node_body->semantic_rule, instruction->operand_index);
+#define CXING_INTERP_TRACING_LEVEL_MSG 1
+#define CXING_INTERP_TRACING_LEVEL_SRC 2
+#define CXING_INTERP_TRACING_LEVEL_FSM 3
+
+#define CXING_INTERP_TRACING_LEVEL 0
+#if CXING_INTERP_TRACING_LEVEL >= CXING_INTERP_TRACING_LEVEL_MSG
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+
+#if CXING_INTERP_TRACING_LEVEL >= CXING_INTERP_TRACING_LEVEL_FSM
+#define Reached() if( ReachesHere ) eprintf("Reached: flags: %d, opts: %d, spind: %zd, ri: %i; opind: %u. fd: %u, uf: %u. %llx/<%s>/%llx %llx/ax %llx/bx %d (%s:%d!)\n", instruction->flags, instruction->opts, pc.spind, instruction->node_body->semantic_rule, instruction->operand_index, instruction->folded_depth, instruction->unfolded, valreg.proper.l, varreg.key?(const char *)s2data_weakmap(varreg.key):"", varreg.scope.proper.u, instruction->ax.proper.u, instruction->bx.proper.u, metascope, strrchr(__FILE__, '/'), __LINE__);
+
+#define Visited() // if( ReachesHere ) eprintf("Visited: flags: %d, opts: %d, spind: %zd, ri: %i; opind: %u. fd: %u, uf: %u. %llx/<%s>/%llx %llx/ax %llx/bx %d (%s:%d!)\n", instruction->flags, instruction->opts, pc.spind, instruction->node_body->semantic_rule, instruction->operand_index, instruction->folded_depth, instruction->unfolded, valreg.proper.l, varreg.key?(const char *)s2data_weakmap(varreg.key):"", varreg.scope.proper.u, instruction->ax.proper.u, instruction->bx.proper.u, metascope, strrchr(__FILE__, '/'), __LINE__);
+
+#else
+
+#define Reached()
+#define Visited()
+
+#endif /* CXING_INTERP_TRACING_LEVEL >= CXING_INTERP_TRACING_LEVEL_FSM */
+#else
+#define eprintf(...) 0
+#define Reached()
+#define Visited()
+#endif /* CXING_INTERP_TRACING_LEVEL >= CXING_INTERP_TRACING_LEVEL_MSG */
 
 static inline lalr_rule_t rules(int32_t r)
 {
@@ -27,7 +48,8 @@ typedef struct cxing_ast_node {
     struct value_nativeobj ax;
 
     // Usages:
-    // `this` argument for method calls.
+    // 1. `this` argument for method calls.
+    // 2. object to be defined by `__initset__`.
     struct value_nativeobj bx;
 
     // arguments to a function call.
@@ -51,7 +73,7 @@ typedef struct cxing_ast_node {
         // logic determined, short-circuit.
         ast_node_action_stop,
 
-        // for conditionals.
+        // for conditionals, passed-down.
         ast_node_action_noelse,
 
         // for loops.
@@ -67,19 +89,23 @@ typedef struct cxing_ast_node {
     enum {
         ast_node_opt_default = 0,
 
-        // the current production (i.e. AST node) resulted in an lvalue,
-        // this flag instructs the epilogue to not clear the scope key
-        // when it restores the context of the parent AST node.
-        ast_node_lvalue_register,
+        // 2026-04-07:
+        // manually passed down in function calls with arguments.
+        ast_node_release_bx_after_call, // calls ValueDestroy.
+        ast_node_insulate_bx_after_call, // no ValueDestroy call,
 
-        // An operand of this expression (or phrase) was an lvalue,
-        // process it similarly to that in epilogue.
-        ast_node_lvalue_operand,
+        // 2026-04-08:
+        // makes decision for one of the 2 above flags.
+        ast_node_scope_was_lvalue,
+        ast_node_scope_was_rvalue,
 
-        // For rules with non-linear evaluation order of terms that can loop,
-        // hint to the rule processor in dry run that all terms had been
-        // evaluated and the loop can end.
-        ast_node_dryrun_done,
+        // preserve the value of `bx` in this frame,
+        // and instruct `PcStackPop` not to overwrite it for any reason.
+        ast_node_preserve_bx,
+        // ast_node_passdown_bx,
+
+        // for conditionals, sticky.
+        ast_node_opt_noelse,
 
         // Options are cleared across AST nodes.
     } opts;
@@ -89,6 +115,7 @@ typedef struct {
     size_t capacity;
     size_t spind; // stack pointer/index.
     cxing_ast_node_t *instructions; // owned.
+    enum types_enum function_kind;
 } cxing_program_counter_t;
 
 #define STACK_CAPACITY_INCREMENTATION 16
@@ -132,11 +159,6 @@ static struct value_nativeobj PcStackPop(cxing_program_counter_t *pc)
     assert( pc->spind > 0 );
 
     instruction = &pc->instructions[pc->spind];
-    /* // let funccall rule processor(s) handle resource management.
-       while( instruction->fargn --> 0 )
-       {
-       ValueDestroy(instruction->fargs[instruction->fargn]);
-       } // */
 
     if( instruction->vardecls )
     {
@@ -144,16 +166,22 @@ static struct value_nativeobj PcStackPop(cxing_program_counter_t *pc)
         instruction->vardecls = NULL;
     }
 
-    // 2026-01-17 TODO: resource management issues.
-    pc->instructions[pc->spind - 1].bx = pc->instructions[pc->spind].bx;
+    // 2026-04-04: resource management issues handled by rule handlers.
+    if( pc->instructions[pc->spind - 1].opts != ast_node_preserve_bx &&
+        pc->instructions[pc->spind - 1].opts != ast_node_release_bx_after_call &&
+        pc->instructions[pc->spind - 1].opts != ast_node_insulate_bx_after_call )
+        pc->instructions[pc->spind - 1].bx = pc->instructions[pc->spind].bx;
 
     // letting funccall rule processor(s) handle resource management.
+    pc->instructions[pc->spind - 1].flags = pc->instructions[pc->spind].flags;
     pc->instructions[pc->spind - 1].fargs = pc->instructions[pc->spind].fargs;
     pc->instructions[pc->spind - 1].fargn = pc->instructions[pc->spind].fargn;
-    pc->instructions[pc->spind - 1].flags = pc->instructions[pc->spind].flags;
     (void)pc->instructions[pc->spind - 1].opts;
 
-    eprintf("popped: %llu t=%lli\n",
+    eprintf("bx was: %llx t=%lli\n",
+            pc->instructions[pc->spind].bx.proper.u,
+            pc->instructions[pc->spind].bx.type->typeid);
+    eprintf("popped: %llx t=%lli\n",
             pc->instructions[pc->spind].ax.proper.u,
             pc->instructions[pc->spind].ax.type->typeid);
     return pc->instructions[pc->spind --].ax;
@@ -253,11 +281,25 @@ static int CxingFunc_ArgumentIndex(lalr_prod_t *params, s2data_t *key)
 static struct value_nativeobj CxingFuncLocalVar_GetImpl0(
     struct CxingFuncLocalVars *localvars, s2data_t *key)
 {
-    // 2026-02-07 TODO: `this` for methods.
     size_t sfind = localvars->pc->spind;
     s2cxing_value_t *ret_wrapped;
     lalr_prod_t *de; // the definition for the entity.
     int argind = -1, accessed;
+
+    // check that it is a method where `this` is referenced.
+    if( strcmp(s2data_weakmap(key), "this") == 0 )
+    {
+        if( localvars->pc->function_kind == valtyp_subr )
+        {
+            CxingSemanticErr(
+                localvars->module,
+                "Subroutines cannot reference `this` like methods.\n");
+            return (struct value_nativeobj) {
+                .proper.p = NULL,
+                .type = (const void *)&type_nativeobj_morgoth };
+        }
+        else return localvars->args[0];
+    }
 
     // first try looking on the stack frame.
     for( ; sfind <= localvars->pc->spind; sfind -- )
@@ -296,6 +338,9 @@ static struct value_nativeobj CxingFuncLocalVar_GetImpl0(
     if( argind >= 0 && argind < localvars->argn )
     {
         // found in arguments.
+        if( localvars->pc->function_kind == valtyp_method )
+            // `this` occupies a slot.
+            argind ++;
         return localvars->args[argind];
     }
 
@@ -342,12 +387,17 @@ static struct value_nativeobj CxingFuncLocalVar_GetImpl0(
         }
     }
 
-    // Finally, in the linked definitions.
+    // Finally, in the linked and built-in definitions.
 
     accessed = s2dict_get_T(s2cxing_value_t)(
         localvars->module->linked, key, &ret_wrapped);
 
-    if( accessed == s2_access_error )
+    if( accessed == s2_access_success )
+    {
+        assert( accessed == s2_access_success );
+        return ret_wrapped->cxing_value;
+    }
+    else if( accessed == s2_access_error )
     {
         CxingFatal("Error while getting local variables 03.");
         // Fail as gracefully as possible.
@@ -355,20 +405,33 @@ static struct value_nativeobj CxingFuncLocalVar_GetImpl0(
             .proper.p = NULL,
             .type = (const void *)&type_nativeobj_morgoth };
     }
-    else if( accessed == s2_access_nullval )
-    {
-        CxingDebug(
-            "The program is trying to read from a non-existing variable. "
-            "Please inform the developer to debug the program.");
 
+    accessed = s2dict_get_T(s2cxing_value_t)(CxingBuiltins, key, &ret_wrapped);
+
+    if( accessed == s2_access_success )
+    {
+        assert( accessed == s2_access_success );
+        return ret_wrapped->cxing_value;
+    }
+    else if( accessed == s2_access_error )
+    {
+        CxingFatal("Error while getting local variables 04.");
+        // Fail as gracefully as possible.
         return (struct value_nativeobj) {
             .proper.p = NULL,
             .type = (const void *)&type_nativeobj_morgoth };
     }
     else
     {
-        assert( accessed == s2_access_success );
-        return ret_wrapped->cxing_value;
+        assert( accessed == s2_access_nullval );
+        CxingDebug(
+            "The program is trying to read from a non-existing variable: "
+            "`%s` Please inform the developer to debug the program.\n",
+            (const char *)s2data_weakmap(key));
+
+        return (struct value_nativeobj) {
+            .proper.p = NULL,
+            .type = (const void *)&type_nativeobj_morgoth };
     }
 }
 
@@ -402,7 +465,7 @@ static struct value_nativeobj CxingFuncLocalVar_SetImpl0(
         if( accessed == s2_access_nullval )
             continue;
 
-        if( !(ret_wrapped = s2cxing_value_create(val)) )
+        if( !(ret_wrapped = s2cxing_value_create(ValueCopy(val))) )
         {
             CxingFatal("Error while setting local variables 2.");
             // Fail as gracefully as possible.
@@ -442,6 +505,10 @@ static struct value_nativeobj CxingFuncLocalVar_SetImpl0(
             .type = (const void *)&type_nativeobj_morgoth };
     }
 
+    if( localvars->pc->function_kind == valtyp_method )
+        // `this` occupies a slot.
+        argind ++;
+
     ValueDestroy(localvars->args[argind]);
     localvars->args[argind] = ValueCopy(val);
 
@@ -476,12 +543,12 @@ static struct value_nativeobj CxingFuncLocalVar_SetImpl(
         args[0].proper.p, args[1].proper.p, args[2]);
 }
 
-struct value_nativeobj CxingFuncLocalVar_Get = {
+static struct value_nativeobj CxingFuncLocalVar_Get = {
     .proper.p = CxingFuncLocalVar_GetImpl,
     .type = (const void *)&type_nativeobj_method,
 };
 
-struct value_nativeobj CxingFuncLocalVar_Set = {
+static struct value_nativeobj CxingFuncLocalVar_Set = {
     .proper.p = CxingFuncLocalVar_SetImpl,
     .type = (const void *)&type_nativeobj_method,
 };
@@ -493,6 +560,16 @@ static bool CxingFuncLocalVar_IsSetImpl0(
     s2cxing_value_t *ret_wrapped;
     lalr_prod_t *de; // the definition for the entity.
     int argind = -1, accessed;
+
+    // check that it is a method where `this` is referenced.
+    if( strcmp(s2data_weakmap(key), "this") == 0 )
+    {
+        if( localvars->pc->function_kind == valtyp_subr )
+        {
+            return false;
+        }
+        else return true;
+    }
 
     // first try looking on the stack frame.
     for( ; sfind <= localvars->pc->spind; sfind -- )
@@ -579,7 +656,76 @@ static struct TYPE_NATIVEOBJ_STRUCT(3) type_nativeobj_localvars = {
     },
 };
 
-#define ValueCopy(x) (eprintf("VC:%d.\n", __LINE__), ValueCopy(x))
+#define ValueCopy(x) (eprintf("VC:%d/%p. %s\n", __LINE__, x.proper.p, strrchr(__FILE__, '/')), (ValueCopy)(x))
+#define ValueDestroy(x) (eprintf("VD:%d/%p. %s\n", __LINE__, x.proper.p, strrchr(__FILE__, '/')), (ValueDestroy)(x))
+
+// Added 2026-04-07.
+
+// Ephemeral entities that're not scoped anywhere can be destroyed.
+// Others (mostly lvalues) are not touched by this.
+#define DiscardRValue() do {                            \
+        eprintf("XLV (%p): Discard RValue: %d/%s\n",    \
+                varreg.key, __LINE__, __FILE__);        \
+        DiscardRValue_Impl(&varreg, evalmode);          \
+    } while( false )
+
+void DiscardRValue_Impl(
+    struct lvalue_nativeobj *var,
+    cxing_func_eval_mode_t evalmode)
+{
+    if( !var->key && evalmode == cxing_func_eval_mode_execute )
+    {
+        eprintf("Bang!\n");
+        ValueDestroy(var->value);
+        var->value.proper.p = NULL;
+        var->value.type = (void *)&type_nativeobj_morgoth;
+    }
+}
+
+// This guarantees that it'd be safe to call `ValueDestroy` on them.
+#define HoldAndClearLValue() do {                               \
+        eprintf("XLV (%p): Hold 'n Clear LValue: %d/%s\n",      \
+                varreg.key, __LINE__, __FILE__);                \
+        HoldAndClearLValue_Impl(&varreg, evalmode);             \
+    } while( false )
+
+void HoldAndClearLValue_Impl(
+    struct lvalue_nativeobj *var,
+    cxing_func_eval_mode_t evalmode)
+{
+    if( var->key && evalmode == cxing_func_eval_mode_execute )
+    {
+        eprintf("Bang!\n");
+        var->value = ValueCopy(var->value);
+        s2obj_leave(var->key);
+        var->key = NULL;
+        //if( var->scope.type != (void *)&type_nativeobj_localvars ) ValueDestroy(var->scope);
+        var->scope.proper.p = NULL;
+        var->scope.type = (void *)&type_nativeobj_morgoth;
+    }
+}
+
+// Strips the 'l' from values. Idempotent like `HoldAndClearLValue`.
+#define DemoteLValue() do {                             \
+        eprintf("XLV (%p): Demote LValue: %d/%s\n",     \
+                varreg.key, __LINE__, __FILE__);        \
+        DemoteLValue_Impl(&varreg, evalmode);           \
+    } while( false )
+
+void DemoteLValue_Impl(
+    struct lvalue_nativeobj *var,
+    cxing_func_eval_mode_t evalmode)
+{
+    if( var->key && evalmode == cxing_func_eval_mode_execute )
+    {
+        eprintf("Bang!\n");
+        s2obj_leave(var->key);
+        var->key = NULL;
+        //if( var->scope.type != (void *)&type_nativeobj_localvars ) ValueDestroy(var->scope);
+        var->scope.proper.p = NULL;
+        var->scope.type = (void *)&type_nativeobj_morgoth;
+    }
+}
 
 // 2025-12-30: subroutines first, methods next.
 
@@ -588,12 +734,14 @@ struct value_nativeobj CxingFuncEval(
     lalr_prod_t *restrict textsegment,
     lalr_prod_t *restrict params,
     int argn, struct value_nativeobj args[],
+    enum types_enum function_kind,
     cxing_func_eval_mode_t evalmode)
 {
     cxing_program_counter_t pc = {
         .capacity = 0,
         .spind = 0,
         .instructions = NULL,
+        .function_kind = function_kind,
     };
     struct CxingFuncLocalVars localvars0 = {
         .pc = &pc,
@@ -606,6 +754,7 @@ struct value_nativeobj CxingFuncEval(
         .type = (const void *)&type_nativeobj_localvars,
     };
     cxing_ast_node_t *instruction;
+    int ReachesHere = 0;
 
     struct lvalue_nativeobj varreg = {
         .value.proper.p = NULL,
@@ -628,11 +777,9 @@ struct value_nativeobj CxingFuncEval(
     pc.instructions->flags = ast_node_action_default;
 
     eprintf("Function evaluation started.\n");
-    if( argn >= 1 )
-        eprintf("val-proper: %p\n", args[0].proper.p);
 
 start_eval_1term:;
-    static long cnt = 0; if( ++cnt >= 44800 ) exit(12); // TODO: remove after debugging.
+    static long cnt = 0; if( ++cnt >= 7654321 ) exit(12); // time limiter, TODO: remove after debugging.
     instruction = &pc.instructions[pc.spind];
     Reached();
 
@@ -646,30 +793,43 @@ start_eval_1term:;
     {
         lalr_prod_t *term = instruction->node_body->terms[
             instruction->operand_index].production;
-/* //
+
+#if CXING_INTERP_TRACING_LEVEL >= CXING_INTERP_TRACING_LEVEL_SRC
+
         lex_token_t *tok = instruction->node_body->terms[
             instruction->operand_index].terminal;
 
+        // Prints out the currently evaluating production subterm tree.
         if( s2_is_prod(term) )
         {
-            print_prod(instruction->node_body->terms[
-                           instruction->operand_index].production,
-                       0, ns_rules_cxing);
+            // fprint_prod(stderr, instruction->node_body->terms[instruction->operand_index].production, 0, ns_rules_cxing);
+
+            fprintf(stderr, "\n%*s %d:%s<%d:%s>\n\n",
+                    (int)pc.spind * 2 + 3, "",
+                    term->rule,
+                    strvec_i2str(ns_rules_cxing, term->production),
+                    term->semantic_rule,
+                    strvec_i2str(ns_rules_cxing, term->semantic_production));
+
             break;
         }
         else
         {
-            eprintf("lineno=%d, column=%d; ", tok->lineno, tok->column);
-            print_token(tok, 3);
-        } /*/
-            if( s2_is_prod(term) )
-            break; // */
+            fprintf(stderr, "\n%*s lineno=%d, column=%d; ",
+                    (int)pc.spind * 2 + 3, "", tok->lineno, tok->column);
+            fprint_token(stderr, tok, 3);
+            fprintf(stderr, "\n");
+        }
+#else /* not a verbose debugging interpreter, but a production one. */
+        if( s2_is_prod(term) )
+            break;
+#endif /* CXING_INTERP_TRACING_LEVEL >= CXING_INTERP_TRACING_SRC */
+
         instruction->operand_index ++;
     }
 
     assert( instruction->operand_index <=
             instruction->node_body->terms_count );
-
 
     // 2026-02-05:
     // Put "//>RULEIMPL<//" at every line that recognizes an AST rule,
@@ -694,43 +854,22 @@ finish_eval_1term:
         }
         Reached();
         free(pc.instructions);
+
         if( !valreg.type )
         {
+            eprintf("FuncEvalRet %d\n", __LINE__);
             return (struct value_nativeobj){
                 .proper.p = NULL,
                 .type = (const void *)&type_nativeobj_morgoth };
         }
         else
         {
-            if( varreg.key )
-                // This was a new rvalue.
-                return ValueCopy(valreg);
-            else
-                // This wasn't an lvalue.
-                return valreg;
+            eprintf("FuncEvalRet %d\n", __LINE__);
+            return valreg;
         }
     }
 
-    // [Automatic-Resource-Management]:
-    // All lvalues (i.e. those varreg with non-NULL `key`)
-    // are assumed transient and not explicitly destroyed.
-    if( !varreg.key )
-    {
-        CapturePoint();
-        // 2026-01-18:
-        // rvalues are destroyed after use.
-        ValueDestroy(valreg);
-    }
-    else if( instruction->opts != ast_node_lvalue_register )
-    {
-        CapturePoint();
-        // 2026-01-18:
-        // The production rule that consumed the the lvalue
-        // doesn't produce further lvalues.
-        if( evalmode == cxing_func_eval_mode_execute ) s2obj_leave(varreg.key);
-        varreg.key = NULL;
-    }
-
+    Reached();
     valreg = PcStackPop(&pc);
     pc.instructions[pc.spind].operand_index ++;
     goto start_eval_1term;

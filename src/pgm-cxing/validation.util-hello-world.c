@@ -35,14 +35,19 @@ int main(int argc, char *argv[])
             .proper.p = CxingStdlibFunc_Print,
             .type = (const void *)&type_nativeobj_subr,
         });
-    CxingModuleDump(module);
+    //CxingModuleDump(module);
 
     func = CXSym(module, "main");
     printf("args: %p, func: %p, module: %p.\n", &funcarg, func, module);
 
+    trace = 0;
+
     funcret = func(0, &funcarg);
     printf("Execution of function `main` returned: %lld.\n",
            funcret.proper.l);
+    //CxingModuleDump(module);
+
+    trace = 0;
 
     s2obj_release(module->pobj);
 
@@ -50,6 +55,25 @@ int main(int argc, char *argv[])
     CXParserFinalCommon();
 
     subret = EXIT_SUCCESS;
+
+    s2obj_t *gctail = s2gc_obj_alloc(0x6543, 128);
+    s2obj_t *gcsave = gctail;
+    i=0;
+    for(i=0; gctail->gc_prev; i++)
+    {
+        printf("%d: (%p) %x %d+%d.\n", i, gctail, gctail->type, gctail->refcnt, gctail->keptcnt);
+        if( s2_is_token(gctail) )
+        {
+            lex_token_t *tok = (void *)gctail;
+            print_token(tok, 0);
+        }
+        if( s2_is_data(gctail) )
+        {
+            printf("%s (%p)\n", (const char *)s2data_weakmap((s2data_t *)gctail), gctail);
+        }
+        gctail = gctail->gc_prev;
+    }
+    s2obj_release(gcsave);
 
 #if INTERCEPT_MEM_CALLS
     acq_after = allocs;

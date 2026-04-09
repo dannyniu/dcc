@@ -1,0 +1,46 @@
+method RandomOracle(s)
+{
+    this[s] _Then return this[s] _Fallback return this[s] = ++this.count;
+}
+
+method Teller()
+{
+    print(this);
+    return this.count;
+}
+
+subr Cal(mon)
+{
+    decl foo = dict() { "q": RandomOracle, "c": Teller };
+    foo.q("Jan");
+    foo.q("Feb");
+    foo.q("Mar");
+    foo.q("Apr");
+    foo.q("May");
+    foo.q("Jun");
+    foo.q("Jul");
+    foo.q("Aug");
+    foo.q("Sep");
+    foo.q("Oct");
+    foo.q("Nov");
+    foo.q("Dec");
+
+    print(foo.c);
+    print(foo.q(mon));
+    return foo.c();
+}
+
+subr main()
+{
+    print("\e[44m""Step 1""\e[0m");
+    print(Teller);
+
+    print("\e[44m""Step 2""\e[0m");
+    Cal("Mar");
+
+    print("\e[44m""Step 2b""\e[0m");
+    Teller();
+
+    print("\e[44m""Step 3""\e[0m");
+    return Cal("Oct");
+}

@@ -34,7 +34,10 @@ lex_elem_t LexElems[] = {
     { .pattern =
       "true|false|null|"
       "return|break|continue|and|_Then|or|_Fallback|decl|"
-      "if|else|elif|while|do|for|subr|method|this|"
+      // `this` is also a keyword,
+      // but it's resolved like an ordinary identifier.
+      // so it was removed from this list.
+      "if|else|elif|while|do|for|subr|method|"
       "_Include|_Load|extern|const",
       .cflags = LIBREG_EXTENDED, .completion = langlex_keyword },
 

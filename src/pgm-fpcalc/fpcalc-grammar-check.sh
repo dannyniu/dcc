@@ -4,7 +4,8 @@ optimize=debug
 testfunc()
 {
     #lldb -- \
-        $exec -f $(realpath ../tests/fpcalc-grammar-test-"${variant}".txt)
+        $exec -f $(
+            realpath ../tests/fpcalc/fpcalc-grammar-test-"${variant}".txt)
 }
 
 cd "$(dirname "$0")"

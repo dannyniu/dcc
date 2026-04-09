@@ -172,6 +172,7 @@ struct value_nativeobj CxingFuncEval(
     lalr_prod_t *restrict textsegment,
     lalr_prod_t *restrict params,
     int argn, struct value_nativeobj args[],
+    enum types_enum function_kind,
     cxing_func_eval_mode_t evalmode);
 
 // 2025-12-30: subroutines first, methods next.
@@ -182,7 +183,7 @@ struct value_nativeobj CxingFuncEval(
     int argn, struct value_nativeobj args[]); -*/
 #define CxingExecuteFunction(module, textsegment, params, argn, args) \
     CxingFuncEval(module, textsegment, params, argn, args, \
-                  cxing_func_eval_mode_execute)
+                  valtyp_subr, cxing_func_eval_mode_execute)
 
 /// @class
 /// @brief data protocol definition for platform-specific call-transfer bridge.

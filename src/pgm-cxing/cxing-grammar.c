@@ -1945,28 +1945,6 @@ void *args_genrule(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *objdefstart_comma(lalr_rule_params)
-{
-    int32_t production = hRule("objdef-start");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "objdef-start-comma", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
-void *objdefstart_nocomma(lalr_rule_params)
-{
-    int32_t production = hRule("objdef-start");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "objdef-start-nocomma", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
-}
-
 void *objdefstartcomma_genrule(lalr_rule_params)
 {
     int32_t production = hRule("objdef-start-comma");
@@ -1998,8 +1976,7 @@ void *objdefstartnocomma_genrule(lalr_rule_params)
 {
     int32_t production = hRule("objdef-start-nocomma");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "objdef-start-nocomma", },
-        { symtype_stoken, .value = ",", },
+        { symtype_prod, .value = "objdef-start-comma", },
         { symtype_prod, .value = "postfix-expr", },
         { symtype_stoken, .value = ":", },
         { symtype_prod, .value = "assign-expr", },
@@ -2022,11 +1999,23 @@ void *objdef_empty(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *objdef_some(lalr_rule_params)
+void *objdef_some1(lalr_rule_params)
 {
     int32_t production = hRule("object-notation");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "objdef-start", },
+        { symtype_prod, .value = "objdef-start-comma", },
+        { symtype_stoken, .value = "}", },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *objdef_some2(lalr_rule_params)
+{
+    int32_t production = hRule("object-notation");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_prod, .value = "objdef-start-nocomma", },
         { symtype_stoken, .value = "}", },
         {0},
     };
@@ -2314,13 +2303,12 @@ lalr_rule_t cxing_grammar_rules[] = {
     arglist_some,
     args_base,
     args_genrule,
-    objdefstart_comma,
-    objdefstart_nocomma,
     objdefstartcomma_genrule,
     objdefstartnocomma_base,
     objdefstartnocomma_genrule,
     objdef_empty,
-    objdef_some,
+    objdef_some1,
+    objdef_some2,
     objdef_array,
     array_piece_base,
     array_piece_genrule,

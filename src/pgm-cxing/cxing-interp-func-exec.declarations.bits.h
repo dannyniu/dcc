@@ -2,6 +2,8 @@
 
 #ifdef CXING_IMPLEMENT_FUNC_EXEC
 
+ReachesHere = 0;
+
 //
 // declarations.
 
@@ -21,6 +23,7 @@ if( theRule == decl_singledecl || //>RULEIMPL<//
     {
         if( instruction->operand_index == 0 )
         {
+            // Evaluate preceding sub-declarations in the list.
             PcStack_PushOrAbandon();
         }
         opind = 2;
@@ -32,6 +35,7 @@ if( theRule == decl_singledecl || //>RULEIMPL<//
     {
         if( instruction->operand_index == opind + 2 )
         {
+            // Evaluate the expression to be assigned to the variable.
             PcStack_PushOrAbandon();
         }
         else if( instruction->operand_index <
@@ -68,8 +72,8 @@ if( theRule == decl_singledecl || //>RULEIMPL<//
         theRule == decl_declarelist2 )
     {
         Reached();
-        // 2026-01-18: Setting to scopes require copying, to add `ValueCopy` - did?.
-        if( !(rval = s2cxing_value_create(ValueCopy(valreg))) )
+        HoldAndClearLValue();
+        if( !(rval = s2cxing_value_create(valreg)) )
         {
             CxingFatal(
                 "Variable declaration resource allocation failure 02.");
@@ -102,6 +106,14 @@ if( theRule == decl_singledecl || //>RULEIMPL<//
         CxingFatal("Variable declaration failure.");
         goto func_exec_abort;
     }
+
+    // Declarations don't exhibit values,
+    varreg = (struct lvalue_nativeobj){
+        .value.proper.p = NULL,
+        .value.type = (void *)&type_nativeobj_morgoth,
+        .scope.proper.p = NULL,
+        .scope.type = (void *)&type_nativeobj_morgoth,
+        .key = NULL};
 }
 
 #endif /* CXING_IMPLEMENT_FUNC_EXEC */

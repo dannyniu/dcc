@@ -75,4 +75,15 @@ struct lvalue_nativeobj {
 
 struct type_nativeobj TYPE_NATIVEOBJ_STRUCT();
 
+#if false /* For penetrative debugging. */
+#define CXING_RUN_PENDBG 1
+
+void *PtrCapture_Keep(s2obj_t *);
+void PtrCapture_Leave(s2obj_t *);
+#define s2obj_keep(...) PtrCapture_Keep(__VA_ARGS__)
+#define s2obj_leave(...) PtrCapture_Leave(__VA_ARGS__)
+
+void printStackTrace();
+#endif /* Penetrative Debugging. */
+
 #endif /* cxing_value_nativobj_h */

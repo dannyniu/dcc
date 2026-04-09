@@ -1,5 +1,6 @@
 /* DannyNiu/NJF, 2026-01-24. Public Domain. */
 
+#include "langsem.h"
 #include "runtime.h"
 
 struct value_nativeobj CxingStdlibFunc_Print(

@@ -11,6 +11,7 @@ expr-unary.c
 cxing-stdlib-io.c
 langsem.c
 runtime.c
+runtime-tracing.c
 lalr-common/lalr.c
 langlex/langlex-cxing.c
 lex-common/lex.c
@@ -32,6 +33,10 @@ pathutils/pathutils.c
 ./../contrib/librematch/src/regcomp-interval.c
 "
 
+memintercept='-DINTERCEPT_MEM_CALLS'
+#memintercept=''
+
 sanitizers='-fsanitize=address'
+sanitizers=''
 
 if [ X"$(uname -s)" = XLinux ] ; then ldflags_common=-lm ; fi

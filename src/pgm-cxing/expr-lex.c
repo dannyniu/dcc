@@ -240,16 +240,14 @@ s2data_t *StrLit_Unquote(s2data_t *base, s2data_t *lit)
         t = pa - ptr;
         if( s2data_putc(base, c) != 0 )
         {
-            CxingDiagnose("[%s]: Unable to append bytes to string object!\n",
-                          __func__);
+            return NULL;
         }
     }
 
     s2data_unmap(lit);
     if( s2data_putfin(base) != 0 )
     {
-        CxingDiagnose("[%s]: Unable to append bytes to string object!\n",
-                          __func__);
+        return NULL;
     }
     return base;
 }
@@ -276,14 +274,12 @@ s2data_t *StrLit_CookRaw(s2data_t *base, s2data_t *lit)
 
     if( s2data_puts(base, ptr, len) != 0 )
     {
-        CxingDiagnose("[%s]: Unable to append bytes to string object!\n",
-                          __func__);
+        return NULL;
     }
 
     if( s2data_putfin(base) != 0 )
     {
-        CxingDiagnose("[%s]: Unable to append bytes to string object!\n",
-                          __func__);
+        return NULL;
     }
 
     s2data_unmap(lit);

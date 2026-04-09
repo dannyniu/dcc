@@ -2,6 +2,8 @@
 
 #ifdef CXING_IMPLEMENT_FUNC_EXEC
 
+ReachesHere = 0;
+
 //
 // statements.
 
@@ -99,16 +101,29 @@ if( theRule == predclause_base ) //>RULEIMPL<//
     }
     else if( instruction->operand_index == 4 )
     {
+        Reached();
         if( ValueNativeObj2Logic(valreg) ||
             evalmode == cxing_func_eval_mode_dryrun )
         {
+            Reached();
+            DiscardRValue();
+            DemoteLValue();
+            instruction->opts = ast_node_opt_noelse;
             PcStack_PushOrAbandon();
-            instruction->flags = ast_node_action_noelse;
+        }
+        else
+        {
+            Reached();
+            DiscardRValue();
+            DemoteLValue();
         }
     }
     else if( instruction->operand_index ==
              instruction->node_body->terms_count )
     {
+        Reached();
+        if( instruction->opts == ast_node_opt_noelse )
+            instruction->flags = ast_node_action_noelse;
         goto finish_eval_1term;
     }
     else assert( 0 );
@@ -128,6 +143,8 @@ if( theRule == predclause_genrule ) //>RULEIMPL<//
         if( instruction->flags == ast_node_action_noelse &&
             evalmode == cxing_func_eval_mode_execute )
         {
+            Reached();
+            instruction->opts = ast_node_opt_noelse;
             instruction->operand_index =
                 instruction->node_body->terms_count;
             goto finish_eval_1term;
@@ -144,13 +161,25 @@ if( theRule == predclause_genrule ) //>RULEIMPL<//
         if( ValueNativeObj2Logic(valreg) ||
             evalmode == cxing_func_eval_mode_dryrun )
         {
+            Reached();
+            DiscardRValue();
+            DemoteLValue();
+            instruction->opts = ast_node_opt_noelse;
             PcStack_PushOrAbandon();
-            instruction->flags = ast_node_action_noelse;
+        }
+        else
+        {
+            Reached();
+            DiscardRValue();
+            DemoteLValue();
         }
     }
     else if( instruction->operand_index ==
              instruction->node_body->terms_count )
     {
+        Reached();
+        if( instruction->opts == ast_node_opt_noelse )
+            instruction->flags = ast_node_action_noelse;
         goto finish_eval_1term;
     }
     else assert( 0 );
@@ -170,6 +199,7 @@ if( theRule == condstmt_else ) //>RULEIMPL<//
         if( instruction->flags == ast_node_action_noelse &&
             evalmode == cxing_func_eval_mode_execute )
         {
+            Reached();
             instruction->operand_index =
                 instruction->node_body->terms_count;
             goto finish_eval_1term;
@@ -183,6 +213,7 @@ if( theRule == condstmt_else ) //>RULEIMPL<//
     else if( instruction->operand_index ==
              instruction->node_body->terms_count )
     {
+        Reached();
         goto finish_eval_1term;
     }
     else assert( 0 );
@@ -202,9 +233,16 @@ if( theRule == while_rule ) //>RULEIMPL<//
             evalmode == cxing_func_eval_mode_dryrun )
         {
             Reached();
+            DiscardRValue();
+            DemoteLValue();
             PcStack_PushOrAbandon();
         }
-        else instruction->operand_index ++;
+        else
+        {
+            DiscardRValue();
+            DemoteLValue();
+            instruction->operand_index ++;
+        }
     }
     else if( instruction->operand_index ==
              instruction->node_body->terms_count )
@@ -254,11 +292,21 @@ if( theRule == dowhile_rule ) //>RULEIMPL<//
 
         if( instruction->flags == ast_node_action_break ||
             evalmode == cxing_func_eval_mode_dryrun )
+        {
+            DiscardRValue();
+            DemoteLValue();
             goto finish_eval_1term;
+        }
 
         if( !ValueNativeObj2Logic(valreg) )
+        {
+            DiscardRValue();
+            DemoteLValue();
             goto finish_eval_1term;
+        }
 
+        DiscardRValue();
+        DemoteLValue();
         instruction->operand_index = 0;
         goto start_eval_1term;
     }

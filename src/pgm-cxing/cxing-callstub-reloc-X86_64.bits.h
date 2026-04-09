@@ -74,8 +74,25 @@ static struct value_nativeobj CallXfer(
             .type = (const void *)&type_nativeobj_morgoth };
     }
 
-    if( cxing_grammar_rules[funcdef->semantic_rule] != funcdecl_subr &&
-        cxing_grammar_rules[funcdef->semantic_rule] != funcdecl_method )
+    if( cxing_grammar_rules[funcdef->semantic_rule] == funcdecl_subr )
+    {
+        return CxingFuncEval(
+            module,
+            funcdef->terms[3].production,
+            funcdef->terms[2].production,
+            argn, args, valtyp_subr,
+            cxing_func_eval_mode_execute);
+    }
+    else if( cxing_grammar_rules[funcdef->semantic_rule] == funcdecl_method )
+    {
+        return CxingFuncEval(
+            module,
+            funcdef->terms[3].production,
+            funcdef->terms[2].production,
+            argn, args, valtyp_method,
+            cxing_func_eval_mode_execute);
+    }
+    else
     {
         CxingDiagnose("[%s]: Definition for %s is not a function.\n",
                       __func__, key);
@@ -83,12 +100,6 @@ static struct value_nativeobj CallXfer(
             .proper.p = NULL,
             .type = (const void *)&type_nativeobj_morgoth };
     }
-
-    return CxingExecuteFunction(
-        module,
-        funcdef->terms[3].production,
-        funcdef->terms[2].production,
-        argn, args);
 }
 
 static void Relocate(

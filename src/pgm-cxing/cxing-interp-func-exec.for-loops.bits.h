@@ -2,9 +2,11 @@
 
 #ifdef CXING_IMPLEMENT_FUNC_EXEC
 
+ReachesHere = 0;
+
 // body finish, set operand index to
 // the incrementation or the condition clause.
-#define forloop_bodyfin(oi_inc)                         \
+#define ForLoop_BodyFin(oi_inc)                         \
     Reached();                                          \
     if( instruction->flags == ast_node_action_break )   \
     {                                                   \
@@ -22,8 +24,8 @@
 // The continue action needed to be set because otherwise
 // the incrementation clause won't be evaluated.
 // So for forms without the incrementation clause,
-// use `forloop_bodyfin_simple` whenever possible.
-#define forloop_bodyfin_simple(oi_inc)                  \
+// use `ForLoop_BodyFin_Simple` whenever possible.
+#define ForLoop_BodyFin_Simple(oi_inc)                  \
     Reached();                                          \
     if( instruction->flags == ast_node_action_break ||  \
         evalmode == cxing_func_eval_mode_dryrun )       \
@@ -36,8 +38,10 @@
         goto start_eval_1term;                          \
     }
 
-#define forloop_increment(oi_inc, oi_cond)                      \
+#define ForLoop_Increment(oi_inc, oi_cond)                      \
     Reached();                                                  \
+    DiscardRValue();                                            \
+    DemoteLValue();                                             \
     instruction->operand_index = oi_cond;                       \
     if( instruction->flags == ast_node_action_continue )        \
     {                                                           \
@@ -50,27 +54,38 @@
         }                                                       \
         Reached();                                              \
     }                                                           \
-    if( evalmode == cxing_func_eval_mode_dryrun )               \
-        instruction->opts = ast_node_dryrun_done;               \
     goto start_eval_1term;
 
-#define forloop_condition(oi_cond, oi_body)             \
-    Reached();                                          \
-    instruction->operand_index = oi_body;               \
-    if( instruction->opts == ast_node_dryrun_done )     \
-        goto finish_eval_1term;                         \
-    if( !PcStackPush(                                   \
-            &pc,                                        \
-            instruction->node_body                      \
-            ->terms[oi_cond].production) )              \
-    {                                                   \
-        goto func_exec_abort;                           \
-    }                                                   \
-    else                                                \
-    {                                                   \
-        if( evalmode == cxing_func_eval_mode_dryrun )   \
-            instruction->opts = ast_node_dryrun_done;   \
-        goto start_eval_1term;                          \
+#define ForLoop_Condition(oi_cond, oi_body)     \
+    Reached();                                  \
+    DiscardRValue();                            \
+    DemoteLValue();                             \
+    instruction->operand_index = oi_body;       \
+    if( !PcStackPush(                           \
+            &pc,                                \
+            instruction->node_body              \
+            ->terms[oi_cond].production) )      \
+    {                                           \
+        goto func_exec_abort;                   \
+    }                                           \
+    else                                        \
+    {                                           \
+        goto start_eval_1term;                  \
+    }
+
+#define ForBody()                               \
+    if( ValueNativeObj2Logic(valreg) )          \
+    {                                           \
+        Reached();                              \
+        DiscardRValue();                        \
+        DemoteLValue();                         \
+        PcStack_PushOrAbandon();                \
+    }                                           \
+    else                                        \
+    {                                           \
+        DiscardRValue();                        \
+        DemoteLValue();                         \
+        instruction->operand_index ++;          \
     }
 
 if( evalmode == cxing_func_eval_mode_execute )
@@ -86,7 +101,7 @@ if( evalmode == cxing_func_eval_mode_execute )
         else if( instruction->operand_index ==
                  instruction->node_body->terms_count )
         {
-            forloop_bodyfin_simple(0);
+            ForLoop_BodyFin_Simple(0);
         }
         else assert( 0 );
     }
@@ -108,7 +123,7 @@ if( evalmode == cxing_func_eval_mode_execute )
         else if( instruction->operand_index ==
                  instruction->node_body->terms_count )
         {
-            forloop_bodyfin_simple(5);
+            ForLoop_BodyFin_Simple(5);
         }
         else assert( 0 );
     }
@@ -138,7 +153,7 @@ if( evalmode == cxing_func_eval_mode_execute )
         else if( instruction->operand_index ==
                  instruction->node_body->terms_count )
         {
-            forloop_bodyfin(3);
+            ForLoop_BodyFin(3);
         }
         else assert( 0 );
     }
@@ -153,17 +168,12 @@ if( evalmode == cxing_func_eval_mode_execute )
         }
         if( instruction->operand_index == 6 ) // the body clause.
         {
-            if( ValueNativeObj2Logic(valreg) )
-            {
-                Reached();
-                PcStack_PushOrAbandon();
-            }
-            else instruction->operand_index ++;
+            ForBody();
         }
         else if( instruction->operand_index ==
                  instruction->node_body->terms_count )
         {
-            forloop_bodyfin_simple(0);
+            ForLoop_BodyFin_Simple(0);
         }
         else
         {
@@ -179,25 +189,20 @@ if( evalmode == cxing_func_eval_mode_execute )
         Reached();
         if( instruction->operand_index == 3 ) // the condition clause.
         {
-            forloop_condition(3, 6);
+            ForLoop_Condition(3, 6);
         }
         else if( instruction->operand_index == 5 ) // the increment clause.
         {
-            forloop_increment(5, 2);
+            ForLoop_Increment(5, 2);
         }
         else if( instruction->operand_index == 7 ) // the body clause.
         {
-            if( ValueNativeObj2Logic(valreg) )
-            {
-                Reached();
-                PcStack_PushOrAbandon();
-            }
-            else instruction->operand_index ++;
+            ForBody();
         }
         else if( instruction->operand_index ==
                  instruction->node_body->terms_count )
         {
-            forloop_bodyfin(4);
+            ForLoop_BodyFin(4);
         }
         else
         {
@@ -219,25 +224,20 @@ if( evalmode == cxing_func_eval_mode_execute )
         }
         else if( instruction->operand_index == 4 ) // the condition clause.
         {
-            forloop_condition(4, 7);
+            ForLoop_Condition(4, 7);
         }
         else if( instruction->operand_index == 6 ) // the increment clause.
         {
-            forloop_increment(6, 3);
+            ForLoop_Increment(6, 3);
         }
         else if( instruction->operand_index == 8 ) // the body clause.
         {
-            if( ValueNativeObj2Logic(valreg) )
-            {
-                Reached();
-                PcStack_PushOrAbandon();
-            }
-            else instruction->operand_index ++;
+            ForBody();
         }
         else if( instruction->operand_index ==
                  instruction->node_body->terms_count )
         {
-            forloop_bodyfin(5);
+            ForLoop_BodyFin(5);
         }
         else
         {
@@ -259,7 +259,7 @@ if( evalmode == cxing_func_eval_mode_execute )
         }
         else if( instruction->operand_index == 5 ) // the increment clause.
         {
-            forloop_increment(5, 6);
+            ForLoop_Increment(5, 6);
         }
         else if( instruction->operand_index == 7 ) // the body clause.
         {
@@ -269,7 +269,7 @@ if( evalmode == cxing_func_eval_mode_execute )
         else if( instruction->operand_index ==
                  instruction->node_body->terms_count )
         {
-            forloop_bodyfin(4);
+            ForLoop_BodyFin(4);
         }
         else assert( 0 );
     }
@@ -285,21 +285,16 @@ if( evalmode == cxing_func_eval_mode_execute )
         }
         else if( instruction->operand_index == 4 ) // the condition clause.
         {
-            forloop_condition(4, 6);
+            ForLoop_Condition(4, 6);
         }
         else if( instruction->operand_index == 7 ) // the body clause.
         {
-            if( ValueNativeObj2Logic(valreg) )
-            {
-                Reached();
-                PcStack_PushOrAbandon();
-            }
-            else instruction->operand_index ++;
+            ForBody();
         }
         else if( instruction->operand_index ==
                  instruction->node_body->terms_count )
         {
-            forloop_bodyfin_simple(3);
+            ForLoop_BodyFin_Simple(3);
         }
         else
         {

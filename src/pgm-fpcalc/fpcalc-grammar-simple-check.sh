@@ -3,9 +3,9 @@
 optimize=debug
 testfunc()
 {
-    $exec -f "$(realpath ../tests/fpcalc-grammar-test-expr.txt)"
-    #$exec -f "$(realpath ../tests/fpcalc-grammar-test-funcs.txt)"
-    #$exec -f "$(realpath ../tests/fpcalc-grammar-test-partial.txt)"
+    $exec -f "$(realpath ../tests/fpcalc/fpcalc-grammar-test-expr.txt)"
+    #$exec -f "$(realpath ../tests/fpcalc/fpcalc-grammar-test-funcs.txt)"
+    #$exec -f "$(realpath ../tests/fpcalc/fpcalc-grammar-test-partial.txt)"
 }
 
 cd "$(dirname "$0")"
