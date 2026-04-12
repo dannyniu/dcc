@@ -697,9 +697,8 @@ void HoldAndClearLValue_Impl(
     {
         eprintf("Bang!\n");
         var->value = ValueCopy(var->value);
-        s2obj_leave(var->key);
+        if( var->key != (void *)1 ) s2obj_leave(var->key);
         var->key = NULL;
-        //if( var->scope.type != (void *)&type_nativeobj_localvars ) ValueDestroy(var->scope);
         var->scope.proper.p = NULL;
         var->scope.type = (void *)&type_nativeobj_morgoth;
     }
@@ -719,9 +718,8 @@ void DemoteLValue_Impl(
     if( var->key && evalmode == cxing_func_eval_mode_execute )
     {
         eprintf("Bang!\n");
-        s2obj_leave(var->key);
+        if( var->key != (void *)1 ) s2obj_leave(var->key);
         var->key = NULL;
-        //if( var->scope.type != (void *)&type_nativeobj_localvars ) ValueDestroy(var->scope);
         var->scope.proper.p = NULL;
         var->scope.type = (void *)&type_nativeobj_morgoth;
     }

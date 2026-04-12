@@ -5,8 +5,8 @@ optimize=debug
 testfunc()
 {
     #lldb -- \
-      #$exec ../tests/cxing/auto-res-man-test-01.cxing
-      $exec ../tests/cxing/xlate-unit-test-01.cxing
+      $exec ../tests/cxing/auto-res-man-test-01.cxing &&
+      $exec ../tests/cxing/xlate-unit-test-01.cxing &&
       $exec ../tests/cxing/xlate-unit-test-03.cxing
 }
 

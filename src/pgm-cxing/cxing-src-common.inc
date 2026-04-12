@@ -39,4 +39,22 @@ memintercept='-DINTERCEPT_MEM_CALLS'
 sanitizers='-fsanitize=address'
 sanitizers=''
 
-if [ X"$(uname -s)" = XLinux ] ; then ldflags_common=-lm ; fi
+libs_common=''
+libs=''
+
+case "$(uname -s)" in
+    Linux)
+        libs_common=-lm
+        ;;
+
+    CYGWIN_NT-*|MINGW*_NT-*)
+        libs_common=-lpthread
+        ;;
+esac
+
+LD_sv="$LD"
+LD=ld_add_libs
+
+ld_add_libs() {
+    ${LD_sv:-cc} "$@" $libs_common $libs
+}

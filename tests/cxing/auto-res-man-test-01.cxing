@@ -10,7 +10,7 @@ subr found()
 
 subr func2(x)
 {
-    x.v = 5 + null;
+    x.v = 5 + null; // should equal 5.
 }
 
 subr func3(x)
@@ -18,4 +18,4 @@ subr func3(x)
     x["w"] = x.v * 2;
 }
 
-subr iden(){ 0; }
+subr iden(){ 0; /* no-op */ }

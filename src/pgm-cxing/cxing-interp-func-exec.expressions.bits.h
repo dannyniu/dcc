@@ -121,7 +121,7 @@ if( theRule == ident_ident ) //>RULEIMPL<//
                 instruction->node_body->terms[0].terminal->lineno,
                 instruction->node_body->terms[0].terminal->column);
         }
-        varreg.key = instruction->node_body->terms[0].terminal->str;
+        varreg.key = (void *)1;
     }
     else
     {
@@ -156,10 +156,7 @@ if( theRule == postfix_member ) //>RULEIMPL<//
 
         if( evalmode == cxing_func_eval_mode_dryrun )
         {
-            varreg.key =
-                instruction->node_body
-                ->terms[2].production
-                ->terms[0].terminal->str;
+            varreg.key = (void *)1;
         }
         else
         {
@@ -256,7 +253,8 @@ if( theRule == funcinvokenocomma_base ) //>RULEIMPL<//
 
         if( varreg.key )
         {
-            s2obj_leave(varreg.key);
+            if( varreg.key != (void *)1 )
+                s2obj_leave(varreg.key);
             varreg.key = NULL;
         }
  
@@ -402,11 +400,6 @@ if( theRule == funccall_somearg ) //>RULEIMPL<//
     {
         Reached();
 
-        // There shouldn't be lvalues to clear,
-        // The only rule that can occur here
-        // is the `funccall-start-nocomma` production.
-        assert( !varreg.key );
-
         if( evalmode == cxing_func_eval_mode_execute )
         {
             if( valreg.type->typeid == valtyp_subr )
@@ -487,7 +480,8 @@ if( theRule == funccall_noarg ) //>RULEIMPL<//
 
         if( varreg.key )
         {
-            s2obj_leave(varreg.key);
+            if( varreg.key != (void *)1 )
+                s2obj_leave(varreg.key);
             varreg.key = NULL;
         }
 
@@ -895,7 +889,7 @@ if( theRule == assignment_directassign || //>RULEIMPL<//
                        "is not an lvalue!\n");
             goto finish_eval_1term;
         }
-        else
+        else if( varreg.key != (void *)1 )
         {
             eprintf("The key is: %s.\n",
                     (const char *)s2data_weakmap(varreg.key));

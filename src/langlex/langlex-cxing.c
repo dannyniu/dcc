@@ -41,7 +41,7 @@ lex_elem_t LexElems[] = {
       "_Include|_Load|extern|const",
       .cflags = LIBREG_EXTENDED, .completion = langlex_keyword },
 
-    { .pattern = "/\\*([!*]|\\*[^/])\\*/",
+    { .pattern = "/\\*([^*]|\\*[^/])*\\*/",
       .cflags = LIBREG_EXTENDED,
       .completion = langlex_comment },
 
