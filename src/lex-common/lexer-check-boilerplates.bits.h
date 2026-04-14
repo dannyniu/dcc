@@ -1,0 +1,181 @@
+/* DannyNiu/NJF, 2026-04-12. Public Domain. */
+
+#ifdef NextHeader
+
+#include <time.h>
+
+// Checks the consistency of a grammar by parsing something using it.
+
+#if !defined(LexerDecl) || !defined(LexerInit)
+#include "../lex-common/rope.h"
+#define LexerDecl RegexLexContext lexer
+#define LexerInit RegexLexFromRope_Init(&lexer, rope)
+#endif // !defined(LexerDecl) || !defined(LexerInit)
+
+#if !defined(NS_RULES) || !defined(GRAMMAR_RULES) || !defined(var_lex_elems)
+// 2025-03-29:
+// included by parent source.
+// expects `GRAMMAR_RULES` and `NS_RULES`.
+//#error Expects `GRAMMAR_RULES` and `NS_RULES` to be defined!
+#include "../infra/strvec.h"
+#include "../lalr-common/lalr.h"
+static strvec_t *NS_RULES = NULL;
+static lalr_rule_t *GRAMMAR_RULES = NULL;
+static lex_elem_t *var_lex_elems = NULL;
+#endif // !defined(NS_RULES) || !defined(GRAMMAR_RULES) || !defined(var_lex_elems)
+
+#if false // no need to link with readline
+#if __has_include(<readline/readline.h>)
+#include <readline/readline.h>
+
+s2data_t *s2data_stdio_getline(FILE *fp)
+{
+    assert( fp == stdin );
+    char *line = readline("input> ");
+    if( !line ) return NULL;
+    s2data_t *ret = s2data_from_str(line);
+    (free)(line);
+    return ret;
+}
+
+#else // There's no 'readline.h'
+s2data_t *s2data_stdio_getline(FILE *fp)
+{
+    s2data_t *ret;
+    int c;
+
+    fprintf(stderr, "input> ");
+    fflush(stderr);
+
+    ret = s2data_create(0);
+    if( !ret ) return NULL;
+
+    while( (c = getc(fp)) >= 0 )
+    {
+        if( s2data_putc(ret, c) == -1 )
+        {
+            s2obj_release(ret->pobj);
+            return NULL;
+        }
+        if( c == '\n' ) break;
+    }
+
+    if( s2data_putfin(ret) == -1 )
+    {
+        s2obj_release(ret->pobj);
+        return NULL;
+    }
+    return ret;
+}
+
+#endif // __has_include(<readline/readline.h>)
+#endif // false // no need to link with readline
+
+int logger(void *ctx, const char *msg)
+{
+    (void)ctx;
+    fprintf(stderr, "%s\n", msg);
+    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    union {
+        lex_getc_base_t base;
+        lex_getc_fp_t fromfile;
+        lex_getc_str_t fromstr;
+    } expr_getc;
+    source_rope_t *rope;
+    LexerDecl;
+
+    lalr_stack_t *parsed;
+    lalr_term_t *te;
+    int indentlevel = 0;
+    int subret = 0, i;
+
+    clock_t perfcounter;
+
+#if INTERCEPT_MEM_CALLS
+    long acq_before = 0;
+    long rel_before = 0;
+    long acq_after = 0;
+    long rel_after = 0;
+#endif /* INTERCEPT_MEM_CALLS */
+
+    assert( argc > 2 );
+
+    if( strcmp(argv[1], "-f") == 0 )
+    {
+        lex_getc_init_from_fp(&expr_getc.fromfile, fopen(argv[2], "r"));
+    }
+    else if( strcmp(argv[1], "-e") == 0 )
+    {
+        lex_getc_init_from_str(&expr_getc.fromstr, argv[2]);
+    }
+    rope = CreateRopeFromGetc(&expr_getc.base, 0);
+    LexerInit;
+
+    for(i=0; var_lex_elems[i].pattern; i++)
+    {
+        subret = libregcomp(
+            &var_lex_elems[i].preg,
+            var_lex_elems[i].pattern,
+            var_lex_elems[i].cflags);
+    }
+    lexer.regices = var_lex_elems;
+    lexer.logger_base = (struct logging_ctxbase){
+        .logger = (logger_func)logger,
+    };
+
+#if INTERCEPT_MEM_CALLS
+    acq_before = allocs;
+    rel_before = frees;
+#endif /* INTERCEPT_MEM_CALLS */
+
+#include NextHeader
+
+    s2obj_release(rope->pobj);
+    for(i=0; var_lex_elems[i].pattern; i++)
+    {
+        libregfree(&var_lex_elems[i].preg);
+    }
+
+/*
+s2obj_t *gctail = s2gc_obj_alloc(0x6543, 128);
+s2obj_t *gcsave = gctail;
+i=0;
+for(i=0; gctail->gc_prev; i++)
+{
+    printf("%d: (%p) %x %d+%d.\n", i, gctail, gctail->type, gctail->refcnt, gctail->keptcnt);
+    if( s2_is_token(gctail) )
+    {
+        lex_token_t *tok = (void *)gctail;
+        printf("tok<%d>: `%s`\n", tok->completion, (char *)s2data_weakmap(tok->str));
+    }
+    if( s2_is_data(gctail) )
+    {
+        printf("%s (%p, %zd bytes)\n",
+               (const char *)s2data_weakmap((s2data_t *)gctail),
+               gctail, s2data_len(gctail));
+    }
+
+    gctail = gctail->gc_prev;
+}
+s2obj_release(gcsave);//*/
+
+#if INTERCEPT_MEM_CALLS
+    acq_after = allocs;
+    rel_after = frees;
+    printf("acq-before: %ld, acq-after: %ld.\n", acq_before, acq_after);
+    printf("rel-before: %ld, rel-after: %ld.\n", rel_before, rel_after);
+    printf("mem-acquire: %ld, mem-release: %ld.\n", allocs, frees);
+    for(i=0; i<4; i++)
+    {
+        if( mh[i] ) subret = EXIT_FAILURE;
+        printf("%08lx%c", (long)mh[i], i==3 ? '\n' : ' ');
+    }
+#endif /* INTERCEPT_MEM_CALLS */
+    return subret;
+}
+
+#endif /* NextHeader */

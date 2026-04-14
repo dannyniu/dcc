@@ -168,14 +168,15 @@ static struct value_nativeobj PcStackPop(cxing_program_counter_t *pc)
 
     // 2026-04-04: resource management issues handled by rule handlers.
     if( pc->instructions[pc->spind - 1].opts != ast_node_preserve_bx &&
-        pc->instructions[pc->spind - 1].opts != ast_node_release_bx_after_call &&
-        pc->instructions[pc->spind - 1].opts != ast_node_insulate_bx_after_call )
+        pc->instructions[pc->spind - 1].opts != ast_node_insulate_bx_after_call &&
+        pc->instructions[pc->spind - 1].opts != ast_node_release_bx_after_call )
         pc->instructions[pc->spind - 1].bx = pc->instructions[pc->spind].bx;
 
     // letting funccall rule processor(s) handle resource management.
+    // 2026-04-14: 2 lines commented out and optimized to avoid `realloc` calls.
+    //- pc->instructions[pc->spind - 1].fargs = pc->instructions[pc->spind].fargs;
+    //- pc->instructions[pc->spind - 1].fargn = pc->instructions[pc->spind].fargn;
     pc->instructions[pc->spind - 1].flags = pc->instructions[pc->spind].flags;
-    pc->instructions[pc->spind - 1].fargs = pc->instructions[pc->spind].fargs;
-    pc->instructions[pc->spind - 1].fargn = pc->instructions[pc->spind].fargn;
     (void)pc->instructions[pc->spind - 1].opts;
 
     eprintf("bx was: %llx t=%lli\n",

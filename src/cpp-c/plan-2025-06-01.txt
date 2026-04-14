@@ -1,6 +1,29 @@
 2026-04-09:
+====
 
 The previous plan were scrubbed. A diagram sketch of the macro expansion
 implementation is available in the docs folder.
 
 The current code here hasn't been tested yet.
+
+2026-04-12, Roles of Each Files:
+====
+
+`cpp-ctrlline-*`:
+----
+
+Implement the behaviors of preprocessing directives,
+
+`cpp-master*`:
+----
+
+2026-04-12 TODO: document me.
+
+?? Watches for and invokes preprocessing directives ??
+?? .. what else .. ??
+
+`cpp-macro-expand.*`:
+----
+
+Handles the expansion of macros, by intercepting the token shifter of
+the unprocessed source code file, and produce a stream of processed tokens.

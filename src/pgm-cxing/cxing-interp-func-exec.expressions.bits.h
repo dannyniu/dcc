@@ -245,6 +245,12 @@ if( theRule == funcinvokenocomma_base ) //>RULEIMPL<//
     if( instruction->operand_index == 0 )
     {
         Reached();
+
+        assert( rules(instruction[-1].node_body->semantic_rule) ==
+                funccall_somearg || funcinvokenocomma_genrule ==
+                rules(instruction[-1].node_body->semantic_rule) );
+        instruction->fargn = instruction[-1].fargn + 1;
+
         PcStack_PushOrAbandon();
     }
     else if( instruction->operand_index == 2 )
@@ -286,7 +292,9 @@ if( theRule == funcinvokenocomma_base ) //>RULEIMPL<//
 
         if( evalmode == cxing_func_eval_mode_execute )
         {
-            instruction->fargs = calloc(2, sizeof(struct value_nativeobj));
+            instruction->fargs = calloc(
+                instruction->fargn, sizeof(struct value_nativeobj));
+
             if( !instruction->fargs )
             {
                 CxingFatal("Call to calloc failed when trying to allocate "
@@ -314,6 +322,8 @@ if( theRule == funcinvokenocomma_base ) //>RULEIMPL<//
             instruction[-1].bx = instruction->bx;
             instruction[-1].opts = instruction->opts;
         }
+        instruction[-1].fargn = instruction->fargn;
+        instruction[-1].fargs = instruction->fargs;
     }
     else assert( 0 );
 }
@@ -325,6 +335,12 @@ if( theRule == funcinvokenocomma_genrule ) //>RULEIMPL<//
     if( instruction->operand_index == 0 )
     {
         Reached();
+
+        assert( rules(instruction[-1].node_body->semantic_rule) ==
+                funccall_somearg || funcinvokenocomma_genrule ==
+                rules(instruction[-1].node_body->semantic_rule) );
+        instruction->fargn = instruction[-1].fargn + 1;
+
         PcStack_PushOrAbandon();
     }
     else if( instruction->operand_index == 2 )
@@ -350,25 +366,6 @@ if( theRule == funcinvokenocomma_genrule ) //>RULEIMPL<//
         // The argument value is not an lvalue.
         HoldAndClearLValue();
 
-        if( evalmode == cxing_func_eval_mode_execute )
-        {
-            void *tmp = realloc(
-                instruction->fargs,
-                (instruction->fargn + 1) *
-                sizeof(struct value_nativeobj));
-
-            if( !tmp )
-            {
-                CxingFatal("Call to realloc failed when trying to allocate "
-                           "space for function arguments.\n");
-                goto func_exec_abort;
-            }
-
-            Reached();
-            instruction->fargs = tmp;
-            instruction->fargs[instruction->fargn ++] = valreg;
-        }
-
         assert( pc.spind > 0 );
         assert( funcinvokenocomma_genrule == rules(
                     instruction[-1].node_body->semantic_rule) ||
@@ -381,6 +378,8 @@ if( theRule == funcinvokenocomma_genrule ) //>RULEIMPL<//
             instruction[-1].bx = instruction->bx;
             instruction[-1].opts = instruction->opts;
         }
+        instruction[-1].fargn = instruction->fargn;
+        instruction[-1].fargs = instruction->fargs;
     }
     else assert( 0 );
 }
@@ -393,6 +392,7 @@ if( theRule == funccall_somearg ) //>RULEIMPL<//
         instruction->node_body->terms_count )
     {
         Reached();
+        instruction->fargn = 1; // one reserved for `this` argument.
         PcStack_PushOrAbandon();
     }
     else if( instruction->operand_index ==

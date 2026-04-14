@@ -64,6 +64,7 @@ struct RegexLexContext {
     void *misc; // For the lexer hack to be used with C.
 
     // current position in the rope-represented source code text. zero-based.
+    // 2026-04-13: always positioned adjacently after the first non-blank char.
     ptrdiff_t offsub;
 
     // total number of bytes in source code text.

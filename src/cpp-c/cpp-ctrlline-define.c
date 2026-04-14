@@ -1,5 +1,7 @@
 /* DannyNiu/NJF, 2026-03-21. Public Domain. */
 
+// Implements the `#define ...` directive.
+
 #include "cpp-c.h"
 
 static bool isTokenParam(s2list_t *params, lex_token_t *tok)
@@ -23,28 +25,58 @@ static bool isTokenParam(s2list_t *params, lex_token_t *tok)
     return ret;
 }
 
-static bool look_back_for_genuine_newline(RegexLexContext *ctx)
+static bool look_ahead_for_genuine_newline(RegexLexContext *ctx)
 {
-    char *src = s2data_weakmap(ctx->rope->sourcecode);
+    const char *src = s2data_weakmap(ctx->rope->sourcecode);
+    ptrdiff_t len = s2data_len(ctx->rope->sourcecode);
     ptrdiff_t t = ctx->offsub;
 
-    while( t > 0 && isspace(src[--t]) )
+    while( true )
+    {
+        if( t >= len ) break;
+
         if( src[t] == '\n' )
-            break;
+            return true;
 
-    if( t > 0 )
-        if( src[t-1] == '\\' )
-            return false;
+        if( src[t] == '\\' )
+        {
+            if( t + 1 < len &&
+                src[t + 1] == '\n' )
+            {
+                t += 2;
+                continue;
+            }
 
-    if( t > 1 )
-        if( src[t-1] == '\r' && src[t-2] == '\\' )
-            return false;
+            if( t + 2 < len &&
+                src[t + 1] == '\r' &&
+                src[t + 2] == '\n' )
+            {
+                t += 3;
+                continue;
+            }
+        }
+
+        if( isspace(src[t]) )
+        {
+            t++;
+            continue;
+        }
+        else return false;
+    }
 
     return true;
 }
 
+static void cppMacroFinal(cppmacro_t *ctx)
+{
+    if( ctx->repllist ) s2obj_release(ctx->repllist->pobj);
+    if( ctx->params ) s2obj_release(ctx->params->pobj);
+}
+
 int cppProcessDefineDirective(
-    void *restrict ctx_tu, void *restrict ctx_shifter, token_shifter_t shifter)
+    cpptu_t *restrict ctx_tu,
+    void *restrict ctx_shifter,
+    token_shifter_t shifter)
 {
     // Directive was `define`, handle the rest of the line.
 
@@ -69,6 +101,9 @@ int cppProcessDefineDirective(
                         (const char *)s2data_weakmap(macro_name->str),
                         macro_name->lineno, macro_name->column);
     }
+
+    eprintf("Start define 1 macro `%s`: ",
+            (char *)s2data_weakmap(macro_name->str));
 
     tok = shifter(ctx_shifter);
 
@@ -133,12 +168,12 @@ int cppProcessDefineDirective(
                 // 2026-03-21 TODO: more graceful error handling?
             }
         }
+
+        tok = shifter(ctx_shifter);
     }
 
     // start building (transcribing - i.e. shallow compile) replacement list.
     repllist = s2list_create();
-
-    tok = shifter(ctx_shifter);
 
     if( strcmp("##", s2data_weakmap(tok->str)) == 0 )
     {
@@ -151,7 +186,7 @@ int cppProcessDefineDirective(
                         macro_name->lineno, macro_name->column);
     }
     
-    for( ; tok; tok = look_back_for_genuine_newline(shifter_rope) ?
+    for( ; tok; tok = look_ahead_for_genuine_newline(shifter_rope) ?
              NULL : // encountered a newline, the repllist is terminated.
              shifter(ctx_shifter) )
     {
@@ -164,14 +199,18 @@ int cppProcessDefineDirective(
         //   it's set on encountering operator tokens,
         //   and cleared by the end of the loop body.
 
+        eprintf("%s ", (char *)s2data_weakmap(tok->str));
+
         if( strcmp("##", s2data_weakmap(tok->str)) == 0 )
         {
             next_cls |= PPTOK_CLS_CATENATE;
+            assert( tok1 ); // there must exist a first operand to the `##`-op.
             tok1->classification |= PPTOK_CLS_OPERAND;
             s2obj_release(tok->pobj);
             continue;
         }
-        else if( strcmp("#", s2data_weakmap(tok->str)) == 0 )
+        else if( strcmp("#", s2data_weakmap(tok->str)) == 0 &&
+                 funcmacro_params )
         {
             next_cls |= PPTOK_CLS_STRINGIFY;
             s2obj_release(tok->pobj);
@@ -207,9 +246,14 @@ int cppProcessDefineDirective(
     macrodef = (cppmacro_t *)s2gc_obj_alloc(
         S2_OBJ_TYPE_CPPMACRO, sizeof(cppmacro_t));
 
+    macrodef->base.finalf = (s2func_final_t)cppMacroFinal;
+
     macrodef->repllist = repllist;
     macrodef->params = funcmacro_params;
     macrodef->is_variadic = is_variadic;
+
+    eprintf("\nmacro `%s` is now defined.\n",
+            (char *)s2data_weakmap(macro_name->str));
 
     return cppDefine1Macro(ctx_tu, macro_name, macrodef);
 }

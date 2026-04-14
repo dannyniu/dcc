@@ -93,6 +93,7 @@ lex_getc_base_t *lex_getc_init_from_str(lex_getc_str_t *ctx, const char *str);
 lex_getc_base_t *lex_getc_init_from_fp(lex_getc_fp_t *ctx, FILE *fp);
 
 // To be implemented externally.
+// 2026-04-13: return result is caller-released.
 typedef lex_token_t *(*token_shifter_t)(void *);
 
 // Added 2026-01-24: pre-processor chain.
