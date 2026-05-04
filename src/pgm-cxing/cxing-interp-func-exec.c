@@ -64,11 +64,19 @@ typedef struct cxing_ast_node {
 
     // 2026-03-04:
     // optimization for statement lists to not to deepen the stack.
+    //
+    // 2026-04-26:
+    // also reused for argument counter.
     unsigned folded_depth;
     unsigned unfolded;
 
     enum {
         ast_node_action_default = 0,
+
+        // added 2026-05-03, TODO: describe me,
+        // as replacement for the previous
+        // automatic resource management scheme.
+        ast_node_action_lvalue_release_key,
 
         // logic determined, short-circuit.
         ast_node_action_stop,
@@ -521,27 +529,26 @@ static struct value_nativeobj CxingFuncLocalVar_SetImpl0(
 static struct value_nativeobj CxingFuncLocalVar_GetImpl(
     int argn, struct value_nativeobj args[])
 {
-    if( argn < 2 )
-    {
-        return (struct value_nativeobj) {
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-    }
+    AssertArgN(2);
     return CxingFuncLocalVar_GetImpl0(args[0].proper.p, args[1].proper.p);
 }
 
 static struct value_nativeobj CxingFuncLocalVar_SetImpl(
     int argn, struct value_nativeobj args[])
 {
-    if( argn < 3 )
-    {
-        return (struct value_nativeobj) {
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
-    }
-
+    AssertArgN(3);
     return CxingFuncLocalVar_SetImpl0(
         args[0].proper.p, args[1].proper.p, args[2]);
+}
+
+static struct value_nativeobj CxingFuncLocalVar_FinalImpl0(
+    int argn, struct value_nativeobj args[])
+{
+    (void)argn;
+    (void)args;
+    return (struct value_nativeobj){
+        .proper.p = NULL,
+        .type = (const void *)&type_nativeobj_morgoth };
 }
 
 static struct value_nativeobj CxingFuncLocalVar_Get = {
@@ -551,6 +558,11 @@ static struct value_nativeobj CxingFuncLocalVar_Get = {
 
 static struct value_nativeobj CxingFuncLocalVar_Set = {
     .proper.p = CxingFuncLocalVar_SetImpl,
+    .type = (const void *)&type_nativeobj_method,
+};
+
+static struct value_nativeobj CxingFuncLocalVar_Final = {
+    .proper.p = CxingFuncLocalVar_FinalImpl0,
     .type = (const void *)&type_nativeobj_method,
 };
 
@@ -648,83 +660,48 @@ static bool CxingFuncLocalVar_IsSetImpl0(
     }
 }
 
-static struct TYPE_NATIVEOBJ_STRUCT(3) type_nativeobj_localvars = {
+static struct TYPE_NATIVEOBJ_STRUCT(4) type_nativeobj_localvars = {
     .typeid = valtyp_obj,
-    .n_entries = 2,
+    .n_entries = 3,
     .static_members = {
         { .name = "__get__", .member = &CxingFuncLocalVar_Get },
         { .name = "__set__", .member = &CxingFuncLocalVar_Set },
+        { .name = "__final__", .member = &CxingFuncLocalVar_Final },
     },
 };
 
 #define ValueCopy(x) (eprintf("VC:%d/%p. %s\n", __LINE__, x.proper.p, strrchr(__FILE__, '/')), (ValueCopy)(x))
 #define ValueDestroy(x) (eprintf("VD:%d/%p. %s\n", __LINE__, x.proper.p, strrchr(__FILE__, '/')), (ValueDestroy)(x))
 
-// Added 2026-04-07.
+// 2026-05-03:
+// introduced to replace the 2026-04-07 ones,
+// designed with the guiding principle of
+// least interference with key and scope.
 
-// Ephemeral entities that're not scoped anywhere can be destroyed.
-// Others (mostly lvalues) are not touched by this.
-#define DiscardRValue() do {                            \
-        eprintf("XLV (%p): Discard RValue: %d/%s\n",    \
-                varreg.key, __LINE__, __FILE__);        \
-        DiscardRValue_Impl(&varreg, evalmode);          \
+// standalone cast of lvalue into rvalue.
+#define ClearLValue() do {                                              \
+        if( instruction->flags == ast_node_action_lvalue_release_key )  \
+        {                                                               \
+            s2obj_leave(varreg.key);                                    \
+            instruction->flags = ast_node_action_default;               \
+        }                                                               \
+        varreg.key = NULL;                                              \
     } while( false )
 
-void DiscardRValue_Impl(
-    struct lvalue_nativeobj *var,
-    cxing_func_eval_mode_t evalmode)
-{
-    if( !var->key && evalmode == cxing_func_eval_mode_execute )
-    {
-        eprintf("Bang!\n");
-        ValueDestroy(var->value);
-        var->value.proper.p = NULL;
-        var->value.type = (void *)&type_nativeobj_morgoth;
-    }
-}
+// convert lvalue for use as rvalue that's eligible for `ValueDestroy`.
+#define DemoteLValue() do {                     \
+        if( varreg.key ) {                      \
+            valreg = ValueCopy(valreg);         \
+            ClearLValue();                      \
+        } } while( false )
 
-// This guarantees that it'd be safe to call `ValueDestroy` on them.
-#define HoldAndClearLValue() do {                               \
-        eprintf("XLV (%p): Hold 'n Clear LValue: %d/%s\n",      \
-                varreg.key, __LINE__, __FILE__);                \
-        HoldAndClearLValue_Impl(&varreg, evalmode);             \
-    } while( false )
-
-void HoldAndClearLValue_Impl(
-    struct lvalue_nativeobj *var,
-    cxing_func_eval_mode_t evalmode)
-{
-    if( var->key && evalmode == cxing_func_eval_mode_execute )
-    {
-        eprintf("Bang!\n");
-        var->value = ValueCopy(var->value);
-        if( var->key != (void *)1 ) s2obj_leave(var->key);
-        var->key = NULL;
-        var->scope.proper.p = NULL;
-        var->scope.type = (void *)&type_nativeobj_morgoth;
-    }
-}
-
-// Strips the 'l' from values. Idempotent like `HoldAndClearLValue`.
-#define DemoteLValue() do {                             \
-        eprintf("XLV (%p): Demote LValue: %d/%s\n",     \
-                varreg.key, __LINE__, __FILE__);        \
-        DemoteLValue_Impl(&varreg, evalmode);           \
-    } while( false )
-
-void DemoteLValue_Impl(
-    struct lvalue_nativeobj *var,
-    cxing_func_eval_mode_t evalmode)
-{
-    if( var->key && evalmode == cxing_func_eval_mode_execute )
-    {
-        eprintf("Bang!\n");
-        if( var->key != (void *)1 ) s2obj_leave(var->key);
-        var->key = NULL;
-        var->scope.proper.p = NULL;
-        var->scope.type = (void *)&type_nativeobj_morgoth;
-    }
-}
+// destroy rvalue if it's one, otherwise leave it as is.
+#define ConsumeRValue() do {                    \
+        if( !varreg.key ) {                     \
+            ValueDestroy(valreg);               \
+        } else {                                \
+            ClearLValue();                      \
+        } } while( false )
 
 // 2025-12-30: subroutines first, methods next.
 

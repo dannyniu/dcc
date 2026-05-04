@@ -1,0 +1,10 @@
+subr main()
+{
+    decl fp = open("../tests/cxing-stdlib/basic-io-01.cxing", 0\r);
+    decl s;
+
+    while( (s = fp.getline()).len() > 0 )
+        print(s);
+
+    return 0;
+}

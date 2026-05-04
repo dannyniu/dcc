@@ -53,9 +53,9 @@ if( theRule == ctrl_flow_ion_op_or || //>RULEIMPL<//
     //
     varreg = (struct lvalue_nativeobj){
         .value.proper.p = NULL,
-        .value.type = (void *)&type_nativeobj_morgoth,
+        .value.type = (const void *)&type_nativeobj_morgoth,
         .scope.proper.p = NULL,
-        .scope.type = (void *)&type_nativeobj_morgoth,
+        .scope.type = (const void *)&type_nativeobj_morgoth,
         .key = NULL};
 
     if( evalmode == cxing_func_eval_mode_dryrun )
@@ -264,7 +264,7 @@ if( theRule == ctrl_flow_ion_returnexpr_or || //>RULEIMPL<//
     else if( instruction->operand_index ==
              instruction->node_body->terms_count )
     {
-        HoldAndClearLValue();
+        DemoteLValue();
         pc.instructions[0].ax = valreg;
         pc.instructions[0].flags = ast_node_action_return;
         goto finish_eval_1term;
@@ -310,8 +310,7 @@ if( theRule == and_phrase_ion_and || //>RULEIMPL<//
             instruction->flags = ast_node_action_stop;
         }
 
-        DiscardRValue();
-        DemoteLValue();
+        ConsumeRValue();
 
         Reached();
         PassResultBack(valreg);
@@ -329,13 +328,11 @@ if( theRule == phrase_stmt_base ) //>RULEIMPL<//
              instruction->node_body->terms_count )
     {
         Reached();
-
-        DiscardRValue();
-        DemoteLValue();
+        ClearLValue();
 
         valreg = (struct value_nativeobj){
             .proper.p = NULL,
-            .type = (void *)&type_nativeobj_morgoth };
+            .type = (const void *)&type_nativeobj_morgoth };
         goto finish_eval_1term;
     }
     else assert( 0 );
@@ -457,7 +454,7 @@ if( theRule == or_phrase_ion_ctrl_flow ) //>RULEIMPL<//
         // Epilogue would otherwise do the destruction,
         valreg = (struct value_nativeobj){
             .proper.p = NULL,
-            .type = (void *)&type_nativeobj_morgoth };
+            .type = (const void *)&type_nativeobj_morgoth };
         goto finish_eval_1term;
     }
     else assert( 0 );

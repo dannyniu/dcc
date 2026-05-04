@@ -39,7 +39,6 @@ if( theRule == objdefstartnocomma_base || //>RULEIMPL<//
         Reached();
         if( theRule == objdefstartnocomma_base )
         {
-            HoldAndClearLValue();
             // for the duration of obj-def,
             // `instruction->bx` is the type object.
             instruction->bx = valreg; // To PassResultBack later.
@@ -51,7 +50,7 @@ if( theRule == objdefstartnocomma_base || //>RULEIMPL<//
     else if( instruction->operand_index == opind+3 )
     {
         Reached();
-        HoldAndClearLValue();
+        DemoteLValue();
         PassResultBack(valreg);
         PcStack_PushOrAbandon();
     }
@@ -67,7 +66,7 @@ if( theRule == objdefstartnocomma_base || //>RULEIMPL<//
                 instruction->bx,
                 CxingPropName_InitSet).value;
 
-        HoldAndClearLValue();
+        DemoteLValue();
         if( InitSetMethod.type->typeid != valtyp_method )
         {
             if( theRule == objdefstartnocomma_base )
@@ -100,7 +99,7 @@ if( theRule == objdefstartnocomma_base || //>RULEIMPL<//
         // PassResultBack.
         instruction->ax = (struct value_nativeobj){
             .proper.p = NULL,
-            .type = (void *)&type_nativeobj_morgoth };
+            .type = (const void *)&type_nativeobj_morgoth };
     }
 
     else assert( 0 );
@@ -171,7 +170,7 @@ if( theRule == array_piece_base ) //>RULEIMPL<//
         // zero-based indexing.
         PassResultBack((struct value_nativeobj){
                 .proper.l = 0,
-                .type = (void *)&type_nativeobj_long });
+                .type = (const void *)&type_nativeobj_long });
 
         PcStack_PushOrAbandon();
     }
@@ -187,7 +186,7 @@ if( theRule == array_piece_base ) //>RULEIMPL<//
                 instruction->bx,
                 CxingPropName_InitSet).value;
 
-        HoldAndClearLValue();
+        DemoteLValue();
         if( InitSetMethod.type->typeid != valtyp_method )
         {
             CxingDiagnose("The postfix expression identified by "
@@ -252,7 +251,7 @@ if( theRule == array_piece_genrule ) //>RULEIMPL<//
                 instruction->bx,
                 CxingPropName_InitSet).value;
 
-        HoldAndClearLValue();
+        DemoteLValue();
         if( InitSetMethod.type->typeid != valtyp_method )
         {
             CxingDiagnose("The postfix expression used "
@@ -309,7 +308,7 @@ if( theRule == array_streamline ) //>RULEIMPL<//
                 instruction->bx,
                 CxingPropName_InitSet).value;
 
-        HoldAndClearLValue();
+        DemoteLValue();
         if( InitSetMethod.type->typeid != valtyp_method )
         {
             CxingDiagnose("The postfix expression used "

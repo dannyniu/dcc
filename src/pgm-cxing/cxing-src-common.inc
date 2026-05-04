@@ -23,6 +23,7 @@ pathutils/pathutils.c
 ./../contrib/SafeTypes2/src/s2data.c
 ./../contrib/SafeTypes2/src/s2dict.c
 ./../contrib/SafeTypes2/src/s2list.c
+./../contrib/SafeTypes2/src/s2ref.c
 ./../contrib/SafeTypes2/src/s2obj.c
 ./../contrib/SafeTypes2/src/mem-intercept.c
 ./../contrib/SafeTypes2/src/siphash.c

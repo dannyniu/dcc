@@ -3,7 +3,27 @@
 #define _CRT_RAND_S // To use the `rand_s` Win32 API.
 #include "langsem.h"
 #include "runtime.h"
+#include "cxing-stdlib.h"
 #include <SafeTypes2.h>
+
+struct value_nativeobj CxingImpl_s2Obj_Copy(
+    int argn, struct value_nativeobj args[])
+{
+    (void)argn;
+    s2obj_keep(args[0].proper.p);
+    return args[0];
+}
+
+struct value_nativeobj CxingImpl_s2Obj_Final(
+    int argn, struct value_nativeobj args[])
+{
+    (void)argn;
+    s2obj_leave(args[0].proper.p);
+    return (struct value_nativeobj){
+        .proper.p = NULL,
+        .type = (const void *)&type_nativeobj_morgoth };
+}
+
 
 struct value_nativeobj CxingPropName_copy;
 struct value_nativeobj CxingPropName_final;
@@ -188,23 +208,6 @@ s2cxing_value_t *s2cxing_value_create(struct value_nativeobj val)
     return ret;
 }
 
-#define AssertArgN(n)                                           \
-    if( argn < n ) return (struct value_nativeobj){             \
-            .proper.p = NULL,                                   \
-            .type = (const void *)&type_nativeobj_morgoth };
-
-#define AssertArgImpl(n, typ, hr)                                       \
-    if( args[n].type != (const void *)&type_nativeobj_##typ )           \
-    {                                                                   \
-        CxingDebug("Encountered unrecognized implementation of "        \
-                   "the "hr" type in arg%d in function `%s`. "          \
-                   "Does this object come from another runtime?\n",     \
-                   n, __func__);                                        \
-        return (struct value_nativeobj){                                \
-            .proper.p = NULL,                                           \
-            .type = (const void *)&type_nativeobj_morgoth };            \
-    }
-
 struct value_nativeobj CxingImpl_s2Dict_Get(
     int argn, struct value_nativeobj args[])
 {
@@ -230,11 +233,12 @@ struct value_nativeobj CxingImpl_s2Dict_Get(
     }
     else
     {
+        x = errno;
         CxingFatal("Cxing Runtime Internal Error: "
                    "SafeTypes2 Dictionary Getter Failure!\n");
         return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
+            .proper.l = x,
+            .type = (const void *)&type_nativeobj_null };
     }
 }
 
@@ -254,11 +258,12 @@ struct value_nativeobj CxingImpl_s2Dict_Set(
 
     if( !ret_wrapped )
     {
+        x = errno;
         CxingFatal("Unable to create SafeTypes2 binding "
                    "for the CXING value.\n");
         return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
+            .proper.l = errno,
+            .type = (const void *)&type_nativeobj_null };
     }
 
     x = s2dict_set(
@@ -271,12 +276,13 @@ struct value_nativeobj CxingImpl_s2Dict_Set(
     }
     else if( x == s2_access_error )
     {
+        x = errno;
         CxingFatal("Cxing Runtime Internal Error: "
                    "SafeTypes2 Dictionary Setter Failure!\n");
         s2obj_release(ret_wrapped->pobj);
         return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
+            .proper.l = errno,
+            .type = (const void *)&type_nativeobj_null };
     }
     else
     {
@@ -293,9 +299,7 @@ struct value_nativeobj CxingImpl_s2Dict_Copy(
 {
     AssertArgN(1);
     AssertArgImpl(0, s2impl_dict, "dict");
-    s2obj_keep(args[0].proper.p);
-
-    return args[0];
+    return CxingImpl_s2Obj_Copy(argn, args);
 }
 
 struct value_nativeobj CxingImpl_s2Dict_Final(
@@ -303,11 +307,7 @@ struct value_nativeobj CxingImpl_s2Dict_Final(
 {
     AssertArgN(1);
     AssertArgImpl(0, s2impl_dict, "dict");
-    s2obj_leave(args[0].proper.p);
-
-    return (struct value_nativeobj){
-        .proper.p = NULL,
-        .type = (const void *)&type_nativeobj_morgoth };
+    return CxingImpl_s2Obj_Final(argn, args);
 }
 
 struct value_nativeobj CxingImpl_s2Dict_Unset(
@@ -359,7 +359,7 @@ struct value_nativeobj CxingImpl_s2Dict_Step_Checked(s2dict_iter_t *iter)
     {
         return (struct value_nativeobj){
             .proper.p = NULL,
-            .type = (void *)&type_nativeobj_morgoth };
+            .type = (const void *)&type_nativeobj_morgoth };
     }
 
     key = s2data_create(klen = s2data_len(iter->base.key));
@@ -367,7 +367,7 @@ struct value_nativeobj CxingImpl_s2Dict_Step_Checked(s2dict_iter_t *iter)
     {
         return (struct value_nativeobj){
             .proper.p = NULL,
-            .type = (void *)&type_nativeobj_morgoth };
+            .type = (const void *)&type_nativeobj_morgoth };
     }
 
     s2obj_keep(key->pobj);
@@ -376,7 +376,7 @@ struct value_nativeobj CxingImpl_s2Dict_Step_Checked(s2dict_iter_t *iter)
     memcpy(s2data_weakmap(key), s2data_weakmap(iter->base.key), klen);
     return (struct value_nativeobj){
         .proper.p = key,
-        .type = (void *)&type_nativeobj_s2impl_str };
+        .type = (const void *)&type_nativeobj_s2impl_str };
 }
 
 static_assert( S2_DICT_HASH_MAX == 16,
@@ -456,8 +456,8 @@ struct value_nativeobj CxingImpl_s2Dict_Create(
     if( !dimpl )
     {
         return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
+            .proper.l = errno,
+            .type = (const void *)&type_nativeobj_null };
     }
 
     s2obj_keep(dimpl->pobj);
@@ -470,12 +470,13 @@ struct value_nativeobj CxingImpl_s2Dict_Create(
 
     if( !ret_wrapped )
     {
+        x = errno;
         CxingFatal("Unable to create SafeTypes2 binding "
                    "for the CXING value.\n");
         s2obj_leave(dimpl->pobj);
         return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
+            .proper.l = x,
+            .type = (const void *)&type_nativeobj_null };
     }
 
     x = s2dict_set(dimpl, CxingPropName_InitSet.proper.p,
@@ -489,12 +490,13 @@ struct value_nativeobj CxingImpl_s2Dict_Create(
     }
     else
     {
+        x = errno;
         CxingFatal("Failed to create dict object.\n");
         s2obj_leave(dimpl->pobj);
         s2obj_release(ret_wrapped->pobj);
         return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
+            .proper.l = x,
+            .type = (const void *)&type_nativeobj_null };
     }
 }
 
@@ -503,9 +505,7 @@ struct value_nativeobj CxingImpl_s2Data_Copy(
 {
     AssertArgN(1);
     AssertArgImpl(0, s2impl_str, "string");
-    s2obj_keep(args[0].proper.p);
-
-    return args[0];
+    return CxingImpl_s2Obj_Copy(argn, args);
 }
 
 struct value_nativeobj CxingImpl_s2Data_Final(
@@ -513,11 +513,7 @@ struct value_nativeobj CxingImpl_s2Data_Final(
 {
     AssertArgN(1);
     AssertArgImpl(0, s2impl_str, "string");
-    s2obj_leave(args[0].proper.p);
-
-    return (struct value_nativeobj){
-        .proper.p = NULL,
-        .type = (const void *)&type_nativeobj_morgoth };
+    return CxingImpl_s2Obj_Final(argn, args);
 }
 
 struct value_nativeobj CxingImpl_s2Data_Len(
@@ -544,8 +540,8 @@ struct value_nativeobj CxingImpl_s2Data_Trunc(
     if( s2data_trunc(args[0].proper.p, ConvertToUlong(args[1]).proper.u) == 0 )
         return ValueCopy(args[0]);
     else return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
+            .proper.l = errno,
+            .type = (const void *)&type_nativeobj_null };
 }
 
 struct value_nativeobj CxingImpl_s2Data_Putc(
@@ -557,8 +553,8 @@ struct value_nativeobj CxingImpl_s2Data_Putc(
     if( s2data_putc(args[0].proper.p, ConvertToUlong(args[1]).proper.u) == 0 )
         return ValueCopy(args[0]);
     else return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
+            .proper.l = errno,
+            .type = (const void *)&type_nativeobj_null };
 }
 
 struct value_nativeobj CxingImpl_s2Data_Puts(
@@ -573,8 +569,8 @@ struct value_nativeobj CxingImpl_s2Data_Puts(
                     s2data_len(args[1].proper.p)) == 0 )
         return ValueCopy(args[0]);
     else return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
+            .proper.l = errno,
+            .type = (const void *)&type_nativeobj_null };
 }
 
 struct value_nativeobj CxingImpl_s2Data_Putfin(
@@ -586,8 +582,8 @@ struct value_nativeobj CxingImpl_s2Data_Putfin(
     if( s2data_putfin(args[0].proper.p) == 0 )
         return ValueCopy(args[0]);
     else return (struct value_nativeobj){
-            .proper.p = NULL,
-            .type = (const void *)&type_nativeobj_morgoth };
+            .proper.l = errno,
+            .type = (const void *)&type_nativeobj_null };
 }
 
 struct value_nativeobj CxingImpl_s2Data_Map(
@@ -630,9 +626,45 @@ struct value_nativeobj CxingImpl_s2Data_Equals(
         .type = (const void *)&type_nativeobj_long };
 }
 
+struct value_nativeobj Cxing_NullUncast(
+    int argn, struct value_nativeobj args[])
+{
+    (void)argn;
+    if( args[0].type->typeid == valtyp_null )
+    {
+        return (struct value_nativeobj){
+            .proper.l = args[0].proper.l,
+            .type = (const void *)&type_nativeobj_long };
+    }
+    else if( IsNull(args[0]) )
+    {
+        // The Morgoth.
+        return args[0];
+    }
+    else
+    {
+        // Not a null, see spec for rationale.
+        return (struct value_nativeobj){
+            .proper.l = 0,
+            .type = (const void *)&type_nativeobj_long };
+    }
+}
+
 cxing_builtin_def_t CxingRuntimeBuiltins[] = {
+    { "_Uncast", (struct value_nativeobj){
+            .proper.p = Cxing_NullUncast,
+            .type = (const void *)&type_nativeobj_subr } },
     { "dict", (struct value_nativeobj){
             .proper.p = CxingImpl_s2Dict_Create,
+            .type = (const void *)&type_nativeobj_subr } },
+    { "print", (struct value_nativeobj){
+            .proper.p = CxingStdlibFunc_Print,
+            .type = (const void *)&type_nativeobj_subr } },
+    { "input", (struct value_nativeobj){
+            .proper.p = CxingStdlibFunc_Input,
+            .type = (const void *)&type_nativeobj_subr } },
+    { "open", (struct value_nativeobj){
+            .proper.p = CxingImpl_RegFile_Open,
             .type = (const void *)&type_nativeobj_subr } },
     { 0 },
 };

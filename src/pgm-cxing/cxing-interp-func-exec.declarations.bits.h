@@ -72,7 +72,7 @@ if( theRule == decl_singledecl || //>RULEIMPL<//
         theRule == decl_declarelist2 )
     {
         Reached();
-        HoldAndClearLValue();
+        DemoteLValue();
         if( !(rval = s2cxing_value_create(valreg)) )
         {
             CxingFatal(
@@ -110,9 +110,9 @@ if( theRule == decl_singledecl || //>RULEIMPL<//
     // Declarations don't exhibit values,
     varreg = (struct lvalue_nativeobj){
         .value.proper.p = NULL,
-        .value.type = (void *)&type_nativeobj_morgoth,
+        .value.type = (const void *)&type_nativeobj_morgoth,
         .scope.proper.p = NULL,
-        .scope.type = (void *)&type_nativeobj_morgoth,
+        .scope.type = (const void *)&type_nativeobj_morgoth,
         .key = NULL};
 }
 

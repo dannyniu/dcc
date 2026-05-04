@@ -33,6 +33,33 @@ void CxingWarning(const char *msg, ...);
 /// Fatal errors prevents the program from correctly functioning.
 void CxingFatal(const char *msg, ...);
 
+/// @def
+/// @brief non-fatal assertion that number of arguments are sufficient.
+#define AssertArgN(n)                                           \
+    if( argn < n ) return (struct value_nativeobj){             \
+            .proper.p = NULL,                                   \
+            .type = (const void *)&type_nativeobj_morgoth };
+
+/// @def
+/// @brief non-fatal assertion that implementation is as expected.
+#define AssertArgImpl(n, typ, hr)                                       \
+    if( args[n].type != (const void *)&type_nativeobj_##typ )           \
+    {                                                                   \
+        CxingDebug("Encountered unrecognized implementation of "        \
+                   "the "hr" type in arg%d in function `%s`. "          \
+                   "Does this object come from another runtime?\n",     \
+                   n, __func__);                                        \
+        return (struct value_nativeobj){                                \
+            .proper.p = NULL,                                           \
+            .type = (const void *)&type_nativeobj_morgoth };            \
+    }
+
+// A binding of SafeTypes2 objects for the CXING language.
+struct value_nativeobj CxingImpl_s2Obj_Copy(
+    int argn, struct value_nativeobj args[]);
+struct value_nativeobj CxingImpl_s2Obj_Final(
+    int argn, struct value_nativeobj args[]);
+
 extern struct value_nativeobj CxingPropName_copy;
 extern struct value_nativeobj CxingPropName_final;
 extern struct value_nativeobj CxingPropName_equals;
@@ -61,6 +88,7 @@ typedef struct TYPE_NATIVEOBJ_STRUCT(7) type_nativeobj_struct_p6;
 typedef struct TYPE_NATIVEOBJ_STRUCT(8) type_nativeobj_struct_p7;
 typedef struct TYPE_NATIVEOBJ_STRUCT(9) type_nativeobj_struct_p8;
 typedef struct TYPE_NATIVEOBJ_STRUCT(10) type_nativeobj_struct_p9;
+typedef struct TYPE_NATIVEOBJ_STRUCT(11) type_nativeobj_struct_p10;
 
 // The "Morgoth" null.
 extern const type_nativeobj_struct_p0 type_nativeobj_morgoth;

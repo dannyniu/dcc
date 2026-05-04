@@ -808,6 +808,7 @@ bool CXExpose(
     }
 
     // This copy is per spec section "Automatic Resource Management".
+    // 2026-04-26: May come back.
     v = s2cxing_value_create(ValueCopy(referent));
     if( !v )
     {

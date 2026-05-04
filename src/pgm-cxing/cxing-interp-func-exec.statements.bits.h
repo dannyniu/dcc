@@ -106,16 +106,14 @@ if( theRule == predclause_base ) //>RULEIMPL<//
             evalmode == cxing_func_eval_mode_dryrun )
         {
             Reached();
-            DiscardRValue();
-            DemoteLValue();
+            ConsumeRValue();
             instruction->opts = ast_node_opt_noelse;
             PcStack_PushOrAbandon();
         }
         else
         {
             Reached();
-            DiscardRValue();
-            DemoteLValue();
+            ConsumeRValue();
         }
     }
     else if( instruction->operand_index ==
@@ -162,16 +160,14 @@ if( theRule == predclause_genrule ) //>RULEIMPL<//
             evalmode == cxing_func_eval_mode_dryrun )
         {
             Reached();
-            DiscardRValue();
-            DemoteLValue();
+            ConsumeRValue();
             instruction->opts = ast_node_opt_noelse;
             PcStack_PushOrAbandon();
         }
         else
         {
             Reached();
-            DiscardRValue();
-            DemoteLValue();
+            ConsumeRValue();
         }
     }
     else if( instruction->operand_index ==
@@ -233,14 +229,12 @@ if( theRule == while_rule ) //>RULEIMPL<//
             evalmode == cxing_func_eval_mode_dryrun )
         {
             Reached();
-            DiscardRValue();
-            DemoteLValue();
+            ConsumeRValue();
             PcStack_PushOrAbandon();
         }
         else
         {
-            DiscardRValue();
-            DemoteLValue();
+            ConsumeRValue();
             instruction->operand_index ++;
         }
     }
@@ -293,20 +287,17 @@ if( theRule == dowhile_rule ) //>RULEIMPL<//
         if( instruction->flags == ast_node_action_break ||
             evalmode == cxing_func_eval_mode_dryrun )
         {
-            DiscardRValue();
-            DemoteLValue();
+            ConsumeRValue();
             goto finish_eval_1term;
         }
 
         if( !ValueNativeObj2Logic(valreg) )
         {
-            DiscardRValue();
-            DemoteLValue();
+            ConsumeRValue();
             goto finish_eval_1term;
         }
 
-        DiscardRValue();
-        DemoteLValue();
+        ConsumeRValue();
         instruction->operand_index = 0;
         goto start_eval_1term;
     }

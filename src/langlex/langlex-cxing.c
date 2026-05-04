@@ -80,6 +80,10 @@ lex_elem_t LexElems[] = {
       .cflags = LIBREG_ICASE|LIBREG_EXTENDED,
       .completion = langlex_hexfplit },
 
+    { .pattern = "0[\\][A-Za-z0-9._]+",
+      .cflags = LIBREG_EXTENDED,
+      .completion = langlex_r64lit },
+
     { .pattern =
       "(<<|>>>?|[-+*/%&^|])=|=[?]|"
       "[+][+]|--|<<|>>>?|[<>=!]=|&&|[|][|]|[&?][?]|"

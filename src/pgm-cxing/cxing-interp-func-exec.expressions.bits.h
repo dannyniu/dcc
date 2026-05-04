@@ -28,8 +28,9 @@ if( evalmode == cxing_func_eval_mode_execute )
         theRule == const_hexfplit ||
         theRule == const_charlit )
     {
+        varreg.key = NULL;
         varreg.scope.proper.p = NULL;
-        varreg.scope.type = (void *)&type_nativeobj_morgoth;
+        varreg.scope.type = (const void *)&type_nativeobj_morgoth;
         PassResultBack(CXConstDefParse(instruction->node_body));
     }
     else
@@ -65,8 +66,9 @@ if( evalmode == cxing_func_eval_mode_execute )
         s2obj_release(litobj->pobj);
         memcpy(s2data_weakmap(litobj), s2data_weakmap(litsrc), litlen);
 
+        varreg.key = NULL;
         varreg.scope.proper.p = NULL;
-        varreg.scope.type = (void *)&type_nativeobj_morgoth;
+        varreg.scope.type = (const void *)&type_nativeobj_morgoth;
         PassResultBack((struct value_nativeobj){
                 .proper.p = litobj,
                 .type = (const void *)&type_nativeobj_s2impl_str });
@@ -75,8 +77,9 @@ if( evalmode == cxing_func_eval_mode_execute )
     if( theRule == const_r64lit ) //>RULEIMPL<//
     {
         Reached();
+        varreg.key = NULL;
         varreg.scope.proper.p = NULL;
-        varreg.scope.type = (void *)&type_nativeobj_morgoth;
+        varreg.scope.type = (const void *)&type_nativeobj_morgoth;
         PassResultBack((struct value_nativeobj){
                 .proper.u = Radix64Literal(s2data_weakmap(
                                                instruction->node_body
@@ -100,6 +103,7 @@ if( theRule == primary_paren ) //>RULEIMPL<//
     else
     {
         Reached();
+        PassResultBack(valreg);
     }
 }
 
@@ -130,7 +134,6 @@ if( theRule == ident_ident ) //>RULEIMPL<//
                 .proper.p = instruction->node_body->terms[0].terminal->str,
                 .type = (const void *)&type_nativeobj_s2impl_str });
         PassResultBack(valreg);
-        s2obj_keep(varreg.key);
     }
     instruction->operand_index = instruction->node_body->terms_count;
 }
@@ -152,7 +155,7 @@ if( theRule == postfix_member ) //>RULEIMPL<//
         if( !varreg.key )
             instruction->opts = ast_node_scope_was_rvalue;
         else instruction->opts = ast_node_scope_was_lvalue;
-        DemoteLValue(); //HoldAndClearLValue(); // introduced 2026-04-08.
+        ClearLValue();
 
         if( evalmode == cxing_func_eval_mode_dryrun )
         {
@@ -167,7 +170,6 @@ if( theRule == postfix_member ) //>RULEIMPL<//
                     ->terms[0].terminal->str,
                     .type = (const void *)&type_nativeobj_s2impl_str });
 
-            s2obj_keep(varreg.key);
             PassResultBack(valreg);
             instruction->bx = varreg.scope;
         }
@@ -191,7 +193,7 @@ if( theRule == postfix_indirect ) //>RULEIMPL<//
         if( !varreg.key )
             instruction->opts = ast_node_scope_was_rvalue;
         else instruction->opts = ast_node_scope_was_lvalue;
-        DemoteLValue(); //HoldAndClearLValue(); // introduced 2026-04-08.
+        ClearLValue();
 
         // Actually, this is to save the first operand
         // in `ax` for subsequent evaluation.
@@ -201,8 +203,8 @@ if( theRule == postfix_indirect ) //>RULEIMPL<//
     }
     else
     {
+        int indirect_key_was_rvalue = !varreg.key;
         Reached();
-        HoldAndClearLValue();
 
         if( evalmode == cxing_func_eval_mode_dryrun )
         {
@@ -223,13 +225,16 @@ if( theRule == postfix_indirect ) //>RULEIMPL<//
                 // 2026-04-04: Not yet handling floating points.
                 ValueDestroy(key);
                 key.proper.p = km;
-                key.type = (void *)&type_nativeobj_s2impl_str;
+                key.type = (const void *)&type_nativeobj_s2impl_str;
                 Reached();
             }
 
             varreg = GetValProperty(instruction->ax, key);
             PassResultBack(valreg);
             instruction->bx = varreg.scope;
+            if( indirect_key_was_rvalue )
+                instruction->flags = ast_node_action_lvalue_release_key;
+            else instruction->flags = ast_node_action_default;
         }
         instruction->operand_index = instruction->node_body->terms_count;
     }
@@ -256,23 +261,14 @@ if( theRule == funcinvokenocomma_base ) //>RULEIMPL<//
     else if( instruction->operand_index == 2 )
     {
         Reached();
+        ClearLValue();
 
-        if( varreg.key )
-        {
-            if( varreg.key != (void *)1 )
-                s2obj_leave(varreg.key);
-            varreg.key = NULL;
-        }
- 
         if( instruction[1].opts == ast_node_scope_was_lvalue )
         {
-            // For most arguments, it's `HoldAndClearLValue+DestroyValue`,
-            // Simulates one for undestroyed lvalue `this` arguments.
             instruction->opts = ast_node_insulate_bx_after_call;
         }
         else if( instruction[1].opts == ast_node_scope_was_rvalue )
         {
-            // Safe to destroy after call completes.
             instruction->opts = ast_node_release_bx_after_call;
         }
 
@@ -288,7 +284,7 @@ if( theRule == funcinvokenocomma_base ) //>RULEIMPL<//
         Reached();
 
         // The argument value is not an lvalue.
-        HoldAndClearLValue();
+        DemoteLValue();
 
         if( evalmode == cxing_func_eval_mode_execute )
         {
@@ -302,12 +298,11 @@ if( theRule == funcinvokenocomma_base ) //>RULEIMPL<//
                 goto func_exec_abort;
             }
 
-            instruction->fargn = 2;
             // reserve 1 slot for `this` argument to methods,
             // pointer arithmetic to ignore it for subroutines.
             //- instruction->fargs[0] = ...;
 
-            instruction->fargs[1] = valreg;
+            instruction->fargs[instruction->unfolded = 1] = valreg;
         }
 
         assert( pc.spind > 0 );
@@ -324,6 +319,7 @@ if( theRule == funcinvokenocomma_base ) //>RULEIMPL<//
         }
         instruction[-1].fargn = instruction->fargn;
         instruction[-1].fargs = instruction->fargs;
+        instruction[-1].unfolded = instruction->unfolded;
     }
     else assert( 0 );
 }
@@ -347,11 +343,6 @@ if( theRule == funcinvokenocomma_genrule ) //>RULEIMPL<//
     {
         Reached();
 
-        // There shouldn't be lvalues to clear,
-        // The only rule that can occur here
-        // is the `funccall-start-nocomma` production.
-        assert( !varreg.key );
-
         // Actually, this is to save the resolved function
         // in `ax` for subsequent invocation. Passing it back
         // to the rule handler for function call expression.
@@ -364,7 +355,12 @@ if( theRule == funcinvokenocomma_genrule ) //>RULEIMPL<//
              instruction->node_body->terms_count )
     {
         // The argument value is not an lvalue.
-        HoldAndClearLValue();
+        DemoteLValue();
+
+        if( evalmode == cxing_func_eval_mode_execute )
+        {
+            instruction->fargs[++instruction->unfolded] = valreg;
+        }
 
         assert( pc.spind > 0 );
         assert( funcinvokenocomma_genrule == rules(
@@ -380,6 +376,7 @@ if( theRule == funcinvokenocomma_genrule ) //>RULEIMPL<//
         }
         instruction[-1].fargn = instruction->fargn;
         instruction[-1].fargs = instruction->fargs;
+        instruction[-1].unfolded = instruction->unfolded;
     }
     else assert( 0 );
 }
@@ -399,6 +396,7 @@ if( theRule == funccall_somearg ) //>RULEIMPL<//
              instruction->node_body->terms_count )
     {
         Reached();
+        ClearLValue();
 
         if( evalmode == cxing_func_eval_mode_execute )
         {
@@ -417,8 +415,6 @@ if( theRule == funccall_somearg ) //>RULEIMPL<//
 
                 while( instruction->fargn --> 0 )
                 {
-                    // 2026-04-07: Supposedly DiscardRValue.
-                    //
                     ValueDestroy(instruction->fargs[instruction->fargn]);
                 }
                 free(instruction->fargs);
@@ -437,8 +433,6 @@ if( theRule == funccall_somearg ) //>RULEIMPL<//
 
                 while( instruction->fargn --> 1 )
                 {
-                    // Tip:
-                    // `HoldAndClearLValue+DestroyValue == DiscardRValue`.
                     ValueDestroy(instruction->fargs[instruction->fargn]);
                 }
                 free(instruction->fargs);
@@ -456,10 +450,9 @@ if( theRule == funccall_somearg ) //>RULEIMPL<//
             }
         }
 
-        DemoteLValue();
         instruction->bx = (struct value_nativeobj){
             .proper.p = NULL,
-            .type = (void *)&type_nativeobj_morgoth };
+            .type = (const void *)&type_nativeobj_morgoth };
     }
     else assert( 0 );
 }
@@ -477,23 +470,14 @@ if( theRule == funccall_noarg ) //>RULEIMPL<//
              instruction->node_body->terms_count )
     {
         Reached();
-
-        if( varreg.key )
-        {
-            if( varreg.key != (void *)1 )
-                s2obj_leave(varreg.key);
-            varreg.key = NULL;
-        }
+        ClearLValue();
 
         if( instruction[1].opts == ast_node_scope_was_lvalue )
         {
-            // For most arguments, it's `HoldAndClearLValue+DestroyValue`,
-            // Simulates one for undestroyed lvalue `this` arguments.
             instruction->opts = ast_node_insulate_bx_after_call;
         }
         else if( instruction[1].opts == ast_node_scope_was_rvalue )
         {
-            // Safe to destroy after call completes.
             instruction->opts = ast_node_release_bx_after_call;
         }
 
@@ -522,10 +506,9 @@ if( theRule == funccall_noarg ) //>RULEIMPL<//
             }
         }
 
-        DemoteLValue();
         instruction->bx = (struct value_nativeobj){
             .proper.p = NULL,
-            .type = (void *)&type_nativeobj_morgoth };
+            .type = (const void *)&type_nativeobj_morgoth };
     }
     else assert( 0 );
 }
@@ -552,7 +535,7 @@ if( theRule == unary_dec || //>RULEIMPL<//
                                varreg, theRule == postfix_dec));
         }
         assert( varreg.key );
-        DemoteLValue();
+        ClearLValue();
     }
     else assert( 0 );
 }
@@ -576,7 +559,7 @@ if( theRule == unary_inc || //>RULEIMPL<//
                                varreg, theRule == postfix_inc));
         }
         assert( varreg.key );
-        DemoteLValue();
+        ClearLValue();
     }
     else assert( 0 );
 }
@@ -596,6 +579,7 @@ if( theRule == unary_positive || //>RULEIMPL<//
     else if( instruction->operand_index ==
              instruction->node_body->terms_count )
     {
+        ClearLValue();
         if( evalmode == cxing_func_eval_mode_execute )
         {
             if( theRule == unary_positive )
@@ -610,7 +594,6 @@ if( theRule == unary_positive || //>RULEIMPL<//
             if( theRule == unary_logicnot )
                 PassResultBack(LogicNotExpr(valreg));
         }
-        DemoteLValue();
     }
     else assert( 0 );
 }
@@ -647,7 +630,7 @@ if( theRule == bitor_bitor || //>RULEIMPL<//
     }
     else if( instruction->operand_index == 2 )
     {
-        DemoteLValue();
+        ClearLValue();
 
         // Actually, this is to save the first operand
         // in `ax` for subsequent evaluation.
@@ -659,6 +642,7 @@ if( theRule == bitor_bitor || //>RULEIMPL<//
     else if( instruction->operand_index ==
              instruction->node_body->terms_count )
     {
+        ClearLValue();
         if( evalmode == cxing_func_eval_mode_execute )
         {
             struct value_nativeobj newval;
@@ -728,7 +712,6 @@ if( theRule == bitor_bitor || //>RULEIMPL<//
 
             PassResultBack(newval);
         }
-        DemoteLValue();
     }
 }
 
@@ -742,15 +725,14 @@ if( theRule == postfix_nullcoalesce || //>RULEIMPL<//
     }
     else if( instruction->operand_index == 2 )
     {
+        ClearLValue();
         if( IsNullish(valreg) ||
             evalmode == cxing_func_eval_mode_dryrun )
         {
-            DemoteLValue();
             PcStack_PushOrAbandon();
         }
         else
         {
-            DemoteLValue();
             PassResultBack(valreg);
             instruction->operand_index =
                 instruction->node_body->terms_count;
@@ -759,7 +741,7 @@ if( theRule == postfix_nullcoalesce || //>RULEIMPL<//
     else if( instruction->operand_index ==
              instruction->node_body->terms_count )
     {
-        DemoteLValue();
+        ClearLValue();
         PassResultBack(valreg);
     }
     else assert( 0 );
@@ -774,15 +756,14 @@ if( theRule == logicand_then ) //>RULEIMPL<//
     }
     else if( instruction->operand_index == 2 )
     {
+        ClearLValue();
         if( !IsNullish(valreg) ||
             evalmode == cxing_func_eval_mode_dryrun )
         {
-            DemoteLValue();
             PcStack_PushOrAbandon();
         }
         else
         {
-            DemoteLValue();
             PassResultBack(valreg);
             instruction->operand_index =
                 instruction->node_body->terms_count;
@@ -791,7 +772,7 @@ if( theRule == logicand_then ) //>RULEIMPL<//
     else if( instruction->operand_index ==
              instruction->node_body->terms_count )
     {
-        DemoteLValue();
+        ClearLValue();
         PassResultBack(valreg);
     }
     else assert( 0 );
@@ -807,16 +788,15 @@ if( theRule == logicor_logicor || //>RULEIMPL<//
     }
     else if( instruction->operand_index == 2 )
     {
+        ClearLValue();
         if( (theRule == logicand_logicand) ==
             ValueNativeObj2Logic(valreg) ||
             evalmode == cxing_func_eval_mode_dryrun )
         {
-            DemoteLValue();
             PcStack_PushOrAbandon();
         }
         else
         {
-            DemoteLValue();
             PassResultBack(valreg);
             instruction->operand_index =
                 instruction->node_body->terms_count;
@@ -825,7 +805,7 @@ if( theRule == logicor_logicor || //>RULEIMPL<//
     else if( instruction->operand_index ==
              instruction->node_body->terms_count )
     {
-        DemoteLValue();
+        ClearLValue();
         PassResultBack(valreg);
     }
     else assert( 0 );
@@ -861,7 +841,7 @@ if( theRule == assignment_directassign || //>RULEIMPL<//
     else if( instruction->operand_index == 2 )
     {
         Reached();
-        DemoteLValue();
+        ClearLValue();
 
         // Actually, this is to save the first operand
         // in `ax` for subsequent evaluation.
@@ -942,7 +922,7 @@ if( theRule == assignment_directassign || //>RULEIMPL<//
             PassResultBack(newval);
             eprintf("expr/%d: opts==%d.\n", __LINE__, instruction->opts); // 2026-04-04: check back to see if opts are still used anymore.
         }
-        DemoteLValue();
+        ClearLValue();
 
         goto finish_eval_1term;
     }
@@ -958,8 +938,8 @@ if( theRule == tenary_tenary )
     else if( instruction->operand_index == 2 )
     {
         int opind = ValueNativeObj2Logic(valreg) ? 2 : 4;
+        ClearLValue();
         instruction->operand_index = 5;
-        DemoteLValue();
         if( !PcStackPush(
                 &pc, instruction->node_body->terms[
                     opind].production) )
@@ -982,7 +962,7 @@ if( theRule == exprlist_exprlist ) //>RULEIMPL<//
     else
     {
         // the expression is no longer an lvalue after any comma.
-        DemoteLValue();
+        ClearLValue();
         PassResultBack(valreg);
     }
 }

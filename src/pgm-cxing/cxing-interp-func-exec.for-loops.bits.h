@@ -40,8 +40,7 @@ ReachesHere = 0;
 
 #define ForLoop_Increment(oi_inc, oi_cond)                      \
     Reached();                                                  \
-    DiscardRValue();                                            \
-    DemoteLValue();                                             \
+    ConsumeRValue();                                            \
     instruction->operand_index = oi_cond;                       \
     if( instruction->flags == ast_node_action_continue )        \
     {                                                           \
@@ -58,8 +57,7 @@ ReachesHere = 0;
 
 #define ForLoop_Condition(oi_cond, oi_body)     \
     Reached();                                  \
-    DiscardRValue();                            \
-    DemoteLValue();                             \
+    ConsumeRValue();                            \
     instruction->operand_index = oi_body;       \
     if( !PcStackPush(                           \
             &pc,                                \
@@ -77,14 +75,12 @@ ReachesHere = 0;
     if( ValueNativeObj2Logic(valreg) )          \
     {                                           \
         Reached();                              \
-        DiscardRValue();                        \
-        DemoteLValue();                         \
+        ConsumeRValue();                        \
         PcStack_PushOrAbandon();                \
     }                                           \
     else                                        \
     {                                           \
-        DiscardRValue();                        \
-        DemoteLValue();                         \
+        ConsumeRValue();                        \
         instruction->operand_index ++;          \
     }
 

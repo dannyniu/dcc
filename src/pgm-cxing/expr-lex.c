@@ -6,13 +6,13 @@
 uint64_t Radix64Literal(const char *x)
 {
     uint64_t ret = 0;
-    size_t t = 0;
+    size_t t = 2;
     if( x[0] != '0' || x[1] != '\\' )
         return -1;
 
     while( x[t] )
     {
-        unsigned c;
+        unsigned c = 0;
         if( 'A' <= x[t] && x[t] <= 'Z' )
             c = 0 + x[t] - 'A';
         else if( 'a' <= x[t] && x[t] <= 'z' )
@@ -26,6 +26,7 @@ uint64_t Radix64Literal(const char *x)
         else assert( 0 );
 
         ret = (ret << 6) | c;
+        t++;
     }
 
     return ret;

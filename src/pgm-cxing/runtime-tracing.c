@@ -49,7 +49,7 @@ void *PtrCapture_Keep(s2obj_t *x)
 {
     if( trace )
     {
-        printf("av+: %04x %p %d\n", x->type, x, x->keptcnt);
+        printf("av: %04x %p (+)%d\n", x->type, x, x->keptcnt);
         printStackTrace();
     }
     return (s2obj_keep)(x);
@@ -59,7 +59,7 @@ void PtrCapture_Leave(s2obj_t *x)
 {
     if( trace )
     {
-        printf("av-: %04x %p %d\n", x->type, x, x->keptcnt);
+        printf("av: %04x %p (-)%d\n", x->type, x, x->keptcnt);
         printStackTrace();
     }
     return (s2obj_leave)(x);

@@ -240,32 +240,32 @@ static int *OrderingOfObjects(
     else return OrderWithMethodProperty(a, b, order);
 }
 
-#define DefineOrderingRelForValues(Identifier, CmpOp)           \
-    struct value_nativeobj Identifier(                          \
-        struct value_nativeobj a,                               \
-        struct value_nativeobj b)                               \
-    {                                                           \
-        int order;                                              \
-                                                                \
-        if( IsFunction(a) || IsFunction(b) )                    \
-            return Logic2ValueNativeObj(false);                 \
-                                                                \
-        if( a.type->typeid == valtyp_obj &&                     \
-            b.type->typeid == valtyp_obj )                      \
-        {                                                       \
-            if( !OrderingOfObjects(a, b, &order) )              \
-                return Logic2ValueNativeObj(false);             \
-            else return Logic2ValueNativeObj(order CmpOp 0);    \
-        }                                                       \
-                                                                \
-        else /* assume arithmetic values. */                    \
-        {                                                       \
-            if( !OrderingOfArithVal(a, b, &order) )             \
-                return (struct value_nativeobj){                \
-                    .proper.p = NULL,                           \
-                    .type = (void *)&type_nativeobj_morgoth};   \
-            else return Logic2ValueNativeObj(order CmpOp 0);    \
-        }                                                       \
+#define DefineOrderingRelForValues(Identifier, CmpOp)                   \
+    struct value_nativeobj Identifier(                                  \
+        struct value_nativeobj a,                                       \
+        struct value_nativeobj b)                                       \
+    {                                                                   \
+        int order;                                                      \
+                                                                        \
+        if( IsFunction(a) || IsFunction(b) )                            \
+            return Logic2ValueNativeObj(false);                         \
+                                                                        \
+        if( a.type->typeid == valtyp_obj &&                             \
+            b.type->typeid == valtyp_obj )                              \
+        {                                                               \
+            if( !OrderingOfObjects(a, b, &order) )                      \
+                return Logic2ValueNativeObj(false);                     \
+            else return Logic2ValueNativeObj(order CmpOp 0);            \
+        }                                                               \
+                                                                        \
+        else /* assume arithmetic values. */                            \
+        {                                                               \
+            if( !OrderingOfArithVal(a, b, &order) )                     \
+                return (struct value_nativeobj){                        \
+                    .proper.p = NULL,                                   \
+                    .type = (const void *)&type_nativeobj_morgoth};     \
+            else return Logic2ValueNativeObj(order CmpOp 0);            \
+        }                                                               \
     }
 
 DefineOrderingRelForValues(LessThanExpr, <);
