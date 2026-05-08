@@ -116,6 +116,46 @@ MathBinding_FuncProto(fpmin)
         .type = (const void *)&type_nativeobj_double };
 }
 
+MathBinding_FuncProto(dtoa)
+{
+    int t;
+    s2data_t *x;
+    AssertArgN(1);
+
+    t = snprintf(NULL, 0, "%g", ConvertToDouble(args[0]).proper.f);
+    if( t < 0 )
+    {
+        return (struct value_nativeobj){
+            .proper.l = errno,
+            .type = (const void *)&type_nativeobj_null };
+    }
+
+    if( !(x = s2data_create(t+1)) )
+    {
+        return (struct value_nativeobj){
+            .proper.l = errno,
+            .type = (const void *)&type_nativeobj_null };
+    }
+
+    t = snprintf(s2data_weakmap(x), t+1, "%g",
+                 ConvertToDouble(args[0]).proper.f);
+    s2data_trunc(x, t); // should always succeed.
+
+    return (struct value_nativeobj){
+        .proper.p = x,
+        .type = (const void *)&type_nativeobj_s2impl_str };
+}
+
+MathBinding_FuncProto(atod)
+{
+    AssertArgN(1);
+    AssertArgImpl(0, s2impl_str, "string");
+
+    return (struct value_nativeobj){
+        .proper.f = atof(s2data_weakmap(args[0].proper.p)),
+        .type = (const void *)&type_nativeobj_double };
+}
+
 UnaryPredicateOperation(fpclassify)
     UnaryPredicateOperation(isfinite)
     UnaryPredicateOperation(isinf)
