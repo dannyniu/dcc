@@ -13,7 +13,7 @@
 #include <s2data.h>
 
 #define S2_OBJ_TYPE_STRVEC 0x2031
-#define s2_is_strvec(obj) (((s2obj_t *)obj)->type == 0x2031)
+#define s2_is_strvec(obj) (((s2obj_t *)obj)->type == S2_OBJ_TYPE_STRVEC)
 
 #define T struct strvec_ctx
 typedef T strvec_t;

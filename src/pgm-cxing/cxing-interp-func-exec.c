@@ -232,17 +232,17 @@ static int CxingFunc_ArgumentIndex(lalr_prod_t *params, s2data_t *key)
     while( true )
     {
         s2data_t *ki;
-        if( rules(params->semantic_rule) == arglist_empty )
+        if( rules(params->semantic_rule) == arglist_empty ) //>RULEIMPL<//
         {
             return -1;
         }
-        else if( rules(params->semantic_rule) == arglist_some )
+        else if( rules(params->semantic_rule) == arglist_some ) //>RULEIMPL<//
         {
             params = params->terms[0].production;
             continue;
         }
 
-        else if( rules(params->semantic_rule) == args_genrule )
+        else if( rules(params->semantic_rule) == args_genrule ) //>RULEIMPL<//
         {
             if( !s2_is_token(params->terms[2].production->terms[0].terminal) )
             {
@@ -262,7 +262,7 @@ static int CxingFunc_ArgumentIndex(lalr_prod_t *params, s2data_t *key)
             continue;
         }
 
-        else if( rules(params->semantic_rule) == args_base )
+        else if( rules(params->semantic_rule) == args_base ) //>RULEIMPL<//
         {
             if( !s2_is_token(params->terms[1].production->terms[0].terminal) )
             {

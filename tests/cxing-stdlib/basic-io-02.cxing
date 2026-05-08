@@ -1,0 +1,19 @@
+subr create_a_pipe()
+{
+    decl p = pipe();
+    decl rd = p.rd;
+    decl wr = p.wr;
+    return p;
+}
+
+subr surprise_me(p)
+{
+    p.wr.write("Hello World!\n");
+    p.wr.flush();
+    return p.rd;
+}
+
+subr main()
+{
+    print( surprise_me(create_a_pipe()).getline() );
+}

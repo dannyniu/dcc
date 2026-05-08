@@ -54,6 +54,23 @@ void CxingFatal(const char *msg, ...);
             .type = (const void *)&type_nativeobj_morgoth };            \
     }
 
+/// @def
+/// @brief non-fatal assertion that implementation is of expected.
+#define AssertArgImpls(n, acceptances, hr) do {                         \
+    acceptances;                                                        \
+    CxingDebug("Encountered unexpected implementation of "              \
+               "an "hr" instance in arg%d in function `%s`.\n",         \
+               n, __func__);                                            \
+    return (struct value_nativeobj){                                    \
+        .proper.p = NULL,                                               \
+        .type = (const void *)&type_nativeobj_morgoth };                \
+    } while( false )
+
+/// @def
+/// @brief one of the `acceptances` clauses.
+#define AcceptArgImpl(n, typ)                                           \
+    if( args[n].type == (const void *)&type_nativeobj_##typ ) break;
+
 // A binding of SafeTypes2 objects for the CXING language.
 struct value_nativeobj CxingImpl_s2Obj_Copy(
     int argn, struct value_nativeobj args[]);
@@ -84,6 +101,7 @@ typedef struct s2cxing_value_iter s2cxing_value_iter_t;
 s2cxing_value_t *s2cxing_value_create(struct value_nativeobj val);
 
 typedef struct TYPE_NATIVEOBJ_STRUCT(1) type_nativeobj_struct_p0;
+typedef struct TYPE_NATIVEOBJ_STRUCT(4) type_nativeobj_struct_p3;
 typedef struct TYPE_NATIVEOBJ_STRUCT(7) type_nativeobj_struct_p6;
 typedef struct TYPE_NATIVEOBJ_STRUCT(8) type_nativeobj_struct_p7;
 typedef struct TYPE_NATIVEOBJ_STRUCT(9) type_nativeobj_struct_p8;
@@ -127,6 +145,17 @@ typedef struct {
     struct value_nativeobj val;
 } cxing_builtin_def_t;
 
+// Used by module loader.
 extern s2dict_t *CxingBuiltins;
+
+/// @fn
+/// @param name the identifier to inject the definition as,
+/// @param value the value of the definition to inject.
+/// @returns 0 on success, and -1 on error.
+/// @detils
+/// Entities injected using this function are exposed globally in all modules.
+/// Calling this function while some module is executing risks unpredictable
+/// behavior, especially in multi-threaded applications.
+int CxingBuiltinsExtend(const char *name, struct value_nativeobj value);
 
 #endif /* cxing2c_runtime_h */

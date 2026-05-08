@@ -8,7 +8,7 @@
 #include <s2dict.h>
 
 #define S2_OBJ_TYPE_RFDICT 0x2032
-#define s2_is_rfdict(obj) (((s2obj_t *)obj)->type == 0x2032)
+#define s2_is_rfdict(obj) (((s2obj_t *)obj)->type == S2_OBJ_TYPE_RFDICT)
 
 #define T struct rfdict_ctx
 typedef T rfdict_t;

@@ -6,6 +6,9 @@
 #include "cxing-stdlib.h"
 #include <SafeTypes2.h>
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 struct value_nativeobj CxingImpl_s2Obj_Copy(
     int argn, struct value_nativeobj args[])
 {
@@ -650,22 +653,94 @@ struct value_nativeobj Cxing_NullUncast(
     }
 }
 
+struct value_nativeobj Cxing_IsNull(
+    int argn, struct value_nativeobj args[])
+{
+    AssertArgN(1);
+
+    return (struct value_nativeobj){
+        .proper.l = IsNull(args[0]),
+        .type = (const void *)&type_nativeobj_long };
+}
+
+struct value_nativeobj Cxing_IsLong(
+    int argn, struct value_nativeobj args[])
+{
+    int ret = false;
+    AssertArgN(1);
+
+    if( args[0].type->typeid == valtyp_long )
+        ret = true;
+    else ret = false;
+
+    return (struct value_nativeobj){
+        .proper.l = ret,
+        .type = (const void *)&type_nativeobj_long };
+}
+
+struct value_nativeobj Cxing_IsULong(
+    int argn, struct value_nativeobj args[])
+{
+    int ret = false;
+    AssertArgN(1);
+
+    if( args[0].type->typeid == valtyp_ulong )
+        ret = true;
+    else ret = false;
+
+    return (struct value_nativeobj){
+        .proper.l = ret,
+        .type = (const void *)&type_nativeobj_long };
+}
+
+struct value_nativeobj Cxing_IsDouble(
+    int argn, struct value_nativeobj args[])
+{
+    int ret = false;
+    AssertArgN(1);
+
+    if( args[0].type->typeid == valtyp_double )
+        ret = true;
+    else ret = false;
+
+    return (struct value_nativeobj){
+        .proper.l = ret,
+        .type = (const void *)&type_nativeobj_long };
+}
+
 cxing_builtin_def_t CxingRuntimeBuiltins[] = {
     { "_Uncast", (struct value_nativeobj){
             .proper.p = Cxing_NullUncast,
             .type = (const void *)&type_nativeobj_subr } },
+
     { "dict", (struct value_nativeobj){
             .proper.p = CxingImpl_s2Dict_Create,
             .type = (const void *)&type_nativeobj_subr } },
+
     { "print", (struct value_nativeobj){
             .proper.p = CxingStdlibFunc_Print,
             .type = (const void *)&type_nativeobj_subr } },
+
     { "input", (struct value_nativeobj){
             .proper.p = CxingStdlibFunc_Input,
             .type = (const void *)&type_nativeobj_subr } },
-    { "open", (struct value_nativeobj){
-            .proper.p = CxingImpl_RegFile_Open,
+
+    { "isnull", (struct value_nativeobj){
+            .proper.p = Cxing_IsNull,
             .type = (const void *)&type_nativeobj_subr } },
+
+    { "islong", (struct value_nativeobj){
+            .proper.p = Cxing_IsLong,
+            .type = (const void *)&type_nativeobj_subr } },
+
+    { "isulong", (struct value_nativeobj){
+            .proper.p = Cxing_IsULong,
+            .type = (const void *)&type_nativeobj_subr } },
+
+    { "isdouble", (struct value_nativeobj){
+            .proper.p = Cxing_IsDouble,
+            .type = (const void *)&type_nativeobj_subr } },
+
     { 0 },
 };
 
@@ -767,6 +842,13 @@ bool CxingRuntimeInit()
         s2obj_release(key->pobj);
     }
 
+    if( CxingInitialization_DefineStandardLibrary() != 0 )
+    {
+        CxingFatal("Unable to load standard library!\n");
+        ret = false;
+        goto builtin_dict_dealloc;
+    }
+
     return ret;
 
 builtin_dict_dealloc:
@@ -804,4 +886,36 @@ void CxingRuntimeFinal()
             CxingPropNames[i].pdat = NULL;
         }
     }
+}
+
+int CxingBuiltinsExtend(const char *name, struct value_nativeobj value)
+{
+    s2data_t *key;
+    s2cxing_value_t *val;
+
+    // 2026-05-08 TODO: Not strictly built-in.
+
+    if( !(key = s2data_from_str(name)) )
+    {
+        CxingFatal("Standard name constant '%s' failed to allocate!\n", name);
+        return -1;
+    }
+    if( !(val = s2cxing_value_create(value)) )
+    {
+        // Not using `ValueCopy` as outlined in comments for
+        // the `val` member of the `cxing_builtin_def_t` structure type.
+        // Enjoyed the benefit of not having to check for copying failures.
+        CxingFatal("Unable to create SafeTypes2 binding "
+                   "for standard entity: '%s'\n", name);
+        return -1;
+    }
+    if( s2dict_set(CxingBuiltins, key, val->pobj, s2_setter_gave)
+        != s2_access_success )
+    {
+        CxingFatal("Runtime Initialization Error: "
+                   "SafeTypes2 Dictionary Setter Failure!\n");
+        return -1;
+    }
+    s2obj_release(key->pobj);
+    return 0;
 }

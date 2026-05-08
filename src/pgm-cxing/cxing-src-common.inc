@@ -8,7 +8,10 @@ expr-arith.c
 expr-bits.c
 expr-lex.c
 expr-unary.c
+cxing-stdlib-misc.c
 cxing-stdlib-io.c
+cxing-stdlib-fpmath.c
+mathemu-stubs.c
 langsem.c
 runtime.c
 runtime-tracing.c
@@ -19,6 +22,7 @@ lex-common/rope.c
 infra/s2bools.c
 infra/strvec.c
 infra/rfdict.c
+infra/kvtab.c
 pathutils/pathutils.c
 ./../contrib/SafeTypes2/src/s2data.c
 ./../contrib/SafeTypes2/src/s2dict.c
@@ -38,7 +42,7 @@ memintercept='-DINTERCEPT_MEM_CALLS'
 #memintercept=''
 
 sanitizers='-fsanitize=address'
-sanitizers=''
+#sanitizers=''
 
 libs_common=''
 libs=''

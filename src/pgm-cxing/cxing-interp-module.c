@@ -666,7 +666,7 @@ cleanup:
     lalr_parse_accel_cache_clear();
 
     if( ret ) s2obj_release(ret->pobj);
-    return ret;
+    return NULL;
 }
 
 bool CxingModuleInspectDefinitions(

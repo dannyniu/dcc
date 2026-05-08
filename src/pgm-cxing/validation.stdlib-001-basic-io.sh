@@ -1,10 +1,11 @@
 #!/bin/sh
 
-optimize=optimize
+optimize=debug
 testfunc()
 {
     echo Test Start.
-        $exec ../tests/cxing-stdlib/basic-io-01.cxing
+    $exec ../tests/cxing-stdlib/basic-io-01.cxing
+    $exec ../tests/cxing-stdlib/basic-io-02.cxing
 }
 
 cd "$(dirname "$0")"
