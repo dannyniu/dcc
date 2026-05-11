@@ -23,3 +23,8 @@ subr foo(a, b)
     retrospect(g, h, i, j, k);
     return dict();
 }
+
+subr bar()
+{
+    decl discard = dict(){ "alpha": print("ALPHA"), "beta": print("BETA") };
+}

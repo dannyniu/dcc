@@ -112,5 +112,11 @@ subr main()
     print("Hello".puts(" World!").puts(" Login!\n"));
     print(forloops(return_my_info));
     print(forloops(myinfo));
+
+    decl arr = dict() [ "Alpha", "Beta", ];
+    // decl arr = dict() { 0: "Alpha", 1: "Beta" }; // [ "Alpha", "Beta" ];
+    print(arr[0]);
+    print(arr[1]);
+
     return 0;
 }

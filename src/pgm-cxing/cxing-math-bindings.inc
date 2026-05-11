@@ -1,3 +1,10 @@
+// rounding mode.
+// ====
+
+CxingMathBinding(feRndMode)
+CxingMathBinding(feRndMode_manual)
+CxingMathBinding(feRndMode_auto)
+
 // mandatory operations not expressed as operators
 // ====
 

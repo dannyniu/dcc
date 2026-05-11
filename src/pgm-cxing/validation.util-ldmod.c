@@ -1,6 +1,7 @@
 /* DannyNiu/NJF, 2026-01-10. Public Domain. */
 
 #include "cxing-interp.h"
+#include "cxing-stdlib.h"
 #include "runtime.h"
 
 extern bool trace;
@@ -34,6 +35,10 @@ int main(int argc, char *argv[])
     module = CXOpen(argv[1]);
     CXExpose(module, "dict", (struct value_nativeobj){
             .proper.p = CxingImpl_s2Dict_Create,
+            .type = (const void *)&type_nativeobj_subr,
+        });
+    CXExpose(module, "print", (struct value_nativeobj){
+            .proper.p = CxingStdlibFunc_Print,
             .type = (const void *)&type_nativeobj_subr,
         });
     CxingModuleDump(module);

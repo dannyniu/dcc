@@ -600,8 +600,6 @@ struct value_nativeobj CxingImpl_RegFile_Open(
         .type = (const void *)&type_nativeobj_RegFile };
 }
 
-// Anonymous pipe. (TODO 2026-05-07).
-
 const type_nativeobj_struct_p8 type_nativeobj_Pipe = {
     .typeid = valtyp_obj,
     .n_entries = 8,

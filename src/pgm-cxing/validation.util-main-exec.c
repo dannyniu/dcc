@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     s2obj_t *gctail = s2gc_obj_alloc(0x6543, 128);
     s2obj_t *gcsave = gctail;
     i=0;
-    for(i=0; gctail->gc_prev; i++)
+    for(i=0; gctail; i++)
     {
         printf("%d: (%p) %x %d+%d.\n", i, gctail, gctail->type, gctail->refcnt, gctail->keptcnt);
         if( s2_is_token(gctail) )

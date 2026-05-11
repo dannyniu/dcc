@@ -6,7 +6,9 @@
 
 #ifdef CXING_IMPLEMENT_FUNC_EXEC
 
+#if CXING_INTERP_TRACING_LEVEL > 0
 ReachesHere = 0;
+#endif // CXING_INTERP_TRACING_LEVEL > 0 //
 
 assert( evalmode == cxing_func_eval_mode_dryrun ||
         evalmode == cxing_func_eval_mode_execute );
@@ -140,7 +142,6 @@ if( theRule == ident_ident ) //>RULEIMPL<//
 
 if( theRule == postfix_member ) //>RULEIMPL<//
 {
-    //struct lvalue_nativeobj loperand;
     Reached();
     Visited();
 
@@ -212,29 +213,21 @@ if( theRule == postfix_indirect ) //>RULEIMPL<//
         }
         else
         {
-            struct value_nativeobj key = valreg;
-            // Mapping non-string keys to strings (implemented 2026-03-12).
-            if( key.type != (const void *)&type_nativeobj_s2impl_str )
-            {
-                s2data_t *km = s2data_create(sizeof(uint64_t));
-                s2obj_keep(km->pobj);
-                s2obj_release(km->pobj);
-                if( IsNull(key) )
-                    *(uint64_t *)s2data_weakmap(km) = 0;
-                else *(uint64_t *)s2data_weakmap(km) = key.proper.u;
-                // 2026-04-04: Not yet handling floating points.
-                ValueDestroy(key);
-                key.proper.p = km;
-                key.type = (const void *)&type_nativeobj_s2impl_str;
-                Reached();
-            }
+            struct value_nativeobj key = Key2Str(valreg);
 
             varreg = GetValProperty(instruction->ax, key);
-            PassResultBack(valreg);
+            if( valreg.type == (const void *)&type_nativeobj_data_array_type_obj )
+            {
+                s2obj_leave(varreg.key);
+                varreg.key = NULL;
+            }
+
             instruction->bx = varreg.scope;
+            instruction->flags = ast_node_action_default;
             if( indirect_key_was_rvalue )
                 instruction->flags = ast_node_action_lvalue_release_key;
-            else instruction->flags = ast_node_action_default;
+
+            PassResultBack(valreg);
         }
         instruction->operand_index = instruction->node_body->terms_count;
     }
@@ -261,7 +254,12 @@ if( theRule == funcinvokenocomma_base ) //>RULEIMPL<//
     else if( instruction->operand_index == 2 )
     {
         Reached();
-        ClearLValue();
+        if( instruction->flags == ast_node_action_lvalue_release_key )
+        {
+            s2obj_leave(varreg.key);
+            instruction->flags = ast_node_action_default;
+        }
+        varreg.key = NULL;
 
         if( instruction[1].opts == ast_node_scope_was_lvalue )
         {
@@ -470,7 +468,12 @@ if( theRule == funccall_noarg ) //>RULEIMPL<//
              instruction->node_body->terms_count )
     {
         Reached();
-        ClearLValue();
+        if( instruction->flags == ast_node_action_lvalue_release_key )
+        {
+            s2obj_leave(varreg.key);
+            instruction->flags = ast_node_action_default;
+        }
+        varreg.key = NULL;
 
         if( instruction[1].opts == ast_node_scope_was_lvalue )
         {

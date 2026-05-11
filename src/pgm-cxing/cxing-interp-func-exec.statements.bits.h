@@ -2,7 +2,9 @@
 
 #ifdef CXING_IMPLEMENT_FUNC_EXEC
 
+#if CXING_INTERP_TRACING_LEVEL > 0
 ReachesHere = 0;
+#endif // CXING_INTERP_TRACING_LEVEL > 0 //
 
 //
 // statements.

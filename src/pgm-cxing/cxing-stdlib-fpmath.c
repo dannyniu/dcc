@@ -1,12 +1,8 @@
 /* DannyNiu/NJF, 2026-05-05. Public Domain. */
 
 #include "cxing-stdlib.h"
+#include <fenv.h>
 #include <math.h>
-
-
-// rounding modes. (2026-05-08 TODO).
-// ====
-
 
 // helper boilderplates.
 // ====
@@ -49,12 +45,167 @@
     }
 
 
+// rounding modes.
+// ====
+
+const struct rounding_mode_constants {
+    int cxing, cfenv;
+} rounding_mode_constants[] = {
+    { 0, FE_TONEAREST }, // 0\AA
+    { 3*64+15, FE_UPWARD }, // 0\DP
+    { 3*64+13, FE_DOWNWARD }, // 0\DN
+    { 3*64+25, FE_TOWARDZERO }, // 0\DZ
+#ifdef FE_TONEARESTFROMZERO
+    { 8, FE_TONEARESTFROMZERO }, // 0\AI
+    // To add: round-to-odd. // 0\DO
+#endif // FE_TONEARESTFROMZERO
+    // Other roundings aren't even standardized yet.
+    { -1, -1 },
+};
+
+MathBinding_FuncProto(feRndMode)
+{
+    int i;
+    int rnd = fegetround();
+
+    (void)argn;
+    (void)args;
+
+    if( rnd < 0 )
+    {
+        return (struct value_nativeobj){
+            // @dannyniu is not sure what errno value is appropriate.
+            .proper.p = NULL,
+            .type = (const void *)&type_nativeobj_morgoth };
+    }
+
+    for(i=0; rounding_mode_constants[i].cfenv >= 0; i++)
+    {
+        if( rnd == rounding_mode_constants[i].cfenv )
+        {
+            return (struct value_nativeobj){
+                .proper.l = rounding_mode_constants[i].cxing,
+                .type = (const void *)&type_nativeobj_long };
+        }
+    }
+
+    return (struct value_nativeobj){
+        // @dannyniu is not sure what errno value is appropriate.
+        .proper.p = NULL,
+        .type = (const void *)&type_nativeobj_morgoth };
+}
+
+MathBinding_FuncProto(feRndMode_manual)
+{
+    int i;
+    int rnd;
+
+    AssertArgN(1);
+    if( !IsInteger(args[0]) )
+    {
+        CxingDebug("The rounding mode need to be encoded as an integer.\n");
+        return (struct value_nativeobj){
+            // @dannyniu is not sure what errno value is appropriate.
+            .proper.p = NULL,
+            .type = (const void *)&type_nativeobj_morgoth };
+    }
+
+    rnd = args[0].proper.l;
+
+    for(i=0; rounding_mode_constants[i].cfenv >= 0; i++)
+    {
+        if( rnd == rounding_mode_constants[i].cxing )
+        {
+            fesetround(rounding_mode_constants[i].cfenv);
+            return (struct value_nativeobj){
+                .proper.l = rounding_mode_constants[i].cxing,
+                .type = (const void *)&type_nativeobj_long };
+        }
+    }
+
+    return (struct value_nativeobj){
+        // @dannyniu is not sure what errno value is appropriate.
+        .proper.p = NULL,
+        .type = (const void *)&type_nativeobj_morgoth };
+}
+
+
+#define S2_OBJ_TYPE_CXING_STDFP_AUTOMODE 0x2114
+typedef struct {
+    s2obj_base;
+    int oldmode;
+} cxing_stdfp_automode_t;
+
+void cxing_stdfp_automode_restoration(cxing_stdfp_automode_t *modesv)
+{
+    fesetround(modesv->oldmode);
+}
+
+const type_nativeobj_struct_p2 type_nativeobj_stdfp_automode = {
+    .typeid = valtyp_obj,
+    .n_entries = 2,
+    .static_members = {
+        { .name = "__copy__", .member = &CxingValue_s2Obj_Copy },
+        { .name = "__final__", .member = &CxingValue_s2Obj_Final },
+    },
+};
+
+MathBinding_FuncProto(feRndMode_auto)
+{
+    int i, rnd;
+    cxing_stdfp_automode_t *ret;
+
+    AssertArgN(1);
+    if( !IsInteger(args[0]) )
+    {
+        CxingDebug("The rounding mode need to be encoded as an integer.\n");
+        return (struct value_nativeobj){
+            // @dannyniu is not sure what errno value is appropriate.
+            .proper.p = NULL,
+            .type = (const void *)&type_nativeobj_morgoth };
+    }
+
+    ret = (cxing_stdfp_automode_t *)s2gc_obj_alloc(
+        S2_OBJ_TYPE_CXING_STDFP_AUTOMODE, sizeof *ret);
+
+    if( !ret )
+    {
+        return (struct value_nativeobj){
+            .proper.l = errno,
+            .type = (const void *)&type_nativeobj_null };
+    }
+
+    s2obj_keep(ret->pobj);
+    s2obj_release(ret->pobj);
+    ret->base.finalf = (s2func_final_t)cxing_stdfp_automode_restoration;
+    rnd = args[0].proper.l;
+    ret->oldmode = fegetround();
+
+    for(i=0; rounding_mode_constants[i].cfenv >= 0; i++)
+    {
+        if( rnd == rounding_mode_constants[i].cxing )
+        {
+            fesetround(rounding_mode_constants[i].cfenv);
+            return (struct value_nativeobj){
+                .proper.p = ret,
+                .type = (const void *)&type_nativeobj_stdfp_automode };
+        }
+    }
+
+    s2obj_leave(ret->pobj);
+    return (struct value_nativeobj){
+        // @dannyniu is not sure what errno value is appropriate.
+        .proper.p = NULL,
+        .type = (const void *)&type_nativeobj_morgoth };
+}
+
+
 // mandatory operations not expressed as operators
 // ====
 
 UnaryFormatOfOperation(sqrt)
 
-MathBinding_FuncProto(fma)
+    MathBinding_FuncProto(fma)
 {
     AssertArgN(3);
     args[0] = ConvertToDouble(args[0]);
@@ -274,6 +425,8 @@ UnaryFormatOfOperation(log2p1)
     }
     else
     {
+        CxingDebug("Non-integer argument to a **math** function expecting one, "
+                   "calculation result may degrade.\n");
         y = ConvertToDouble(args[1]).proper.f;
         x = exp(log1p(x) * y);
     }
@@ -300,6 +453,8 @@ BinaryFormatOfOperation(hypot)
     }
     else
     {
+        CxingDebug("Non-integer argument to a **math** function expecting one, "
+                   "calculation result may degrade.\n");
         y = ConvertToDouble(args[1]).proper.f;
         x = pow(x, y);
     }
@@ -326,6 +481,8 @@ BinaryFormatOfOperation(powr)
     }
     else
     {
+        CxingDebug("Non-integer argument to a **math** function expecting one, "
+                   "calculation result may degrade.\n");
         y = ConvertToDouble(args[1]).proper.f;
         x = pow(x, 1/y);
     }

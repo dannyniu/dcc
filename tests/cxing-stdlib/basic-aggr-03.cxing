@@ -1,0 +1,17 @@
+subr main()
+{
+    decl data = "abcd1234";
+    {
+        decl wvec = ushort[4];
+        decl bm = data.map(wvec);
+        bm[1] = 0x2324;
+        print(data);
+        print(bm[2]);
+
+        data.trunc(5);
+        print(data);
+    }
+
+    data.trunc(5);
+    print(data);
+}//*/

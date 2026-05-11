@@ -77,6 +77,8 @@ typedef struct cxing_ast_node {
         // as replacement for the previous
         // automatic resource management scheme.
         ast_node_action_lvalue_release_key,
+        //- ast_node_action_lvalue_release_scope,
+        //- ast_node_action_lvalue_release_key_and_scope,
 
         // logic determined, short-circuit.
         ast_node_action_stop,
@@ -97,8 +99,10 @@ typedef struct cxing_ast_node {
     enum {
         ast_node_opt_default = 0,
 
-        // 2026-04-07:
-        // manually passed down in function calls with arguments.
+        // 2026-04-07 (upd.2026-05-11):
+        // The option is manually passed down in function calls with arguments,
+        // usually along with `bx` itself. Also instructs `PcStackPop` not to
+        // overwrite `bx` from that of deeper stack for any reason.
         ast_node_release_bx_after_call, // calls ValueDestroy.
         ast_node_insulate_bx_after_call, // no ValueDestroy call,
 
@@ -106,11 +110,6 @@ typedef struct cxing_ast_node {
         // makes decision for one of the 2 above flags.
         ast_node_scope_was_lvalue,
         ast_node_scope_was_rvalue,
-
-        // preserve the value of `bx` in this frame,
-        // and instruct `PcStackPop` not to overwrite it for any reason.
-        ast_node_preserve_bx,
-        // ast_node_passdown_bx,
 
         // for conditionals, sticky.
         ast_node_opt_noelse,
@@ -175,8 +174,7 @@ static struct value_nativeobj PcStackPop(cxing_program_counter_t *pc)
     }
 
     // 2026-04-04: resource management issues handled by rule handlers.
-    if( pc->instructions[pc->spind - 1].opts != ast_node_preserve_bx &&
-        pc->instructions[pc->spind - 1].opts != ast_node_insulate_bx_after_call &&
+    if( pc->instructions[pc->spind - 1].opts != ast_node_insulate_bx_after_call &&
         pc->instructions[pc->spind - 1].opts != ast_node_release_bx_after_call )
         pc->instructions[pc->spind - 1].bx = pc->instructions[pc->spind].bx;
 
@@ -680,10 +678,16 @@ static struct TYPE_NATIVEOBJ_STRUCT(4) type_nativeobj_localvars = {
 
 // standalone cast of lvalue into rvalue.
 #define ClearLValue() do {                                              \
-        if( instruction->flags == ast_node_action_lvalue_release_key )  \
+        if( instruction->flags ==                                       \
+            ast_node_action_lvalue_release_key )                        \
         {                                                               \
             s2obj_leave(varreg.key);                                    \
             instruction->flags = ast_node_action_default;               \
+        }                                                               \
+        if( evalmode == cxing_func_eval_mode_execute )                  \
+        {                                                               \
+            if( instruction[1].opts == ast_node_scope_was_rvalue )      \
+                ValueDestroy(instruction->bx);                          \
         }                                                               \
         varreg.key = NULL;                                              \
     } while( false )
@@ -702,6 +706,32 @@ static struct TYPE_NATIVEOBJ_STRUCT(4) type_nativeobj_localvars = {
         } else {                                \
             ClearLValue();                      \
         } } while( false )
+
+static struct value_nativeobj Key2Str(struct value_nativeobj key)
+{
+    // Mapping non-string keys to strings,
+    // implemented 2026-03-12,
+    // moved here 2026-05-10.
+    if( key.type != (const void *)&type_nativeobj_s2impl_str )
+    {
+        s2data_t *km = s2data_create(sizeof(uint64_t));
+        s2obj_keep(km->pobj);
+        s2obj_release(km->pobj);
+        if( IsNull(key) )
+            *(uint64_t *)s2data_weakmap(km) = 0;
+        else *(uint64_t *)s2data_weakmap(km) = key.proper.u;
+        // 2026-04-04: Not yet handling floating points.
+
+        // Only used by 'array form' object definition notation,
+        // and 'indirect' form of member access.
+        // Shouldn't be unsafe to destroy the `key` argument.
+        ValueDestroy(key);
+
+        key.proper.p = km;
+        key.type = (const void *)&type_nativeobj_s2impl_str;
+    }
+    return key;
+}
 
 // 2025-12-30: subroutines first, methods next.
 
@@ -730,7 +760,10 @@ struct value_nativeobj CxingFuncEval(
         .type = (const void *)&type_nativeobj_localvars,
     };
     cxing_ast_node_t *instruction;
+
+#if CXING_INTERP_TRACING_LEVEL > 0
     int ReachesHere = 0;
+#endif // CXING_INTERP_TRACING_LEVEL > 0 //
 
     struct lvalue_nativeobj varreg = {
         .value.proper.p = NULL,
@@ -755,11 +788,16 @@ struct value_nativeobj CxingFuncEval(
     eprintf("Function evaluation started.\n");
 
 start_eval_1term:;
-    static long cnt = 0; if( ++cnt >= 7654321 ) exit(12); // time limiter, TODO: remove after debugging.
+#if CXING_INTERP_TRACING_LEVEL > 0
+    static long cnt = 0;
+    if( ++cnt >= 7654321 )
+        exit(12); // time limiter, TODO: remove after debugging.
+#endif // CXING_INTERP_TRACING_LEVEL > 0 //
     instruction = &pc.instructions[pc.spind];
     Reached();
 
-    if( pc.instructions[0].flags == ast_node_action_return )
+    if( pc.instructions[0].flags == ast_node_action_return &&
+        evalmode == cxing_func_eval_mode_execute )
     {
         goto finish_eval_1term;
     }

@@ -5,6 +5,7 @@
 int CxingInitialization_DefineStandardLibrary()
 {
     cxing_builtin_def_t *CxingStandardLibraries[] = {
+        CxingStdlibStructBuiltins,
         CxingStdlibIoBuiltins,
         CxingStdlibMathBuiltins,
         NULL,

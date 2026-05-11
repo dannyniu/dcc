@@ -1,0 +1,25 @@
+subr main()
+{
+    decl octaword = union() {
+        "u": packed() {
+            "c": byte,
+            "w": ushort,
+            "i": uint,
+            "p": char,
+        },
+        "a": ulong
+    };
+
+    decl blob = "12345678";
+    decl bloc = blob.map(octaword);
+    bloc.u.i = 0;
+    print(bloc);
+    print(bloc.a);
+    print(bloc.u.c);
+    print(bloc.u.w);
+}
+
+subr main_sv()
+{
+    decl au = union() { "a": ulong };
+}

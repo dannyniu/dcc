@@ -10,6 +10,7 @@ subr surprise_me(p)
 {
     p.wr.write("Hello World!\n");
     p.wr.flush();
+    print(p), print(p.rd), print(p.wr);
     return p.rd;
 }
 

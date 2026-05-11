@@ -59,4 +59,6 @@ void ValueDestroy(struct value_nativeobj val);
 typedef struct value_nativeobj (*cxing_call_proto)(
     int, struct value_nativeobj *);
 
+#define CXING_INT_INDEX_MAX (10000000000ULL)
+
 #endif /* cxing2c_langsem_h */

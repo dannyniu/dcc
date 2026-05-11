@@ -6,9 +6,6 @@
 #include "cxing-stdlib.h"
 #include <SafeTypes2.h>
 
-#define _USE_MATH_DEFINES
-#include <math.h>
-
 struct value_nativeobj CxingImpl_s2Obj_Copy(
     int argn, struct value_nativeobj args[])
 {
@@ -27,6 +24,16 @@ struct value_nativeobj CxingImpl_s2Obj_Final(
         .type = (const void *)&type_nativeobj_morgoth };
 }
 
+struct value_nativeobj CxingValue_s2Obj_Copy =
+    (struct value_nativeobj){
+    .proper.p = CxingImpl_s2Obj_Copy,
+    .type = (const void *)&type_nativeobj_method };
+
+struct value_nativeobj CxingValue_s2Obj_Final =
+    (struct value_nativeobj){
+    .proper.p = CxingImpl_s2Obj_Final,
+    .type = (const void *)&type_nativeobj_method };
+
 
 struct value_nativeobj CxingPropName_copy;
 struct value_nativeobj CxingPropName_final;
@@ -41,6 +48,10 @@ struct value_nativeobj CxingPropName_Putc;
 struct value_nativeobj CxingPropName_Puts;
 struct value_nativeobj CxingPropName_Putfin;
 struct value_nativeobj CxingPropName_Map;
+
+// Used by the structures standard library.
+struct value_nativeobj CxingPropName_Size;
+struct value_nativeobj CxingPropName_Align;
 
 struct {
     const char *istr;
@@ -60,6 +71,9 @@ struct {
     { .istr = "puts", .pvar = &CxingPropName_Puts },
     { .istr = "putfin", .pvar = &CxingPropName_Putfin },
     { .istr = "map", .pvar = &CxingPropName_Map },
+
+    { .istr = "size", .pvar = &CxingPropName_Size },
+    { .istr = "align", .pvar = &CxingPropName_Align },
 
     {0},
 };
@@ -589,7 +603,7 @@ struct value_nativeobj CxingImpl_s2Data_Putfin(
             .type = (const void *)&type_nativeobj_null };
 }
 
-struct value_nativeobj CxingImpl_s2Data_Map(
+struct value_nativeobj was_CxingImpl_s2Data_Map(
     int argn, struct value_nativeobj args[])
 {
     AssertArgN(2);

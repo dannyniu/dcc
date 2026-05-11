@@ -11,6 +11,7 @@ expr-unary.c
 cxing-stdlib-misc.c
 cxing-stdlib-io.c
 cxing-stdlib-fpmath.c
+cxing-stdlib-struct.c
 mathemu-stubs.c
 langsem.c
 runtime.c

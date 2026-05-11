@@ -12,6 +12,9 @@
 /// @details
 /// These messages are from the runtime to
 /// assist in debugging of CXING programs.
+///
+/// Because almost all operations in CXING have defined
+/// error behaviors, these are mostly non-fatal warnings.
 void CxingDebug(const char *msg, ...);
 
 /// @fn
@@ -59,7 +62,7 @@ void CxingFatal(const char *msg, ...);
 #define AssertArgImpls(n, acceptances, hr) do {                         \
     acceptances;                                                        \
     CxingDebug("Encountered unexpected implementation of "              \
-               "an "hr" instance in arg%d in function `%s`.\n",         \
+               "a/an "hr" instance in arg%d in function `%s`.\n",       \
                n, __func__);                                            \
     return (struct value_nativeobj){                                    \
         .proper.p = NULL,                                               \
@@ -76,6 +79,9 @@ struct value_nativeobj CxingImpl_s2Obj_Copy(
     int argn, struct value_nativeobj args[]);
 struct value_nativeobj CxingImpl_s2Obj_Final(
     int argn, struct value_nativeobj args[]);
+
+extern struct value_nativeobj CxingValue_s2Obj_Copy;
+extern struct value_nativeobj CxingValue_s2Obj_Final;
 
 extern struct value_nativeobj CxingPropName_copy;
 extern struct value_nativeobj CxingPropName_final;
@@ -101,7 +107,10 @@ typedef struct s2cxing_value_iter s2cxing_value_iter_t;
 s2cxing_value_t *s2cxing_value_create(struct value_nativeobj val);
 
 typedef struct TYPE_NATIVEOBJ_STRUCT(1) type_nativeobj_struct_p0;
+typedef struct TYPE_NATIVEOBJ_STRUCT(2) type_nativeobj_struct_p1;
+typedef struct TYPE_NATIVEOBJ_STRUCT(3) type_nativeobj_struct_p2;
 typedef struct TYPE_NATIVEOBJ_STRUCT(4) type_nativeobj_struct_p3;
+typedef struct TYPE_NATIVEOBJ_STRUCT(5) type_nativeobj_struct_p4;
 typedef struct TYPE_NATIVEOBJ_STRUCT(7) type_nativeobj_struct_p6;
 typedef struct TYPE_NATIVEOBJ_STRUCT(8) type_nativeobj_struct_p7;
 typedef struct TYPE_NATIVEOBJ_STRUCT(9) type_nativeobj_struct_p8;
@@ -126,6 +135,16 @@ extern const type_nativeobj_struct_p0 type_nativeobj_method;
 // Built-in objects.
 extern const type_nativeobj_struct_p9 type_nativeobj_s2impl_str;
 extern const type_nativeobj_struct_p8 type_nativeobj_s2impl_dict;
+
+// Data Structure Type Objects (from standard library).
+extern const type_nativeobj_struct_p3 type_nativeobj_data_array_type_obj;
+extern const type_nativeobj_struct_p4 type_nativeobj_aggr_pack_type_obj;
+extern const type_nativeobj_struct_p4 type_nativeobj_aggr_union_type_obj;
+extern const type_nativeobj_struct_p4 type_nativeobj_aggr_struct_type_obj;
+extern const type_nativeobj_struct_p1 type_nativeobj_signed_type_obj;
+extern const type_nativeobj_struct_p1 type_nativeobj_unsigned_type_obj;
+extern const type_nativeobj_struct_p1 type_nativeobj_floatingpoint_type_obj;
+extern const type_nativeobj_struct_p4 type_nativeobj_data_struct_map_obj;
 
 struct value_nativeobj CxingImpl_s2Dict_Create(
     int argn, struct value_nativeobj args[]);

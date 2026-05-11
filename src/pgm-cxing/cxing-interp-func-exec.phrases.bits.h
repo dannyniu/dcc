@@ -6,7 +6,9 @@
 
 #ifdef CXING_IMPLEMENT_FUNC_EXEC
 
+#if CXING_INTERP_TRACING_LEVEL > 0
 ReachesHere = 0;
+#endif // CXING_INTERP_TRACING_LEVEL > 0 //
 
 //
 // phrases.
@@ -40,7 +42,7 @@ if( theRule == ctrl_flow_ion_op_or || //>RULEIMPL<//
         NULL; // not a labelled control-flow phrase.
 
     // 2026-04-04:
-    // 
+    //
     // Control flow operations don't exhibit values,
     // contrasting expressions, which is the other
     // species of phrases.
@@ -328,7 +330,7 @@ if( theRule == phrase_stmt_base ) //>RULEIMPL<//
              instruction->node_body->terms_count )
     {
         Reached();
-        ClearLValue();
+        ConsumeRValue();
 
         valreg = (struct value_nativeobj){
             .proper.p = NULL,
@@ -404,7 +406,7 @@ if( theRule == or_phrase_ion_ctrl_flow ) //>RULEIMPL<//
                     cntl->terms[cntl->terms_count - 1].terminal->str;
 
                 // 2026-04-04 retro note:
-                // 
+                //
                 // or_phrase_ion_ctrl_flow is a special ion, where
                 // two ions appear in adjacency.
                 //

@@ -1,0 +1,16 @@
+subr changemode()
+{
+    decl rattr = feRndMode_auto(0\DP);
+    print(feRndMode());
+    feRndMode_manual(0\DZ);
+    print(feRndMode());
+    return;
+}
+
+subr main()
+{
+    print(feRndMode());
+    changemode();
+    print(feRndMode());
+    print(hypot(sin(10), cos(10)));
+}
