@@ -7,7 +7,7 @@
 #ifdef CXING_IMPLEMENT_FUNC_EXEC
 
 #if CXING_INTERP_TRACING_LEVEL > 0
-ReachesHere = 0;
+ReachesHere = 1;
 #endif // CXING_INTERP_TRACING_LEVEL > 0 //
 
 //
@@ -90,14 +90,10 @@ if( theRule == objdefstartnocomma_base || //>RULEIMPL<//
                 if( theRule == objdefstartnocomma_base )
                     CxingDiagnose("The postfix expression identified by "
                                   "the token at line %d column %d "
-                                  "in source code file \"%s\" "
                                   "is not a method as required by "
                                   "object definition notation.\n",
-                                  instruction->node_body
-                                  ->terms[0].terminal->lineno,
-                                  instruction->node_body
-                                  ->terms[0].terminal->column,
-                                  module->filename);
+                                  instruction->node_body->terms[0].terminal->lineno,
+                                  instruction->node_body->terms[0].terminal->column);
                 else CxingDiagnose("The postfix expression used "
                                    "in the object definition notation "
                                    "was not a method.");
@@ -236,14 +232,10 @@ if( theRule == array_piece_base ) //>RULEIMPL<//
             {
                 CxingDiagnose("The postfix expression identified by "
                               "the token at line %d column %d "
-                              "in source code file \"%s\" "
                               "is not a method as required by "
                               "object definition notation.\n",
-                              instruction->node_body
-                              ->terms[0].terminal->lineno,
-                              instruction->node_body
-                              ->terms[0].terminal->column,
-                              module->filename);
+                              instruction->node_body->terms[0].terminal->lineno,
+                              instruction->node_body->terms[0].terminal->column);
             }
             else
             {
@@ -253,7 +245,6 @@ if( theRule == array_piece_base ) //>RULEIMPL<//
                 ((cxing_call_proto)InitSetMethod.proper.p)(3, args);
                 ValueDestroy(key);
             }
-            ValueDestroy(instruction->ax);
             ValueDestroy(valreg);
         }
 
@@ -387,6 +378,11 @@ if( theRule == array_streamline ) //>RULEIMPL<//
                 ((cxing_call_proto)InitSetMethod.proper.p)(3, args);
             }
             ValueDestroy(valreg);
+
+            if( instruction->opts == ast_node_insulate_bx_after_call )
+            {
+                instruction->bx = ValueCopy(instruction->bx);
+            }
         }
         PassResultBack(instruction->bx);
     }
@@ -432,7 +428,12 @@ if( theRule == array_complete ) //>RULEIMPL<//
                     instruction->bx };
                 ((cxing_call_proto)InitSetMethod.proper.p)(3, args);
             }
-            ValueDestroy(valreg);
+            //ValueDestroy(valreg);
+
+            if( instruction->opts == ast_node_insulate_bx_after_call )
+            {
+                instruction->bx = ValueCopy(instruction->bx);
+            }
         }
         PassResultBack(instruction->bx);
     }

@@ -1,0 +1,109 @@
+ppexpr % goal : expressions-list % pp_const_expr ;
+
+identifier % ident
+: langlex_identifier % ident
+;
+
+constant % const
+: "true" % true
+| "false" % false
+| "null" % null
+| langlex_binlit % binlit
+| langlex_declit % declit
+| langlex_octlit % octlit
+| langlex_hexlit % hexlit
+| langlex_decfplit % decfplit
+| langlex_hexfplit % hexfplit
+| langlex_charlit % charlit
+| langlex_strlit % strlit
+;
+
+primary-expr % primary
+: "(" expressions-list ")" % paren
+| identifier % ident
+| constant % const
+;
+
+postfix-expr % postfix
+: primary-expr % degenerate
+;
+
+unary-expr % unary
+: postfix-expr % degenerate
+| "+" unary-expr % positive
+| "-" unary-expr % negative
+| "~" unary-expr % bitcompl
+| "!" unary-expr % logicnot
+;
+
+mul-expr % mulexpr
+: unary-expr % degenerate
+| mul-expr "*" unary-expr % multiply
+| mul-expr "/" unary-expr % divide
+| mul-expr "%" unary-expr % remainder
+;
+
+add-expr % addexpr
+: mul-expr % degenerate
+| add-expr "+" mul-expr % add
+| add-expr "-" mul-expr % subtract
+;
+
+bit-shift-expr % shiftexpr
+: add-expr % degenerate
+| bit-shift-expr "<<" add-expr % lshift
+| bit-shift-expr ">>" add-expr % rshift
+;
+
+rel-expr % relops
+: bit-shift-expr % degenerate
+| rel-expr "<" bit-shift-expr % lt
+| rel-expr ">" bit-shift-expr % gt
+| rel-expr "<=" bit-shift-expr % le
+| rel-expr ">=" bit-shift-expr % ge
+;
+
+eq-expr % eqops
+: rel-expr % degenerate
+| eq-expr "==" rel-expr % eq
+| eq-expr "!=" rel-expr % ne
+;
+
+bit-and % bitand
+: eq-expr % degenerate
+| bit-and "&" eq-expr % bitand
+;
+
+bit-xor % bitxor
+: bit-and % degenerate
+| bit-xor "^" bit-and % bitxor
+;
+
+bit-or % bitor
+: bit-xor % degenerate
+| bit-or "|" bit-xor % bitor
+;
+
+logic-and % logicand
+: bit-or % degenerate
+| logic-and "&&" bit-or % logicand
+;
+
+logic-or % logicor
+: logic-and % degenerate
+| logic-or "||" logic-and % logicor
+;
+
+cond-expr % tenary
+: logic-or % degenerate
+| logic-or "?" expressions-list ":" cond-expr % tenary
+;
+
+assign-expr % assignment
+: cond-expr % degenerate
+;
+
+expressions-list % exprlist
+: assign-expr % degenerate
+| expressions-list "," assign-expr % exprlist
+;

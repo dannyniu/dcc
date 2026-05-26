@@ -140,12 +140,13 @@ int main(int argc, char *argv[])
         libregfree(&var_lex_elems[i].preg);
     }
 
-/*
+#ifndef SAFETYPES2_BUILD_WITHOUT_GC
 s2obj_t *gctail = s2gc_obj_alloc(0x6543, 128);
 s2obj_t *gcsave = gctail;
 i=0;
-for(i=0; gctail->gc_prev; i++)
+for(i=0; gctail; i++)
 {
+    if( !gcsave->gc_prev ) break;
     printf("%d: (%p) %x %d+%d.\n", i, gctail, gctail->type, gctail->refcnt, gctail->keptcnt);
     if( s2_is_token(gctail) )
     {
@@ -162,6 +163,7 @@ for(i=0; gctail->gc_prev; i++)
     gctail = gctail->gc_prev;
 }
 s2obj_release(gcsave);//*/
+#endif
 
 #if INTERCEPT_MEM_CALLS
     acq_after = allocs;

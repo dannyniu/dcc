@@ -20,7 +20,6 @@ struct kvent {
 };
 
 // 2026-05-05: all fields' public.
-// 2026-05-07:
 T {
     s2obj_base;
 

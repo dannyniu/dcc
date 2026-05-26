@@ -213,11 +213,18 @@ if( theRule == postfix_indirect ) //>RULEIMPL<//
         }
         else
         {
-            struct value_nativeobj key = Key2Str(valreg);
+            struct value_nativeobj key;
+
+            // non-string key, would undergo conversion, and so'll be an rvalue.
+            if( valreg.type != (const void *)&type_nativeobj_s2impl_str )
+                indirect_key_was_rvalue = true;
+
+            key = Key2Str(valreg);
 
             varreg = GetValProperty(instruction->ax, key);
             if( valreg.type == (const void *)&type_nativeobj_data_array_type_obj )
             {
+                // type object, special case handled within the interpreter.
                 s2obj_leave(varreg.key);
                 varreg.key = NULL;
             }
@@ -291,8 +298,8 @@ if( theRule == funcinvokenocomma_base ) //>RULEIMPL<//
 
             if( !instruction->fargs )
             {
-                CxingFatal("Call to calloc failed when trying to allocate "
-                           "space for function arguments.\n");
+                CxingFatal("Function call failed: "
+                           "unable to allocate space for function arguments.\n");
                 goto func_exec_abort;
             }
 
@@ -438,8 +445,10 @@ if( theRule == funccall_somearg ) //>RULEIMPL<//
             }
             else
             {
-                CxingDebug("A function call is made to "
-                           "a non-function value 01.\n");
+                CxingDebug("A function call is made to a non-function value. "
+                           "The closing parenthesis is at line %d column %d.\n",
+                           instruction->node_body->terms[1].terminal->lineno,
+                           instruction->node_body->terms[1].terminal->column);
             }
 
             if( instruction->opts == ast_node_release_bx_after_call )
@@ -499,8 +508,10 @@ if( theRule == funccall_noarg ) //>RULEIMPL<//
             }
             else
             {
-                CxingDebug("A function call is made to "
-                           "a non-function value 02.\n");
+                CxingDebug("A function call is made to a non-function value. "
+                           "The opening parenthesis is at line %d column %d.\n",
+                           instruction->node_body->terms[1].terminal->lineno,
+                           instruction->node_body->terms[1].terminal->column);
             }
 
             if( instruction->opts == ast_node_release_bx_after_call )
@@ -844,7 +855,7 @@ if( theRule == assignment_directassign || //>RULEIMPL<//
     else if( instruction->operand_index == 2 )
     {
         Reached();
-        ClearLValue();
+        DemoteLValue(); // Changed from `ClearLValue` on 2026-05-26.
 
         // Actually, this is to save the first operand
         // in `ax` for subsequent evaluation.
@@ -868,8 +879,10 @@ if( theRule == assignment_directassign || //>RULEIMPL<//
 
         if( !varreg.key )
         {
-            CxingDebug("The left-hand side of the assignment operation "
-                       "is not an lvalue!\n");
+            CxingDebug("The left-hand side of the assignment operation is not an lvalue. "
+                       "The assignment operator is at line %d column %d.\n",
+                       instruction->node_body->terms[1].terminal->lineno,
+                       instruction->node_body->terms[1].terminal->column);
             goto finish_eval_1term;
         }
         else if( varreg.key != (void *)1 )
@@ -881,7 +894,7 @@ if( theRule == assignment_directassign || //>RULEIMPL<//
         if( evalmode == cxing_func_eval_mode_execute )
         {
             if( theRule == assignment_directassign )
-                newval = (instruction->ax);
+                newval = instruction->ax;
 
             if( theRule == assignment_mulassign )
                 newval = ArithMulExpr(valreg, instruction->ax);

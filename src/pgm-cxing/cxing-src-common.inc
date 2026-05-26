@@ -15,6 +15,9 @@ cxing-stdlib-struct.c
 mathemu-stubs.c
 langsem.c
 runtime.c
+runtime-str.c
+runtime-dict.c
+runtime-array.c
 runtime-tracing.c
 lalr-common/lalr.c
 langlex/langlex-cxing.c

@@ -18,6 +18,41 @@ static void rfdict_final(T *vd)
     s2obj_release(vd->indtab->pobj);
 }
 
+typedef struct rfdict_iter {
+    struct s2ctx_iter base;
+    T *target;
+    long pos;
+} rfdict_iter_t;
+
+static int rfdict_iter_step(rfdict_iter_t *restrict iter)
+{
+    if( iter->pos >= iter->target->len )
+    {
+        iter->base.key = (void *)0;
+        iter->base.value = NULL;
+        return 0;
+    }
+
+    iter->base.key = (void *)iter->pos;
+    iter->base.value = iter->target->valtab[iter->pos ++];
+    return 1;
+}
+
+static rfdict_iter_t *rfdict_iter_create(
+    rfdict_t *restrict target)
+{
+    rfdict_iter_t *iter = NULL;
+
+    iter = (calloc)(1, sizeof(rfdict_iter_t));
+    if( !iter ) return NULL;
+
+    iter->base.final = (s2iter_final_func_t)free;
+    iter->base.next = (s2iter_stepfunc_t)rfdict_iter_step;
+    iter->target = target;
+
+    return iter;
+}
+
 T *rfdict_create()
 {
     T *vd;
@@ -25,11 +60,7 @@ T *rfdict_create()
     vd = (T *)s2gc_obj_alloc(S2_OBJ_TYPE_RFDICT, sizeof(T));
     if( !vd ) return NULL;
 
-    // 2026-02-25:
-    // reverse-order finalized dictionary is primarily used for
-    // local variable declarations, and has no show need for
-    // member enumerators (i.e. iterators) so far.
-    //- vd->base.itercreatf;
+    vd->base.itercreatf = (s2func_iter_create_t)rfdict_iter_create;
     vd->base.finalf = (s2func_final_t)rfdict_final;
 
     vd->indtab = s2dict_create();

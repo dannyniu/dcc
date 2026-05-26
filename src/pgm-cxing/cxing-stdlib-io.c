@@ -3,6 +3,7 @@
 #include "cxing-stdlib.h"
 #include "../infra/kvtab.h"
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 struct value_nativeobj CxingStdlibFunc_Print(
@@ -108,29 +109,21 @@ struct value_nativeobj CxingStdlibFunc_Input(
     }
 }
 
-#define Stdio_MethodImpl(stdtype, name)                         \
-    struct value_nativeobj CxingImpl_##stdtype##_##name(        \
-        int argn, struct value_nativeobj args[]);               \
-    struct value_nativeobj CxingValue_##stdtype##_##name =      \
-        (struct value_nativeobj){                               \
-        .proper.p = CxingImpl_##stdtype##_##name,               \
-        .type = (const void *)&type_nativeobj_method };
-
-Stdio_MethodImpl(GenFile, Read);
-Stdio_MethodImpl(GenFile, GetDelim);
-Stdio_MethodImpl(GenFile, GetLine);
-Stdio_MethodImpl(GenFile, Write);
-Stdio_MethodImpl(GenFile, Copy);
-Stdio_MethodImpl(GenFile, Final);
-Stdio_MethodImpl(GenFile, Flush);
-Stdio_MethodImpl(GenFile, SetSync);
-Stdio_MethodImpl(GenFile, LSeek);
+CxingMethodValueWithImpl(GenFile, Read);
+CxingMethodValueWithImpl(GenFile, GetDelim);
+CxingMethodValueWithImpl(GenFile, GetLine);
+CxingMethodValueWithImpl(GenFile, Write);
+CxingMethodValueWithImpl(GenFile, Copy);
+CxingMethodValueWithImpl(GenFile, Final);
+CxingMethodValueWithImpl(GenFile, Flush);
+CxingMethodValueWithImpl(GenFile, SetSync);
+CxingMethodValueWithImpl(GenFile, LSeek);
 
 // GenFile assumes implementation based on `s2ref_t<FILE *>`.
 
 #define GenFileMethods_ImplAccept(n)            \
     AcceptArgImpl(n, RegFile)                   \
-    AcceptArgImpl(n, Pipe)                      \
+        AcceptArgImpl(n, Pipe)                  \
 
 struct value_nativeobj CxingImpl_GenFile_Read0(
     int argn, struct value_nativeobj args[])
@@ -229,7 +222,7 @@ struct value_nativeobj CxingImpl_GenFile_Write0(
     {
         return (struct value_nativeobj){
             .proper.l = errno,
-            .type = (const void *)&type_nativeobj_long };
+            .type = (const void *)&type_nativeobj_null };
     }
     else
     {
@@ -615,9 +608,9 @@ const type_nativeobj_struct_p8 type_nativeobj_Pipe = {
     },
 };
 
-Stdio_MethodImpl(PipeEnds, Get);
-Stdio_MethodImpl(PipeEnds, Copy);
-Stdio_MethodImpl(PipeEnds, Final);
+CxingMethodValueWithImpl(PipeEnds, Get);
+CxingMethodValueWithImpl(PipeEnds, Copy);
+CxingMethodValueWithImpl(PipeEnds, Final);
 
 struct value_nativeobj CxingImpl_PipeEnds_Copy(
     int argn, struct value_nativeobj args[])
@@ -754,6 +747,85 @@ struct value_nativeobj CxingImpl_Pipe_Create(
         .type = (const void *)&type_nativeobj_PipeEnds };
 }
 
+struct value_nativeobj CxingImpl_MkFifo(
+    int argn, struct value_nativeobj args[])
+{
+    AssertArgN(1);
+    AssertArgImpl(0, s2impl_str, "string");
+
+    if( mkfifo(s2data_weakmap(args[0].proper.p), 0660) != 0 )
+    {
+        return (struct value_nativeobj){
+            .proper.l = errno,
+            .type = (const void *)&type_nativeobj_null };
+    }
+    else return ValueCopy(args[0]);
+}
+
+struct value_nativeobj CxingImpl_Rename(
+    int argn, struct value_nativeobj args[])
+{
+    AssertArgN(2);
+    AssertArgImpl(0, s2impl_str, "string");
+    AssertArgImpl(1, s2impl_str, "string");
+
+    if( rename(s2data_weakmap(args[0].proper.p),
+               s2data_weakmap(args[1].proper.p)) != 0 )
+    {
+        return (struct value_nativeobj){
+            .proper.l = errno,
+            .type = (const void *)&type_nativeobj_null };
+    }
+    else return ValueCopy(args[1]);
+}
+
+struct value_nativeobj CxingImpl_Remove(
+    int argn, struct value_nativeobj args[])
+{
+    AssertArgN(1);
+    AssertArgImpl(0, s2impl_str, "string");
+
+    if( remove(s2data_weakmap(args[0].proper.p)) != 0 )
+    {
+        return (struct value_nativeobj){
+            .proper.l = errno,
+            .type = (const void *)&type_nativeobj_null };
+    }
+    else return (struct value_nativeobj){
+            .proper.l = 0,
+            .type = (const void *)&type_nativeobj_long };;
+}
+
+struct value_nativeobj CxingImpl_MkDir(
+    int argn, struct value_nativeobj args[])
+{
+    AssertArgN(1);
+    AssertArgImpl(0, s2impl_str, "string");
+
+
+#ifdef _WIN32
+    if( mkdir(s2data_weakmap(args[0].proper.p)) != 0 )
+    {
+        return ValueCopy(args[0]);
+    }
+#else // Assume POSIX
+    if( mkdir(s2data_weakmap(args[0].proper.p), 0777) == 0 )
+    {
+        return ValueCopy(args[0]);
+    }
+#endif // _WIN32
+
+    return (struct value_nativeobj){
+        .proper.l = errno,
+        .type = (const void *)&type_nativeobj_null };
+}
+
+#ifdef _WIN32
+#include "cxing-stdlib-io-opendir-WinNT.bits.h"
+#else // Assume POSIX
+#include "cxing-stdlib-io-opendir-Posix.bits.h"
+#endif // _WIN32
+
 cxing_builtin_def_t CxingStdlibIoBuiltins[] = {
     { "open", (struct value_nativeobj){
             .proper.p = CxingImpl_RegFile_Open,
@@ -761,6 +833,27 @@ cxing_builtin_def_t CxingStdlibIoBuiltins[] = {
 
     { "pipe", (struct value_nativeobj){
             .proper.p = CxingImpl_Pipe_Create,
+            .type = (const void *)&type_nativeobj_subr } },
+
+    { "mkfifo", (struct value_nativeobj){
+            .proper.p = CxingImpl_MkFifo,
+            .type = (const void *)&type_nativeobj_subr } },
+
+    { "rename", (struct value_nativeobj){
+            .proper.p = CxingImpl_Rename,
+            .type = (const void *)&type_nativeobj_subr } },
+
+    { "remove", (struct value_nativeobj){
+            .proper.p = CxingImpl_Remove,
+
+            .type = (const void *)&type_nativeobj_subr } },
+
+    { "mkdir", (struct value_nativeobj){
+            .proper.p = CxingImpl_MkDir,
+            .type = (const void *)&type_nativeobj_subr } },
+
+    { "opendir", (struct value_nativeobj){
+            .proper.p = CxingImpl_OpenDir,
             .type = (const void *)&type_nativeobj_subr } },
 
     { 0 },

@@ -66,7 +66,8 @@ if( theRule == decl_singledecl || //>RULEIMPL<//
 
     if( !pc.instructions[sfind].vardecls )
     {
-        CxingFatal("Variable declaration resource allocation failure 01.");
+        CxingFatal("Variable declaration resource allocation failed: "
+                   "hash table creation.\n");
         goto func_exec_abort;
     }
 
@@ -77,8 +78,8 @@ if( theRule == decl_singledecl || //>RULEIMPL<//
         DemoteLValue();
         if( !(rval = s2cxing_value_create(valreg)) )
         {
-            CxingFatal(
-                "Variable declaration resource allocation failure 02.");
+            CxingFatal("Variable declaration resource allocation failure: "
+                       "runtime binding for the value native object.\n");
             goto func_exec_abort;
         }
     }
@@ -89,8 +90,8 @@ if( theRule == decl_singledecl || //>RULEIMPL<//
                         .type = (const void *)&type_nativeobj_morgoth,
                     })) )
         {
-            CxingFatal(
-                "Variable declaration resource allocation failure 03.");
+            CxingFatal("Variable declaration resource allocation failure: "
+                       "runtime binding for the null value.\n");
             goto func_exec_abort;
         }
     }
@@ -105,7 +106,8 @@ if( theRule == decl_singledecl || //>RULEIMPL<//
             ->terms[0].terminal->str,
             rval->pobj, s2_setter_gave) != s2_access_success )
     {
-        CxingFatal("Variable declaration failure.");
+        CxingFatal("Variable declaration failure: "
+                   "failed to write to hash table.\n");
         goto func_exec_abort;
     }
 

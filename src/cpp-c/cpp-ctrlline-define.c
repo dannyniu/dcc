@@ -25,48 +25,6 @@ static bool isTokenParam(s2list_t *params, lex_token_t *tok)
     return ret;
 }
 
-static bool look_ahead_for_genuine_newline(RegexLexContext *ctx)
-{
-    const char *src = s2data_weakmap(ctx->rope->sourcecode);
-    ptrdiff_t len = s2data_len(ctx->rope->sourcecode);
-    ptrdiff_t t = ctx->offsub;
-
-    while( true )
-    {
-        if( t >= len ) break;
-
-        if( src[t] == '\n' )
-            return true;
-
-        if( src[t] == '\\' )
-        {
-            if( t + 1 < len &&
-                src[t + 1] == '\n' )
-            {
-                t += 2;
-                continue;
-            }
-
-            if( t + 2 < len &&
-                src[t + 1] == '\r' &&
-                src[t + 2] == '\n' )
-            {
-                t += 3;
-                continue;
-            }
-        }
-
-        if( isspace(src[t]) )
-        {
-            t++;
-            continue;
-        }
-        else return false;
-    }
-
-    return true;
-}
-
 static void cppMacroFinal(cppmacro_t *ctx)
 {
     if( ctx->repllist ) s2obj_release(ctx->repllist->pobj);
@@ -190,8 +148,6 @@ int cppProcessDefineDirective(
              NULL : // encountered a newline, the repllist is terminated.
              shifter(ctx_shifter) )
     {
-        // 2026-03-28: This loop is definitely in error, rewriting it!
-        // 
         // invariants:
         // - `tok` is the current token,
         // - `tok1` is the previous one, already in `repllist`.

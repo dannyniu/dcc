@@ -1,11 +1,16 @@
 src_common="\
 cpp-ctrlline-define.c
+cpp-eval-ctrl-expr.c
 cpp-macro-expand.c
+cpp-macro-expand-special.c
 cpp-master.c
+ppexpr-grammar.c
 langlex/langlex-c.c
 lex-common/lex.c
 lex-common/rope.c
+lalr-common/lalr.c
 infra/s2bools.c
+infra/strvec.c
 pathutils/pathutils.c
 ./../contrib/SafeTypes2/src/s2data.c
 ./../contrib/SafeTypes2/src/s2dict.c
@@ -25,4 +30,4 @@ memintercept='-DINTERCEPT_MEM_CALLS'
 #memintercept=''
 
 sanitizers='-fsanitize=address'
-sanitizers=''
+#sanitizers=''

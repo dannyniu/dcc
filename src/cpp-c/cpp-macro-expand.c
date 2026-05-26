@@ -2,6 +2,9 @@
 
 #include "cpp-c.h"
 
+extern const char *special_funclike_macros[];
+extern const char *special_objlike_macros[];
+
 // * {ScanningShifter}:
 // - shifting tokens from the token stream,
 // - invoke {Expand} on macro names,
@@ -13,10 +16,10 @@
 // - places the expanded sequence on a hotlist,
 // - rescan using {ScanningShifter}.
 
-#define PRINT_STACK_DEPTH() // do {                                     \
+#define PRINT_STACK_DEPTH() /* do {                                     \
                             printf("- %td -\n",                         \
                             (char *)ctx - (char *)&ctx->ctx_tu->rescan_stackbase); \
-                            } while( false )
+                            } while( false ) */
 
 static lex_token_t *ChainFallbackShifter(struct cppMacroExpandShifter *ctx)
 {
@@ -140,17 +143,37 @@ static struct MacroArgPointer *FindArg(
 
 static void ScanningRecursion(struct cppMacroExpandShifter *ctx);
 
+bool SpecialEval_Defined(lex_token_t *identifier);
+
+s2list_t *ExpandSpecial(
+    struct cppMacroExpandShifter *ctx,
+    lex_token_t *macname,
+    s2list_t *args); // a list of lists of tokens.
+
 static s2list_t *ExpandMacro(
     struct cppMacroExpandShifter *ctx,
     lex_token_t *macname,
     cppmacro_t *macdef,
     s2list_t *args) // a list of lists of tokens.
 {
-    s2list_t *ret = s2list_create();
+    s2list_t *ret = NULL;
     lex_token_t *cur;
     struct s2ctx_list_element *lptr;
 
     PRINT_STACK_DEPTH();
+
+    if( ctx->flags == MACEXP_FLAG_EVALCTX_CTRLLINE )
+    {
+        // This callee doesn't release `args`.
+        ret = ExpandSpecial(ctx, macname, args);
+        if( ret )
+        {
+            if( args ) s2obj_release(args->pobj);
+            return ret;
+        }
+    }
+
+    ret = s2list_create();
 
     // Would assume single-threaded compilation.
     lptr = macdef->repllist->anch_head.next;
@@ -225,12 +248,15 @@ static s2list_t *ExpandMacro(
             Reached("MacExp.Para: `%s`,\n", (char *)s2data_weakmap(cur->str));
 
             s2list_seek(argptr.args_found, 0, S2_LIST_SEEK_SET);
-            while( s2list_len(argptr.args_found) > 0 )
+            while( s2list_pos(argptr.args_found) <
+                   s2list_len(argptr.args_found) )
             {
                 lex_token_t *tx;
-                s2list_shift_T(lex_token_t)(argptr.args_found, &tx);
+                s2list_get_T(lex_token_t)(argptr.args_found, &tx);
+                s2list_seek(argptr.args_found, 1, S2_LIST_SEEK_CUR);
+                //- s2list_shift_T(lex_token_t)(argptr.args_found, &tx);
                 Reached("MacExp.Push: `%s`,\n", (char *)s2data_weakmap(tx->str));
-                s2list_push(ret, tx->pobj, s2_setter_gave);
+                s2list_push(ret, tx->pobj, s2_setter_kept);
             }
 
             lptr = lptr->next;
@@ -244,16 +270,14 @@ static s2list_t *ExpandMacro(
         if( cur->classification & PPTOK_CLS_STRINGIFY )
         {
             struct MacroArgPointer arg;
-            s2data_t *str;
             lex_token_t *re;
 
             FindArg(&arg, cur, macdef, args);
             re = lex_token_create();
             QuoteTokens(re->str, arg.args_found);
             re->completion = langlex_strlit;
-            // 2026-03-28, for now not relevant:
-            // re->lineno = macname->lineno;
-            // re->column = macname->column;
+            re->lineno = macname->lineno;
+            re->column = macname->column;
             Reached("MacExp.Push: `%s`,\n", (char *)s2data_weakmap(re->str));
             s2list_push(ret, re->pobj, s2_setter_gave);
         }
@@ -269,7 +293,21 @@ static s2list_t *ExpandMacro(
                 // concatenate the first token of the argument,
                 // with the last previous token.
                 s2list_pop_T(lex_token_t)(ret, &prev); // retrieve, then ...
-                s2list_shift_T(lex_token_t)(arg.args_found, &first);
+                first = lex_token_create();
+                s2data_puts(
+                    first->str,
+                    s2data_weakmap(prev->str),
+                    s2data_len(prev->str));
+                first->completion = prev->completion;
+                first->lineno = prev->lineno;
+                first->column = prev->column;
+                s2obj_release(prev->pobj);
+                prev = first;
+
+                s2list_seek(arg.args_found, 0, S2_LIST_SEEK_SET);
+                s2list_get_T(lex_token_t)(arg.args_found, &first);
+                s2list_seek(arg.args_found, 1, S2_LIST_SEEK_CUR);
+
                 s2data_puts(
                     prev->str,
                     s2data_weakmap(first->str),
@@ -279,14 +317,13 @@ static s2list_t *ExpandMacro(
                 s2list_push(ret, prev->pobj, s2_setter_gave); // ... put back.
 
                 // then the rest of the argument.
-                arg.argp = arg.args_found->anch_head.next;
-                while( arg.argp != &arg.args_found->anch_tail )
+                while( s2list_pos(arg.args_found) < s2list_len(arg.args_found) )
                 {
                     lex_token_t *tx;
-                    tx = (lex_token_t *)arg.argp->value;
-                    //s2list_shift_T(lex_token_t)(arg.args_found, &tx);
+                    s2list_get_T(lex_token_t)(arg.args_found, &tx);
+                    s2list_seek(arg.args_found, 1, S2_LIST_SEEK_CUR);
                     Reached("MacExp.Push: `%s`,\n", (char *)s2data_weakmap(tx->str));
-                    s2list_push(ret, tx->pobj, s2_setter_gave);
+                    s2list_push(ret, tx->pobj, s2_setter_kept);
                 }
             }
             else // Object-like Macro.
@@ -393,6 +430,11 @@ static void ScanningRecursion(struct cppMacroExpandShifter *ctx)
     cppmacro_t *macdef;
     struct cppMacroExpandShifter ctx_passdown;
 
+    // 0: not special,
+    // 1: special func-like,
+    // 2: special obj-like.
+    int macdef_special;
+
     PRINT_STACK_DEPTH();
 
     tx = ctx->coldlist_shifter(ctx->coldlist);
@@ -403,14 +445,47 @@ check_start:
     if( findHotname(ctx, tx) )
     {
         Reached("hot-token: `%s`.\n", (char *)s2data_weakmap(tx->str));
-        s2list_push(ctx->pushlist, tx->pobj, s2_setter_kept); // should've been gave.
+        s2list_push(ctx->pushlist, tx->pobj, s2_setter_gave); // should've been gave, 2026-05-14: but was kept.
         return;
     }
 
     macdef = NULL;
+    macdef_special = false;
     if( tx->completion == langlex_identifier )
+    {
+        // 2026-05-16 TODO:
+        // Handle special macros: defined(), __has_include(), and other __has_*().
+        // Doing some right now.
+        // 2026-05-16:
+        // Additionally, there's a form of `defined` without parenthesis.
+        // Think about how to handle that.
         macdef = cppLookup1Macro(ctx->ctx_tu, tx);
-    if( !macdef )
+
+        if( ctx->flags == MACEXP_FLAG_EVALCTX_CTRLLINE )
+        {
+            int i;
+            const char *tokstr = s2data_weakmap(tx->str);
+
+            for(i=0; special_funclike_macros[i]; i++)
+            {
+                if( 0 == strcmp(special_funclike_macros[i], tokstr) )
+                {
+                    macdef_special = 1;
+                    break;
+                }
+            }
+
+            for(i=0; special_objlike_macros[i]; i++)
+            {
+                if( 0 == strcmp(special_objlike_macros[i], tokstr) )
+                {
+                    macdef_special = 2;
+                    break;
+                }
+            }
+        }
+    }
+    if( !macdef && !macdef_special )
     {
         Reached("lang-token: `%s`.\n", (char *)s2data_weakmap(tx->str));
         eprintf(" ScnRecr pllp: %td, %td.\n", s2list_pos(ctx->pushlist), s2list_len(ctx->pushlist));
@@ -419,21 +494,57 @@ check_start:
     }
 
     la = NULL;
-    if( macdef->params )
+    if( macdef->params || macdef_special == 1 )
     {
         la = ctx->coldlist_shifter(ctx->coldlist);
         if( !la || strcmp("(", s2data_weakmap(la->str)) != 0 )
         {
-            Reached("Function-like macro `%s` not invoked as a function.\n",
-                    (char *)s2data_weakmap(tx->str));
-            s2list_push(ctx->pushlist, tx->pobj, s2_setter_kept); // should've been gave.
-            tx = la;
-            goto check_start;
-            return;
+            if( 0 == strcmp("defined", s2data_weakmap(tx->str)) &&
+                la && la->completion == langlex_identifier )
+            {
+                // Added 2026-05-16:
+                // This is a special case for the `defined <identifier>` form.
+                s2obj_release(tx->pobj);
+
+                tx = lex_token_create();
+                if( SpecialEval_Defined(la) )
+                {
+                    s2data_putc(tx->str, '1');
+                    s2data_putfin(tx->str);
+                    tx->completion = langlex_declit;
+                    tx->lineno = la->lineno;
+                    tx->column = la->lineno;
+                }
+                else
+                {
+                    s2data_putc(tx->str, '0');
+                    s2data_putfin(tx->str);
+                    tx->completion = langlex_octlit;
+                    tx->lineno = la->lineno;
+                    tx->column = la->lineno;
+                }
+
+                s2list_push(ctx->pushlist, tx->pobj, s2_setter_gave);
+                s2obj_release(la->pobj);
+                return;
+            }
+            else
+            {
+                Reached("Function-like macro `%s` not invoked as a function.\n",
+                        (char *)s2data_weakmap(tx->str));
+                s2list_push(ctx->pushlist, tx->pobj, s2_setter_gave);
+                tx = la;
+                goto check_start;
+
+                // 2026-05-16:
+                // Unlike the preceeding clause, `la` could be the introducer
+                // of the next one. Therefore we need to goto the start to
+                // check for sure.
+            }
         }
     }
 
-    eprintf(" Expanding Macro `%s`.\n", la ? "with Collected Arguments" : "");
+    eprintf(" Expanding Macro%s.\n", la ? " with Collected Arguments" : "");
     ctx->hotlist = ExpandMacro(ctx, tx, macdef, la ? ArgCollect(ctx) : NULL);
     eprintf(" Got a replacement list with %td elements.\n", s2list_len(ctx->hotlist));
     s2list_seek(ctx->hotlist, 0, S2_LIST_SEEK_SET);

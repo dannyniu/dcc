@@ -14,17 +14,15 @@ struct value_nativeobj CxingStdlibFunc_Input(
 
 extern const type_nativeobj_struct_p9 type_nativeobj_RegFile;
 extern const type_nativeobj_struct_p8 type_nativeobj_Pipe;
-const type_nativeobj_struct_p3 type_nativeobj_PipeEnds;
+extern const type_nativeobj_struct_p3 type_nativeobj_PipeEnds;
+extern const type_nativeobj_struct_p4 type_nativeobj_DIR;
 
-struct value_nativeobj CxingImpl_RegFile_Open(
-    int argn, struct value_nativeobj args[]);
-
-struct value_nativeobj CxingImpl_Pipe_Create(
-    int argn, struct value_nativeobj args[]);
+extern const type_nativeobj_struct_p4 type_nativeobj_Regex;
 
 extern cxing_builtin_def_t CxingStdlibStructBuiltins[];
 extern cxing_builtin_def_t CxingStdlibIoBuiltins[];
 extern cxing_builtin_def_t CxingStdlibMathBuiltins[];
+extern cxing_builtin_def_t CxingStdlibRegexBuiltins[];
 int CxingInitialization_DefineStandardLibrary();
 
 #endif // dcc_cxing_stdlib_h

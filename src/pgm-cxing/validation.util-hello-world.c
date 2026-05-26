@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
            funcret.proper.l);
     //CxingModuleDump(module);
 
-    trace = 0;
+    //trace = 0;
 
     s2obj_release(module->pobj);
 
@@ -61,6 +61,7 @@ int main(int argc, char *argv[])
     i=0;
     for(i=0; gctail; i++)
     {
+        if( !gcsave->gc_prev ) break;
         printf("%d: (%p) %x %d+%d.\n", i, gctail, gctail->type, gctail->refcnt, gctail->keptcnt);
         if( s2_is_token(gctail) )
         {

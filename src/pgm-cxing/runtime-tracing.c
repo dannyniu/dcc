@@ -3,6 +3,15 @@
 #include <stdarg.h>
 #include "runtime.h"
 
+void CxingTrace(const char *msg, ...)
+{
+    va_list ap;
+    va_start(ap, msg);
+    fprintf(stderr, "[CxingTrace]: ");
+    vfprintf(stderr, msg, ap);
+    va_end(ap);
+}
+
 void CxingDebug(const char *msg, ...)
 {
     va_list ap;

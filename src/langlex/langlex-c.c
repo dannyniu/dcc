@@ -82,3 +82,54 @@ lex_elem_t CNumLexElems[] = {
 
   {},
 };
+
+int PPTokGraduate(lex_token_t *tok)
+{
+    libre_match_t matched;
+    int i, subret;
+    int record;
+    ptrdiff_t best;
+    lex_elem_t *LexElems = CLexElems;
+
+    if( !tok ) return 0;
+
+lex_start:
+    record = -1;
+    best = -1;
+    for(i=0; LexElems[i].pattern; i++)
+    {
+        subret = libregexec(
+            &LexElems[i].preg,
+            s2data_weakmap(tok->str),
+            1, &matched, LexElems[i].eflags);
+
+        if( subret == 0 && matched.rm_so == 0 )
+        {
+            // Lex elements earlier in the list have
+            // higher precedence, so don't use `>=`.
+            if( matched.rm_eo > best )
+            {
+                best = matched.rm_eo;
+                record = i;
+            }
+        }
+    }
+
+    if( record >= 0 )
+    {
+        i = record;
+        matched.rm_so = 0;
+        matched.rm_eo = best;
+    }
+
+    if( !LexElems[i].pattern )
+        return -1;
+
+    tok->completion = LexElems[i].completion;
+
+    if( LexElems != CLexElems || tok->completion != langlex_ppnum )
+        return 0;
+
+    LexElems = CNumLexElems;
+    goto lex_start;
+}

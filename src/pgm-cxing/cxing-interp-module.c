@@ -129,23 +129,20 @@ static bool PopulateModule(
 
 #define IfClause_AssertGetterSuccess                                    \
     if( subret == s2_access_error ) {                                   \
-        CxingFatal(                                                     \
-            "[ProcessTU] Runtime getter error occured in \"%s\":%d\n",  \
-            __FILE__, __LINE__);                                        \
+        CxingFatal("[ProcessTU] Runtime getter error occured in \"%s\":%d\n", \
+                   __FILE__, __LINE__);                                 \
         ret = cont = false; continue; }
 
 #define IfClause_AssertSetterSuccess                                    \
     if( subret != s2_access_success ) {                                 \
-        CxingFatal(                                                     \
-            "[ProcessTU] Runtime setter error occured in \"%s\":%d\n",  \
-            __FILE__, __LINE__);                                        \
+        CxingFatal("[ProcessTU] Runtime setter error occured in \"%s\":%d\n", \
+                   __FILE__, __LINE__);                                 \
         ret = cont = false; continue; }
 
 #define IfClause_AssertCreateSuccess(expr)                              \
     if( !(expr) ) {                                                     \
-        CxingFatal(                                                     \
-            "[ProcessTU] Failed to allocate memory at \"%s\":%d\n",     \
-            __FILE__, __LINE__);                                        \
+        CxingFatal("[ProcessTU] Failed to allocate memory at \"%s\":%d\n", \
+                   __FILE__, __LINE__);                                 \
         ret = cont = false; continue; }
 
 static bool ProcessTU(
@@ -446,15 +443,7 @@ static bool CreateCallStubs(cxing_module_t *module, long func_defs_cnt)
 
     if( !ei || !module->CallStubs || !module->SymTab )
     {
-        if( ei )
-        {
-#if INTERCEPT_MEM_CALLS
-            // See notes below in `CxingModuleDump`.
-            free(ei);
-#else
-            ei->final(ei);
-#endif /* INTERCEPT_MEM_CALLS */
-        }
+        if( ei ) ei->final(ei);
 
         if( module->CallStubs )
         {
@@ -492,12 +481,7 @@ static bool CreateCallStubs(cxing_module_t *module, long func_defs_cnt)
         t ++;
     }
 
-#if INTERCEPT_MEM_CALLS
-    // See notes below in `CxingModuleDump`.
-    free(ei);
-#else
     ei->final(ei);
-#endif /* INTERCEPT_MEM_CALLS */
 
     return cxing_callxfer_bridge.make_stub_memory_executable(
         module->CallStubs, func_defs_cnt, cxing_callxfer_bridge.sz_callstub);
@@ -724,14 +708,7 @@ bool CxingModuleInspectDefinitions(
         }
     }
 
-#if INTERCEPT_MEM_CALLS
-    // s2dict assigned the non-macro implementation of `free`
-    // to the iterator finalizer, which didn't intercept
-    // memory allocations.
-    free(ei);
-#else
     ei->final(ei);
-#endif /* INTERCEPT_MEM_CALLS */
 
     return module->error_count == 0;
 }
@@ -757,14 +734,7 @@ void CxingModuleDump(cxing_module_t *restrict module)
                (int)ext->cxing_value.type->typeid);
     }
 
-#if INTERCEPT_MEM_CALLS
-    // s2dict assigned the non-macro implementation of `free`
-    // to the iterator finalizer, which didn't intercept
-    // memory allocations.
-    free(ei);
-#else
     ei->final(ei);
-#endif /* INTERCEPT_MEM_CALLS */
 }
 
 void *CXSym(cxing_module_t *restrict module, const char *restrict sym)

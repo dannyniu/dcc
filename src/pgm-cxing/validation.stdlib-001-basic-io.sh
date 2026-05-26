@@ -6,6 +6,7 @@ testfunc()
     echo Test Start.
     $exec ../tests/cxing-stdlib/basic-io-01.cxing
     $exec ../tests/cxing-stdlib/basic-io-02.cxing
+    $exec ../tests/cxing-stdlib/basic-io-03.cxing
 }
 
 cd "$(dirname "$0")"

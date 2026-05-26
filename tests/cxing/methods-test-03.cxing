@@ -1,0 +1,46 @@
+subr test03a()
+{
+    decl dx = dict(), ax = array() [ "0", 1, 2, 3 ];
+
+    dx.aelem = ax;
+    ax.move2head(2);
+
+    for(decl i=0; i<ax.len(); i++)
+    {
+        print(ax[i]);
+    }
+
+    return ax.len();
+}
+
+subr test03b()
+{
+    decl dx = dict(), ax = array();
+
+    dx.aelem = ax;
+    ax [ "0", 1, 2, 3 ];
+    ax.move2tail(0);
+    ax.swap(1, 2);
+    ax.trunc(5);
+    ax[4] = dx;
+
+    for(decl i=0; i<ax.len(); i++)
+    {
+        print(ax[i]);
+    }
+
+    return ax.len();
+}
+
+subr main()
+{
+    decl subret;
+
+    subret = test03a();
+    print("test-03a returned: ".putc(subret + 0x30));
+
+    subret = test03b();
+    print("test-03b returned: ".putc(subret + 0x30));
+
+    cxing_gc();
+}

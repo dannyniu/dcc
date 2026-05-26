@@ -28,6 +28,12 @@ struct cppmacro {
 #define PPTOK_CLS_OPERAND 8 // unevaluated parameter.
 
 struct cppMacroExpandShifter {
+    // 2026-05-14 TODO:
+    // Implement `defined`, `__has_*` operators for the control-line context.
+#define MACEXP_FLAG_EVALCTX_SOURCE      0
+#define MACEXP_FLAG_EVALCTX_CTRLLINE    1
+    int flags;
+
     // Always positioned at the tail.
     s2list_t *pushlist;
 

@@ -1,22 +1,20 @@
 #!/bin/sh
 
 optimize=debug
-: ${inst:=}
 testfunc()
 {
-    echo Test Start.
-    $exec ../tests/cxing-stdlib/basic-aggr-01.cxing &&
-    $exec ../tests/cxing-stdlib/basic-aggr-02.cxing &&
-    $exec ../tests/cxing-stdlib/basic-aggr-03.cxing
+    #ASAN_OPTIONS=detect_leaks=1
+    $exec -f ../tests/dcc-preproc/undef.c
+    $exec -f ../tests/dcc-preproc/ctrl-exprs.c
 }
 
 cd "$(dirname "$0")"
 unitest_sh=../unitest.sh
 . $unitest_sh
 
-. ./cxing-src-common.inc
+. ./cpp-c-src-common.inc
 src="\
-validation.util-main-exec.c
+validation.util-hello-world.c
 "
 
 cflags_common="\
@@ -29,6 +27,6 @@ $memintercept
 arch_family=defaults
 srcset="Plain C"
 cflags="$sanitizers" #' -D DCC_LALR_LOGGING'
-ldflags="-g $sanitizers"
+ldflags="-g $sanitizers" # -lreadline"
 
 tests_run

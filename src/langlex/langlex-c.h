@@ -18,4 +18,16 @@ extern const char *langlex_puncts[];
 extern lex_elem_t CLexElems[];
 extern lex_elem_t CNumLexElems[];
 
+/// @fn
+/// @param tok the token to 'graduate'.
+///
+/// @brief
+/// 'Graduates' a pre-processing token into a language token.
+/// The completion of certain tokens - specifically pp-numbers,
+/// would change at this stage.
+///
+/// @returns
+/// 0 on success, and -1 if the spelling of the token has become invalid.
+int PPTokGraduate(lex_token_t *tok);
+
 #endif /* dcc_langlex_c_h */

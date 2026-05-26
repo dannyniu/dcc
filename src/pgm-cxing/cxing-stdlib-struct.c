@@ -1065,7 +1065,8 @@ struct value_nativeobj CxingImpl_DataStructMap_AccessWrite(
         s2data_unmap(src);
         s2data_unmap(roperand->src);
 
-        return ValueCopy(loperand);
+        ValueDestroy(rvalue);
+        return loperand;
     }
     else assert( 0 ); // ought to fail more gracefully in cxing.
 }

@@ -124,8 +124,11 @@ struct value_nativeobj CXConstDefParse(lalr_prod_t *node_body)
         }
         else if( strlen(t) > 1 )
         {
-            CxingDebug("Integer literals with leading digits are octal! "
-                       "Use `0o` prefix to silence this warning.\n");
+            CxingDebug("Encountered integer literal with leading zero at "
+                       "line %d column %d - this will be parsed as octal. "
+                       "Use `0o` prefix to silence this warning.\n",
+                       node_body->terms[0].terminal->lineno,
+                       node_body->terms[0].terminal->column);
         }
 
         ret = (struct value_nativeobj){

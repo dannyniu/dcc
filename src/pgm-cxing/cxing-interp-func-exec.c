@@ -17,9 +17,9 @@
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 
 #if CXING_INTERP_TRACING_LEVEL >= CXING_INTERP_TRACING_LEVEL_FSM
-#define Reached() if( ReachesHere ) eprintf("Reached: flags: %d, opts: %d, spind: %zd, ri: %i; opind: %u. fd: %u, uf: %u. %llx/<%s>/%llx %llx/ax %llx/bx %d (%s:%d!)\n", instruction->flags, instruction->opts, pc.spind, instruction->node_body->semantic_rule, instruction->operand_index, instruction->folded_depth, instruction->unfolded, valreg.proper.l, varreg.key?(const char *)s2data_weakmap(varreg.key):"", varreg.scope.proper.u, instruction->ax.proper.u, instruction->bx.proper.u, metascope, strrchr(__FILE__, '/'), __LINE__);
+#define Reached() if( ReachesHere ) eprintf("Reached: flags: %d, opts: %d, spind: %zd, ri: %i; opind: %u. fd: %u, uf: %u. %llx/<%s>/%llx %llx/ax %llx/bx (%s:%d!)\n", instruction->flags, instruction->opts, pc.spind, instruction->node_body->semantic_rule, instruction->operand_index, instruction->folded_depth, instruction->unfolded, valreg.proper.l, varreg.key?(const char *)s2data_weakmap(varreg.key):"", varreg.scope.proper.u, instruction->ax.proper.u, instruction->bx.proper.u, strrchr(__FILE__, '/'), __LINE__);
 
-#define Visited() // if( ReachesHere ) eprintf("Visited: flags: %d, opts: %d, spind: %zd, ri: %i; opind: %u. fd: %u, uf: %u. %llx/<%s>/%llx %llx/ax %llx/bx %d (%s:%d!)\n", instruction->flags, instruction->opts, pc.spind, instruction->node_body->semantic_rule, instruction->operand_index, instruction->folded_depth, instruction->unfolded, valreg.proper.l, varreg.key?(const char *)s2data_weakmap(varreg.key):"", varreg.scope.proper.u, instruction->ax.proper.u, instruction->bx.proper.u, metascope, strrchr(__FILE__, '/'), __LINE__);
+#define Visited() // if( ReachesHere ) eprintf("Visited: flags: %d, opts: %d, spind: %zd, ri: %i; opind: %u. fd: %u, uf: %u. %llx/<%s>/%llx %llx/ax %llx/bx (%s:%d!)\n", instruction->flags, instruction->opts, pc.spind, instruction->node_body->semantic_rule, instruction->operand_index, instruction->folded_depth, instruction->unfolded, valreg.proper.l, varreg.key?(const char *)s2data_weakmap(varreg.key):"", varreg.scope.proper.u, instruction->ax.proper.u, instruction->bx.proper.u, strrchr(__FILE__, '/'), __LINE__);
 
 #else
 
@@ -242,12 +242,8 @@ static int CxingFunc_ArgumentIndex(lalr_prod_t *params, s2data_t *key)
 
         else if( rules(params->semantic_rule) == args_genrule ) //>RULEIMPL<//
         {
-            if( !s2_is_token(params->terms[2].production->terms[0].terminal) )
-            {
-                CxingDiagnose(
-                    "Expected terminal symbol token after parsing 01.");
-                return -1;
-            }
+            // A terminal symbol token ought to be ensured after parsing.
+            assert( s2_is_token(params->terms[2].production->terms[0].terminal) );
 
             ki = params->terms[2].production->terms[0].terminal->str;
             if( s2data_cmp(ki, key) == 0 )
@@ -262,12 +258,8 @@ static int CxingFunc_ArgumentIndex(lalr_prod_t *params, s2data_t *key)
 
         else if( rules(params->semantic_rule) == args_base ) //>RULEIMPL<//
         {
-            if( !s2_is_token(params->terms[1].production->terms[0].terminal) )
-            {
-                CxingDiagnose(
-                    "Expected terminal symbol token after parsing 02.");
-                return -1;
-            }
+            // A terminal symbol token ought to be ensured after parsing.
+            assert( s2_is_token(params->terms[1].production->terms[0].terminal) );
 
             ki = params->terms[1].production->terms[0].terminal->str;
             if( s2data_cmp(ki, key) == 0 )
@@ -322,7 +314,8 @@ static struct value_nativeobj CxingFuncLocalVar_GetImpl0(
 
         if( accessed == s2_access_error )
         {
-            CxingFatal("Error while getting local variables 01.");
+            CxingFatal("Error while getting local variables: "
+                       "variable hash table access failed.\n");
             // Fail as gracefully as possible.
             return (struct value_nativeobj) {
                 .proper.p = NULL,
@@ -358,7 +351,8 @@ static struct value_nativeobj CxingFuncLocalVar_GetImpl0(
 
     if( accessed == s2_access_error )
     {
-        CxingFatal("Error while getting local variables 02.");
+        CxingFatal("Error while getting local variables: "
+                   "TU-scope hash table access failed.\n");
         // Fail as gracefully as possible.
         return (struct value_nativeobj) {
             .proper.p = NULL,
@@ -406,7 +400,8 @@ static struct value_nativeobj CxingFuncLocalVar_GetImpl0(
     }
     else if( accessed == s2_access_error )
     {
-        CxingFatal("Error while getting local variables 03.");
+        CxingFatal("Error while getting local variables: "
+                   "access to hash table of linked definitions failed.\n");
         // Fail as gracefully as possible.
         return (struct value_nativeobj) {
             .proper.p = NULL,
@@ -422,7 +417,8 @@ static struct value_nativeobj CxingFuncLocalVar_GetImpl0(
     }
     else if( accessed == s2_access_error )
     {
-        CxingFatal("Error while getting local variables 04.");
+        CxingFatal("Error while getting local variables: "
+                   "access to hash table of builtins failed.\n");
         // Fail as gracefully as possible.
         return (struct value_nativeobj) {
             .proper.p = NULL,
@@ -431,10 +427,9 @@ static struct value_nativeobj CxingFuncLocalVar_GetImpl0(
     else
     {
         assert( accessed == s2_access_nullval );
-        CxingDebug(
-            "The program is trying to read from a non-existing variable: "
-            "`%s` Please inform the developer to debug the program.\n",
-            (const char *)s2data_weakmap(key));
+        CxingDebug("The program is trying to read from a non-existing variable: "
+                   "`%s` - Please inform the developer to debug the program.\n",
+                   (const char *)s2data_weakmap(key));
 
         return (struct value_nativeobj) {
             .proper.p = NULL,
@@ -462,7 +457,8 @@ static struct value_nativeobj CxingFuncLocalVar_SetImpl0(
 
         if( accessed == s2_access_error )
         {
-            CxingFatal("Error while setting local variables 01.");
+            CxingFatal("Error while setting local variables: "
+                       "variable hash table access failed.\n");
             // Fail as gracefully as possible.
             return (struct value_nativeobj) {
                 .proper.p = NULL,
@@ -474,7 +470,8 @@ static struct value_nativeobj CxingFuncLocalVar_SetImpl0(
 
         if( !(ret_wrapped = s2cxing_value_create(ValueCopy(val))) )
         {
-            CxingFatal("Error while setting local variables 2.");
+            CxingFatal("Error while setting local variables: "
+                       "unable to create runtime binding for the value native object.");
             // Fail as gracefully as possible.
             return (struct value_nativeobj) {
                 .proper.p = NULL,
@@ -487,7 +484,8 @@ static struct value_nativeobj CxingFuncLocalVar_SetImpl0(
 
         if( accessed == s2_access_error )
         {
-            CxingFatal("Error while setting local variables 03.");
+            CxingFatal("Error while setting local variables: "
+                       "failed to write to hash table.\n");
             // Fail as gracefully as possible.
             return (struct value_nativeobj) {
                 .proper.p = NULL,
@@ -503,9 +501,9 @@ static struct value_nativeobj CxingFuncLocalVar_SetImpl0(
 
     if( argind < 0 || argind >= localvars->argn )
     {
-        CxingDebug(
-            "The program is trying to write to a non-existing variable. "
-            "Please inform the developer to debug the program.");
+        CxingDebug("The program is trying to write to a non-existing variable: "
+                   "`%s` - Please inform the developer to debug the program.\n",
+                   (const char *)s2data_weakmap(key));
 
         return (struct value_nativeobj) {
             .proper.p = NULL,
@@ -596,7 +594,8 @@ static bool CxingFuncLocalVar_IsSetImpl0(
 
         if( accessed == s2_access_error )
         {
-            CxingFatal("Error while looking up local variables 01.");
+            CxingFatal("Error while looking up local variables: "
+                       "variable hash table access failed.\n");
             // Fail as gracefully as possible.
             return false;
         }
@@ -626,7 +625,8 @@ static bool CxingFuncLocalVar_IsSetImpl0(
 
     if( accessed == s2_access_error )
     {
-        CxingFatal("Error while looking up local variables 02.");
+        CxingFatal("Error while looking up local variables 02: "
+                   "TU-scope hash table access failed.\n");
         // Fail as gracefully as possible.
         return false;
     }
@@ -643,7 +643,8 @@ static bool CxingFuncLocalVar_IsSetImpl0(
 
     if( accessed == s2_access_error )
     {
-        CxingFatal("Error while getting local variables 03.");
+        CxingFatal("Error while getting local variables: "
+                   "access to hash table of linked definitions failed.\n");
         // Fail as gracefully as possible.
         return false;
     }
@@ -668,8 +669,9 @@ static struct TYPE_NATIVEOBJ_STRUCT(4) type_nativeobj_localvars = {
     },
 };
 
-#define ValueCopy(x) (eprintf("VC:%d/%p. %s\n", __LINE__, x.proper.p, strrchr(__FILE__, '/')), (ValueCopy)(x))
-#define ValueDestroy(x) (eprintf("VD:%d/%p. %s\n", __LINE__, x.proper.p, strrchr(__FILE__, '/')), (ValueDestroy)(x))
+// commented-out on 2026-05-17 - not being used for the moment.
+// #define ValueCopy(x) (eprintf("VC:%d/%p. %s\n", __LINE__, x.proper.p, strrchr(__FILE__, '/')), (ValueCopy)(x))
+// #define ValueDestroy(x) (eprintf("VD:%d/%p. %s\n", __LINE__, x.proper.p, strrchr(__FILE__, '/')), (ValueDestroy)(x))
 
 // 2026-05-03:
 // introduced to replace the 2026-04-07 ones,
@@ -683,11 +685,6 @@ static struct TYPE_NATIVEOBJ_STRUCT(4) type_nativeobj_localvars = {
         {                                                               \
             s2obj_leave(varreg.key);                                    \
             instruction->flags = ast_node_action_default;               \
-        }                                                               \
-        if( evalmode == cxing_func_eval_mode_execute )                  \
-        {                                                               \
-            if( instruction[1].opts == ast_node_scope_was_rvalue )      \
-                ValueDestroy(instruction->bx);                          \
         }                                                               \
         varreg.key = NULL;                                              \
     } while( false )
@@ -775,7 +772,7 @@ struct value_nativeobj CxingFuncEval(
 
     if( !(pc.instructions = calloc(1, sizeof(cxing_ast_node_t))) )
     {
-        CxingFatal("Unable to allocate buffer for instruction texts.");
+        CxingFatal("Unable to allocate buffer for instruction texts.\n");
         return (struct value_nativeobj){
             .proper.p = NULL, .type = (const void *)&type_nativeobj_morgoth };
     }

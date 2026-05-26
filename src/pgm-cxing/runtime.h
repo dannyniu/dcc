@@ -8,13 +8,26 @@
 #include "value-nativobj.h"
 
 /// @fn
+/// @param msg The trace message.
+/// @details
+/// These trace messages are from the runtime for
+/// inspecting possibly problematic program behaviors.
+///
+/// The language intentionally allow these,
+/// and the messages are typically muted.
+/// But developers may nonetheless want
+/// to be aware of them.
+void CxingTrace(const char *msg, ...);
+
+/// @fn
 /// @param msg The debug message.
 /// @details
 /// These messages are from the runtime to
 /// assist in debugging of CXING programs.
 ///
-/// Because almost all operations in CXING have defined
-/// error behaviors, these are mostly non-fatal warnings.
+/// Eventhough almost all operations in CXING have defined
+/// error behaviors, and that these are non-fatal, they are
+/// nonetheless probable signs of program defects.
 void CxingDebug(const char *msg, ...);
 
 /// @fn
@@ -111,6 +124,7 @@ typedef struct TYPE_NATIVEOBJ_STRUCT(2) type_nativeobj_struct_p1;
 typedef struct TYPE_NATIVEOBJ_STRUCT(3) type_nativeobj_struct_p2;
 typedef struct TYPE_NATIVEOBJ_STRUCT(4) type_nativeobj_struct_p3;
 typedef struct TYPE_NATIVEOBJ_STRUCT(5) type_nativeobj_struct_p4;
+typedef struct TYPE_NATIVEOBJ_STRUCT(6) type_nativeobj_struct_p5;
 typedef struct TYPE_NATIVEOBJ_STRUCT(7) type_nativeobj_struct_p6;
 typedef struct TYPE_NATIVEOBJ_STRUCT(8) type_nativeobj_struct_p7;
 typedef struct TYPE_NATIVEOBJ_STRUCT(9) type_nativeobj_struct_p8;
@@ -134,7 +148,16 @@ extern const type_nativeobj_struct_p0 type_nativeobj_method;
 
 // Built-in objects.
 extern const type_nativeobj_struct_p9 type_nativeobj_s2impl_str;
-extern const type_nativeobj_struct_p8 type_nativeobj_s2impl_dict;
+extern const type_nativeobj_struct_p7 type_nativeobj_s2impl_dict;
+extern const type_nativeobj_struct_p10 type_nativeobj_array;
+
+static inline bool ValueIsBindingForSafeTypes2(struct value_nativeobj val)
+{
+    return
+        val.type == (const void *)&type_nativeobj_s2impl_str ||
+        val.type == (const void *)&type_nativeobj_s2impl_dict ||
+        val.type == (const void *)&type_nativeobj_array ;
+}
 
 // Data Structure Type Objects (from standard library).
 extern const type_nativeobj_struct_p3 type_nativeobj_data_array_type_obj;
@@ -147,6 +170,9 @@ extern const type_nativeobj_struct_p1 type_nativeobj_floatingpoint_type_obj;
 extern const type_nativeobj_struct_p4 type_nativeobj_data_struct_map_obj;
 
 struct value_nativeobj CxingImpl_s2Dict_Create(
+    int argn, struct value_nativeobj args[]);
+
+struct value_nativeobj CxingImpl_Array_Create(
     int argn, struct value_nativeobj args[]);
 
 // Table entry type for runtime and 3rd party libraries to
@@ -174,7 +200,17 @@ extern s2dict_t *CxingBuiltins;
 /// @detils
 /// Entities injected using this function are exposed globally in all modules.
 /// Calling this function while some module is executing risks unpredictable
-/// behavior, especially in multi-threaded applications.
+/// behavior, much more so in multi-threaded applications.
 int CxingBuiltinsExtend(const char *name, struct value_nativeobj value);
+
+// Declares a cxing method function prototype
+// and defines a value native object for it.
+#define CxingMethodValueWithImpl(s2type, name)                          \
+    static struct value_nativeobj CxingImpl_##s2type##_##name(          \
+        int argn, struct value_nativeobj args[]);                       \
+    static struct value_nativeobj CxingValue_##s2type##_##name =        \
+        (struct value_nativeobj){                                       \
+        .proper.p = CxingImpl_##s2type##_##name,                        \
+        .type = (const void *)&type_nativeobj_method };
 
 #endif /* cxing2c_runtime_h */

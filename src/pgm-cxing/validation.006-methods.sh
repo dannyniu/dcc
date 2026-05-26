@@ -6,6 +6,7 @@ testfunc()
 {
     echo Test Start.
     #lldb -- \
+        $exec ../tests/cxing/methods-test-03.cxing &&
         $exec ../tests/cxing/methods-test-02.cxing &&
         $exec ../tests/cxing/methods-test-01.cxing &&
         $exec ../tests/cxing/for-loop-test-01.cxing

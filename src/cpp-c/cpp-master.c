@@ -155,6 +155,48 @@ cppmacro_t *cppLookup1Macro(
     return NULL;
 }
 
+bool look_ahead_for_genuine_newline(RegexLexContext *ctx)
+{
+    const char *src = s2data_weakmap(ctx->rope->sourcecode);
+    ptrdiff_t len = s2data_len(ctx->rope->sourcecode);
+    ptrdiff_t t = ctx->offsub;
+
+    while( true )
+    {
+        if( t >= len ) break;
+
+        if( src[t] == '\n' )
+            return true;
+
+        if( src[t] == '\\' )
+        {
+            if( t + 1 < len &&
+                src[t + 1] == '\n' )
+            {
+                t += 2;
+                continue;
+            }
+
+            if( t + 2 < len &&
+                src[t + 1] == '\r' &&
+                src[t + 2] == '\n' )
+            {
+                t += 3;
+                continue;
+            }
+        }
+
+        if( isspace(src[t]) )
+        {
+            t++;
+            continue;
+        }
+        else return false;
+    }
+
+    return true;
+}
+
 static bool is_first_of_the_line(RegexLexContext *ctx)
 {
     // look for the first non-blank character, and:
@@ -224,11 +266,20 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
     {
         s2list_seek(ctx_tu->pushlist, 0, S2_LIST_SEEK_SET);
         s2list_shift_T(lex_token_t)(ctx_tu->pushlist, &tok);
+
+        if( PPTokGraduate(tok) != 0 )
+        {
+            ccDiagnoseError(ctx_tu, "[%s]: Invalid token: `%s` "
+                            "at line %d, column %d.\n",
+                            __func__, s2data_weakmap(tok->str),
+                            tok->lineno, tok->column);
+        }
         return tok; // Emptying the `pushlist` positions it to the tail.
     }
 
     while( true )
     {
+        int pred;
         int first_of_a_line = is_first_of_the_line(ctx_tu->ctx_shifter);
         const char *tokstr;
 
@@ -236,10 +287,29 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
 
         if( !(tok = ctx_tu->lash.shifter(ctx_tu->lash.ctx_shifter)) )
         {
-            if( 0 == s2list_len(ctx_tu->pushlist) ) break; else
+            if( 0 == s2list_len(ctx_tu->pushlist) )
+                break;
+
+            // else
+            s2list_shift_T(lex_token_t)(ctx_tu->pushlist, &tok);
+
+            if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INITIAL )
             {
-                s2list_shift_T(lex_token_t)(ctx_tu->pushlist, &tok);
+                // This line group is not skipped.
+                if( PPTokGraduate(tok) != 0 )
+                {
+                    ccDiagnoseError(ctx_tu, "[%s]: Invalid token: `%s` "
+                                    "at line %d, column %d.\n",
+                                    __func__, s2data_weakmap(tok->str),
+                                    tok->lineno, tok->column);
+                }
                 return tok;
+            }
+            else
+            {
+                // This is a skipped conditional inclusion line group.
+                s2obj_release(tok->pobj);
+                continue;
             }
         }
 
@@ -251,7 +321,26 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
             // Not a pre-processing directive,
             // and ought to be handled by macro-expand.
             ctx_tu->lash.sv = tok;
-            return cppTokenJet(&ctx_tu->rescan_stackbase);
+            tok = cppTokenJet(&ctx_tu->rescan_stackbase);
+
+            if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INITIAL )
+            {
+                // This line group is not skipped.
+                if( PPTokGraduate(tok) != 0 )
+                {
+                    ccDiagnoseError(ctx_tu, "[%s]: Invalid token: `%s` "
+                                    "at line %d, column %d.\n",
+                                    __func__, s2data_weakmap(tok->str),
+                                    tok->lineno, tok->column);
+                }
+                return tok;
+            }
+            else
+            {
+                // This is a skipped conditional inclusion line group.
+                s2obj_release(tok->pobj);
+                continue;
+            }
         }
 
         // At this point, it'll be certain that
@@ -262,17 +351,154 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
         tokstr = s2data_weakmap(tok->str);
         Reached("%s\n", tokstr);
 
+
         if( 0 == strcmp("define", tokstr) )
         {
             Reached(" _reached 1_\n");
-            cppProcessDefineDirective(
-                ctx_tu, ctx_tu->ctx_shifter, ctx_tu->shifter);
+
+            if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INITIAL )
+            {
+                cppProcessDefineDirective(
+                    ctx_tu, ctx_tu->ctx_shifter, ctx_tu->shifter);
+            }
         }
         else if( 0 == strcmp("undef", tokstr) )
         {
-            assert( 0 ); // not testing this yet.
+            //assert( 0 ); // not testing this yet.
             Reached(" _reached 2_\n");
-            cppUndef1Macro(ctx_tu, tok);
+
+            if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INITIAL )
+            {
+                cppUndef1Macro(
+                    ctx_tu, ctx_tu->lash.shifter(
+                        ctx_tu->lash.ctx_shifter));
+            }
+        }
+
+        // 2026-05-14: TODO.
+        else if( 0 == strcmp("if", tokstr) )
+        {
+            if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INITIAL )
+            {
+                pred = cppEvaluateCtrlExpr(
+                    ctx_tu, ctx_tu->ctx_shifter, ctx_tu->shifter);
+
+                // Should be `_Countof`, but (assert?) it's a single byte anyway.
+                assert( ctx_tu->condinc_level < sizeof ctx_tu->condinc_state );
+
+                // 2026-05-16:
+                //
+                // Q: specific implementation behavior / actions:
+                // A: see "cpp-c.h", notes below the `CONDINC_*` macros.
+
+                if( pred )
+                {
+                    ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_INCLUDED;
+                    ctx_tu->condinc_level ++;
+                    ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_INITIAL;
+                }
+                else
+                {
+                    ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_TRYNEXT;
+                    ctx_tu->condinc_level ++;
+                    ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_SUPPRESS;
+                }
+            }
+            else if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_SUPPRESS )
+            {
+                ctx_tu->condinc_level ++;
+                ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_SUPPRESS;
+            }
+            else assert( 0 );
+        }
+        else if( 0 == strcmp("elif", tokstr) )
+        {
+            ctx_tu->condinc_level --;
+            if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_TRYNEXT )
+            {
+                pred = cppEvaluateCtrlExpr(
+                    ctx_tu, ctx_tu->ctx_shifter, ctx_tu->shifter);
+
+                // Should be `_Countof`, but (assert?) it's a single byte anyway.
+                assert( ctx_tu->condinc_level < sizeof ctx_tu->condinc_state );
+
+                // 2026-05-16:
+                //
+                // Q: specific implementation behavior / actions:
+                // A: see "cpp-c.h", notes below the `CONDINC_*` macros.
+
+                if( pred )
+                {
+                    ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_INCLUDED;
+                    ctx_tu->condinc_level ++;
+                    ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_INITIAL;
+                }
+                else
+                {
+                    ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_TRYNEXT;
+                    ctx_tu->condinc_level ++;
+                    ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_SUPPRESS;
+                }
+            }
+            else if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INCLUDED )
+            {
+                ctx_tu->condinc_level ++;
+                ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_SUPPRESS;
+            }
+            else if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_SUPPRESS )
+            {
+                ctx_tu->condinc_level ++;
+                ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_SUPPRESS;
+            }
+            else
+            {
+                ccDiagnoseError(
+                    ctx_tu, "[%s]: `elif` at line %d was not preceeded "
+                    "by a conditionaly-included line group.\n",
+                    __func__, tok->lineno);
+            }
+        }
+        else if( 0 == strcmp("else", tokstr) )
+        {
+            ctx_tu->condinc_level --;
+            if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_TRYNEXT )
+            {
+                // Should be `_Countof`, but (assert?) it's a single byte anyway.
+                assert( ctx_tu->condinc_level < sizeof ctx_tu->condinc_state );
+
+                ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_INCLUDED;
+                ctx_tu->condinc_level ++;
+                ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_INITIAL;
+            }
+            else if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INCLUDED )
+            {
+                ctx_tu->condinc_level ++;
+                ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_SUPPRESS;
+            }
+            else if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_SUPPRESS )
+            {
+                ctx_tu->condinc_level ++;
+                ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_SUPPRESS;
+            }
+            else
+            {
+                ccDiagnoseError(
+                    ctx_tu, "[%s]: `else` at line %d was not preceeded "
+                    "by a conditionaly-included line group.\n",
+                    __func__, tok->lineno);
+            }
+        }
+        else if( 0 == strcmp("endif", tokstr) )
+        {
+            ctx_tu->condinc_level --;
+            if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INITIAL )
+            {
+                ccDiagnoseError(
+                    ctx_tu, "[%s]: `endif` at line %d was not preceeded "
+                    "by a conditionaly-included line group.\n",
+                    __func__, tok->lineno);
+            }
+            assert( ctx_tu->condinc_level >= 0 );
         }
 
         s2obj_release(tok->pobj);

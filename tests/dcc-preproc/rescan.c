@@ -6,4 +6,6 @@ int y = m2(m1)(m2,1);
 
 #define n1(x) x + x + n2
 #define n2 n1(12)
+int t = n2;
+int v = m1(m2, n2);
 int u = n1(m1(m2,n2));

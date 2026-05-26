@@ -36,6 +36,30 @@ struct cpptu {
 
     struct cppBufferedShifter lash; // look-ahead shifter.
     struct cppMacroExpandShifter rescan_stackbase;
+
+    // Conditional inclusion state keeping.
+    // Maximum number of nesting of conditional inclusion
+    // as required by the standard is 63; maximum number
+    // of nested `#include`s is 15. If implemented using
+    // fixed-size array / stack for keeping the `state`,
+    // should cover majority of use-cases.
+    uint16_t condinc_level;
+
+#define CONDINC_INITIAL 0 // do not participate in cond-inc state transition,
+#define CONDINC_TRYNEXT 1 // control expression evaluated to false.
+#define CONDINC_INCLUDED 2 // includes this line group, and not the rest.
+#define CONDINC_SUPPRESS 3 // this can happen for nested cond-inc.
+    // - A TU starts with {Initial}:
+    //   - On `#if true`, transition to {Included},
+    //   - On `#if false`, transition to {TryNext},
+    // - At {TryNext}:
+    //   - On `#elif true`, transition to {Included},
+    // - At {Included}:
+    //   - On `#endif`, transition to {Initial}.
+    // - On transition from {Initial}, increment {Level}.
+    // - On transition to {Initial}, decrement {Level}.
+    // - Invariant: a line group at any {Level} is always entered with {Initial}.
+    uint8_t condinc_state[1022];
 };
 
 // basically just a 'pair', and is a type external to SafeTypes2.
@@ -64,8 +88,20 @@ cppmacro_t *cppLookup1Macro(
     cpptu_t *restrict ctx_tu,
     lex_token_t *restrict macro_name);
 
+// translation phase 2.
+bool look_ahead_for_genuine_newline(RegexLexContext *ctx);
+
 // parses one, and saves it into `ctx_tu` using `cppDefine1Macro`.
 int cppProcessDefineDirective(
+    cpptu_t *restrict ctx_tu,
+    void *restrict ctx_shifter,
+    token_shifter_t shifter);
+
+// Evaluates the control expression on the `if` and `elif` line.
+// Although operands are evaluated in `(u?)intmax_t`,
+// the result is returned in true, false,
+// or -1, the last of which indicates failure.
+int cppEvaluateCtrlExpr(
     cpptu_t *restrict ctx_tu,
     void *restrict ctx_shifter,
     token_shifter_t shifter);

@@ -1,0 +1,8 @@
+subr main()
+{
+    decl dx = opendir("/dev");
+    for(decl ent = dx.readdir(); ent.len() > 0; ent = dx.readdir())
+    {
+        print(ent);
+    }
+}
