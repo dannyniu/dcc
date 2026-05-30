@@ -17,7 +17,7 @@ extern const type_nativeobj_struct_p8 type_nativeobj_Pipe;
 extern const type_nativeobj_struct_p3 type_nativeobj_PipeEnds;
 extern const type_nativeobj_struct_p4 type_nativeobj_DIR;
 
-extern const type_nativeobj_struct_p4 type_nativeobj_Regex;
+extern const type_nativeobj_struct_p6 type_nativeobj_Regex;
 
 extern cxing_builtin_def_t CxingStdlibStructBuiltins[];
 extern cxing_builtin_def_t CxingStdlibIoBuiltins[];

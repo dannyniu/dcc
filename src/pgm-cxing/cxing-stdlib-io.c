@@ -311,7 +311,7 @@ struct value_nativeobj CxingImpl_GenFile_Read(
     if( !IsInteger(args[1]) )
     {
         CxingDebug("The length argument should be an integer "
-                   " for `read` method.\n");
+                   "for `read` method.\n");
         return (struct value_nativeobj){
             .proper.p = NULL,
             .type = (const void *)&type_nativeobj_morgoth };
@@ -750,6 +750,16 @@ struct value_nativeobj CxingImpl_Pipe_Create(
 struct value_nativeobj CxingImpl_MkFifo(
     int argn, struct value_nativeobj args[])
 {
+#ifdef _WIN32
+    (void)argn;
+    (void)args;
+
+    CxingDebug("The `mkfifo` call is not implemented yet on Windows.\n");
+    
+    return (struct value_nativeobj){
+        .proper.p = NULL,
+        .type = (const void *)&type_nativeobj_morgoth };
+#else
     AssertArgN(1);
     AssertArgImpl(0, s2impl_str, "string");
 
@@ -760,6 +770,7 @@ struct value_nativeobj CxingImpl_MkFifo(
             .type = (const void *)&type_nativeobj_null };
     }
     else return ValueCopy(args[0]);
+#endif // _WIN32
 }
 
 struct value_nativeobj CxingImpl_Rename(

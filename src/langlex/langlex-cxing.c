@@ -28,7 +28,7 @@ lex_elem_t LexElems[] = {
       .cflags = LIBREG_EXTENDED, .completion = langlex_charlit },
     { .pattern = "\"([^\\\"]|"EscSeq")*\"",
       .cflags = LIBREG_EXTENDED, .completion = langlex_strlit },
-    { .pattern = "[\\](\"[^\"]*\"|\'[^\']\')",
+    { .pattern = "[\\\\](\"[^\"]*\"|\'[^\']\')",
       .cflags = LIBREG_EXTENDED, .completion = langlex_rawlit },
 
     { .pattern =

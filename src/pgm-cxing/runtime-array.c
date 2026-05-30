@@ -139,7 +139,8 @@ struct value_nativeobj CxingImpl_Array_InitSet(
     AssertArgN(3);
     AssertArgImpl(0, array, "array");
 
-    if( strcmp(s2data_weakmap(args[1].proper.p), "__proto__") == 0 )
+    if( args[1].type == (const void *)&type_nativeobj_s2impl_str &&
+        strcmp(s2data_weakmap(args[1].proper.p), "__proto__") == 0 )
     {
         return args[0];
     }

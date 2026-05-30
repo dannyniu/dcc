@@ -205,12 +205,12 @@ int CxingBuiltinsExtend(const char *name, struct value_nativeobj value);
 
 // Declares a cxing method function prototype
 // and defines a value native object for it.
-#define CxingMethodValueWithImpl(s2type, name)                          \
-    static struct value_nativeobj CxingImpl_##s2type##_##name(          \
-        int argn, struct value_nativeobj args[]);                       \
-    static struct value_nativeobj CxingValue_##s2type##_##name =        \
-        (struct value_nativeobj){                                       \
-        .proper.p = CxingImpl_##s2type##_##name,                        \
+#define CxingMethodValueWithImpl(s2type, name)                  \
+    struct value_nativeobj CxingImpl_##s2type##_##name(         \
+        int argn, struct value_nativeobj args[]);               \
+    struct value_nativeobj CxingValue_##s2type##_##name =       \
+        (struct value_nativeobj){                               \
+        .proper.p = CxingImpl_##s2type##_##name,                \
         .type = (const void *)&type_nativeobj_method };
 
 #endif /* cxing2c_runtime_h */

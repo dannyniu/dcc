@@ -1,0 +1,24 @@
+subr main()
+{
+    decl subj = "abc::def::ghi";
+    decl re = ere_comp(\":+", 0);
+
+    decl arr = re.split(subj);
+    for(decl i=0; i<arr.len(); i++)
+        print(arr[i]);
+
+    print("-- -- --");
+
+    decl mat = re.capture(subj);
+    for(decl i=0; i<mat.len(); i++)
+        print(mat[i]);
+
+    print("-- -- --");
+
+    print(re.replace("Hello::World!", " - $0 - ", 0));
+    print(re.replace("Hello::World!", " - $0 - ", -1));
+
+    print("-- -- --");
+
+    print(re.match("--"));
+}

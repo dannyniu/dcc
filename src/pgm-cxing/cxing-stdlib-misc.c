@@ -8,6 +8,7 @@ int CxingInitialization_DefineStandardLibrary()
         CxingStdlibStructBuiltins,
         CxingStdlibIoBuiltins,
         CxingStdlibMathBuiltins,
+        CxingStdlibRegexBuiltins,
         NULL,
     };
     int i, j;
