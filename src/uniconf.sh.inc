@@ -1,6 +1,7 @@
 cflags_proj="\
 -I "$(realpath ./../../contrib/SafeTypes2/src)"
 -I "$(realpath ./../../contrib/librematch/src)"
+-Wno-comments
 "
 
 src_proj="\

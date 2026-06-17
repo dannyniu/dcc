@@ -447,7 +447,6 @@ struct value_nativeobj CxingImpl_Array_Create(
     mem_intercept(NULL);
 #endif /* INTERCEPT_MEM_CALLS */
 
-    // 2026-05-25 TODO: finalizer, array allocation, etc.
     aimpl->base.itercreatf = (s2func_iter_create_t)s2cxing_array_iter_create;
     aimpl->base.finalf = (s2func_final_t)s2cxing_array_final;
 

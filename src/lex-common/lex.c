@@ -28,7 +28,7 @@ lex_token_t *lex_token_create()
 
     // Newly created tokens are initialized to the invalid state.
     ret->completion = lex_exceptional;
-    ret->identity = 0;
+    ret->identity = 0; // the pristine token identity.
     ret->classification = 0;
     ret->lineno = ret->column = 0;
 

@@ -14,6 +14,7 @@ testfunc()
     #time $exec -f ../tests/cxing/langlex-test-src.cxing
     #time $exec -f ../tests/cxing/phrase-experiment.cxing
     time $exec -f ../tests/cxing/hello-world-01.cxing
+    #$exec -f ../tests/cxing/regression-2026-06-13-true.cxing
 }
 
 cd "$(dirname "$0")"

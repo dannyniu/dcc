@@ -946,6 +946,8 @@ if( theRule == assignment_directassign || //>RULEIMPL<//
 
 if( theRule == tenary_tenary )
 {
+    // 2026-06-14:
+    // Wasn't tested until today, had fixes.
     Reached();
     if( instruction->operand_index == 0 )
     {
@@ -955,7 +957,7 @@ if( theRule == tenary_tenary )
     {
         int opind = ValueNativeObj2Logic(valreg) ? 2 : 4;
         ClearLValue();
-        instruction->operand_index = 5;
+        instruction->operand_index = 4;
         if( !PcStackPush(
                 &pc, instruction->node_body->terms[
                     opind].production) )
@@ -964,7 +966,11 @@ if( theRule == tenary_tenary )
         }
         else goto start_eval_1term;
     }
-    else assert( 0 );
+    else
+    {
+        ClearLValue();
+        PassResultBack(valreg);
+    }
 }
 
 if( theRule == exprlist_exprlist ) //>RULEIMPL<//
@@ -978,7 +984,9 @@ if( theRule == exprlist_exprlist ) //>RULEIMPL<//
     else
     {
         // the expression is no longer an lvalue after any comma.
-        ClearLValue();
+        // 2026-06-14:
+        // changed from `ClearLValue`.
+        ConsumeRValue();
         PassResultBack(valreg);
     }
 }

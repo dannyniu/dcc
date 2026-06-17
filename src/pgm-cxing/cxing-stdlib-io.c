@@ -116,11 +116,13 @@ CxingMethodValueWithImpl(GenFile, Write);
 CxingMethodValueWithImpl(GenFile, Copy);
 CxingMethodValueWithImpl(GenFile, Final);
 CxingMethodValueWithImpl(GenFile, Flush);
+CxingMethodValueWithImpl(GenFile, Close);
 CxingMethodValueWithImpl(GenFile, SetSync);
 CxingMethodValueWithImpl(GenFile, LSeek);
 
 // GenFile assumes implementation based on `s2ref_t<FILE *>`.
 
+// 2026-06-09: No sign of use of this macro, could be outdated sooner or later.
 #define GenFileMethods_ImplAccept(n)            \
     AcceptArgImpl(n, RegFile)                   \
         AcceptArgImpl(n, Pipe)                  \
@@ -250,6 +252,25 @@ struct value_nativeobj CxingImpl_GenFile_Flush0(
     }
 }
 
+struct value_nativeobj CxingImpl_GenFile_Close0(
+    int argn, struct value_nativeobj args[])
+{
+    s2ref_t *fr;
+    FILE *fp;
+    (void)argn;
+
+    fr = args[0].proper.p;
+    fp = s2ref_unwrap(fr);
+    if( fp )
+        fclose(fp);
+    fr->ptr = NULL;
+    fr->finalizer = NULL;
+
+    return (struct value_nativeobj){
+        .proper.l = 0,
+        .type = (const void *)&type_nativeobj_long };
+}
+
 struct value_nativeobj CxingImpl_GenFile_SetSync0(
     int argn, struct value_nativeobj args[])
 {
@@ -291,7 +312,7 @@ struct value_nativeobj CxingImpl_GenFile_SetSync0(
 #endif // _WIN32
 }
 
-static void CxingImpl_GenFile_Close(FILE *fp)
+void CxingImpl_FileRef_Close(FILE *fp)
 {
     fclose(fp);
 }
@@ -403,6 +424,19 @@ struct value_nativeobj CxingImpl_GenFile_Flush(
     return CxingImpl_GenFile_Flush0(argn, args);
 }
 
+struct value_nativeobj CxingImpl_GenFile_Close(
+    int argn, struct value_nativeobj args[])
+{
+    AssertArgN(1);
+    AssertArgImpls(
+        0,
+        AcceptArgImpl(0, RegFile)
+        AcceptArgImpl(0, Pipe),
+        "General File");
+
+    return CxingImpl_GenFile_Close0(argn, args);
+}
+
 struct value_nativeobj CxingImpl_GenFile_SetSync(
     int argn, struct value_nativeobj args[])
 {
@@ -467,9 +501,9 @@ struct value_nativeobj CxingImpl_GenFile_LSeek(
         .type = (const void *)&type_nativeobj_long };
 }
 
-const type_nativeobj_struct_p9 type_nativeobj_RegFile = {
+const type_nativeobj_struct_p10 type_nativeobj_RegFile = {
     .typeid = valtyp_obj,
-    .n_entries = 9,
+    .n_entries = 10,
     .static_members = {
         { .name = "read", .member = &CxingValue_GenFile_Read },
         { .name = "getdelim", .member = &CxingValue_GenFile_GetDelim },
@@ -478,6 +512,7 @@ const type_nativeobj_struct_p9 type_nativeobj_RegFile = {
         { .name = "__copy__", .member = &CxingValue_GenFile_Copy },
         { .name = "__final__", .member = &CxingValue_GenFile_Final },
         { .name = "flush", .member = &CxingValue_GenFile_Flush },
+        { .name = "close", .member = &CxingValue_GenFile_Close },
         { .name = "setsync", .member = &CxingValue_GenFile_SetSync },
         { .name = "lseek", .member = &CxingValue_GenFile_LSeek },
     },
@@ -576,7 +611,7 @@ struct value_nativeobj CxingImpl_RegFile_Open(
     }
 
     ret = s2ref_create(
-        fp, (s2ref_final_func_t)CxingImpl_GenFile_Close);
+        fp, (s2ref_final_func_t)CxingImpl_FileRef_Close);
     s2obj_keep(ret->pobj);
     s2obj_release(ret->pobj);
 
@@ -593,9 +628,9 @@ struct value_nativeobj CxingImpl_RegFile_Open(
         .type = (const void *)&type_nativeobj_RegFile };
 }
 
-const type_nativeobj_struct_p8 type_nativeobj_Pipe = {
+const type_nativeobj_struct_p9 type_nativeobj_Pipe = {
     .typeid = valtyp_obj,
-    .n_entries = 8,
+    .n_entries = 9,
     .static_members = {
         { .name = "read", .member = &CxingValue_GenFile_Read },
         { .name = "getdelim", .member = &CxingValue_GenFile_GetDelim },
@@ -604,6 +639,7 @@ const type_nativeobj_struct_p8 type_nativeobj_Pipe = {
         { .name = "__copy__", .member = &CxingValue_GenFile_Copy },
         { .name = "__final__", .member = &CxingValue_GenFile_Final },
         { .name = "flush", .member = &CxingValue_GenFile_Flush },
+        { .name = "close", .member = &CxingValue_GenFile_Close },
         { .name = "setsync", .member = &CxingValue_GenFile_SetSync },
     },
 };
@@ -741,6 +777,9 @@ struct value_nativeobj CxingImpl_Pipe_Create(
 
     s2obj_keep(retp->pobj);
     s2obj_release(retp->pobj);
+    ((s2ref_t *)retp->entries[0].v)->finalizer =
+        ((s2ref_t *)retp->entries[1].v)->finalizer =
+        (s2ref_final_func_t)CxingImpl_FileRef_Close;
 
     return (struct value_nativeobj){
         .proper.p = retp,
@@ -755,7 +794,7 @@ struct value_nativeobj CxingImpl_MkFifo(
     (void)args;
 
     CxingDebug("The `mkfifo` call is not implemented yet on Windows.\n");
-    
+
     return (struct value_nativeobj){
         .proper.p = NULL,
         .type = (const void *)&type_nativeobj_morgoth };

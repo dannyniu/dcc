@@ -168,9 +168,22 @@ static bool lalr_symbol_matches_term(
         if( !s2_is_token(term->terminal) )
             return false;
 
-        return strcmp(
+        if( 0 != strcmp(
             symbol->value,
-            s2data_weakmap(term->terminal->str)) == 0;
+            s2data_weakmap(term->terminal->str)) )
+            return false;
+
+        // 2026-06-03:
+        // A fault was discovered, that the string literal `"true"` was
+        // mistakenly recognized as such 'stoken', causing an assertion
+        // in the parsing code to fail.
+        // The token is now augmented with a field that indicates whether
+        // or not it had underwent dequoting, as the CXING string literal
+        // concatenator would have done so while lexing.
+        if( term->terminal->identity != TOKIDENT_PRISTINE )
+            return false;
+        
+        return true;
     }
     else if( symbol->type == lalr_symtype_vtoken )
     {

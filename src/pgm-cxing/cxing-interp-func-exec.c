@@ -679,6 +679,7 @@ static struct TYPE_NATIVEOBJ_STRUCT(4) type_nativeobj_localvars = {
 // least interference with key and scope.
 
 // standalone cast of lvalue into rvalue.
+// 2026-06-14: apply this when expression expects an rvalue.
 #define ClearLValue() do {                                              \
         if( instruction->flags ==                                       \
             ast_node_action_lvalue_release_key )                        \
@@ -697,6 +698,7 @@ static struct TYPE_NATIVEOBJ_STRUCT(4) type_nativeobj_localvars = {
         } } while( false )
 
 // destroy rvalue if it's one, otherwise leave it as is.
+// 2026-06-14: apply this when its value is no more of use.
 #define ConsumeRValue() do {                    \
         if( !varreg.key ) {                     \
             ValueDestroy(valreg);               \

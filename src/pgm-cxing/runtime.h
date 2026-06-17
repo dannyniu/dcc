@@ -130,6 +130,11 @@ typedef struct TYPE_NATIVEOBJ_STRUCT(8) type_nativeobj_struct_p7;
 typedef struct TYPE_NATIVEOBJ_STRUCT(9) type_nativeobj_struct_p8;
 typedef struct TYPE_NATIVEOBJ_STRUCT(10) type_nativeobj_struct_p9;
 typedef struct TYPE_NATIVEOBJ_STRUCT(11) type_nativeobj_struct_p10;
+typedef struct TYPE_NATIVEOBJ_STRUCT(12) type_nativeobj_struct_p11;
+typedef struct TYPE_NATIVEOBJ_STRUCT(13) type_nativeobj_struct_p12;
+typedef struct TYPE_NATIVEOBJ_STRUCT(14) type_nativeobj_struct_p13;
+typedef struct TYPE_NATIVEOBJ_STRUCT(15) type_nativeobj_struct_p14;
+typedef struct TYPE_NATIVEOBJ_STRUCT(16) type_nativeobj_struct_p15;
 
 // The "Morgoth" null.
 extern const type_nativeobj_struct_p0 type_nativeobj_morgoth;

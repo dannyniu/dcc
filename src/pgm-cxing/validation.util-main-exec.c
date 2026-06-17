@@ -4,6 +4,11 @@
 #include "runtime.h"
 #include "cxing-stdlib.h"
 
+#if _WIN32
+#include <windows.h>
+DWORD hbefore, hafter;
+#endif // _WIN32
+
 extern bool trace;
 
 int main(int argc, char *argv[])
@@ -38,7 +43,17 @@ int main(int argc, char *argv[])
 
     trace = 0;
 
+#if _WIN32
+    GetProcessHandleCount(GetCurrentProcess(), &hbefore);
+#endif // _WIN32
+
     funcret = func(0, &funcarg);
+
+#if _WIN32
+    GetProcessHandleCount(GetCurrentProcess(), &hafter);
+    printf("WinHndl.Before: %lu, WinHndl.After: %lu.\n", hbefore, hafter);
+#endif // _WIN32
+
     printf("Execution of function `main` returned: %lld.\n",
            funcret.proper.l);
     //CxingModuleDump(module);

@@ -13,6 +13,7 @@ cxing-stdlib-io.c
 cxing-stdlib-fpmath.c
 cxing-stdlib-struct.c
 cxing-stdlib-regex.c
+cxing-stdlib-proc.c
 mathemu-stubs.c
 langsem.c
 runtime.c
@@ -47,7 +48,7 @@ memintercept='-DINTERCEPT_MEM_CALLS'
 #memintercept=''
 
 sanitizers='-fsanitize=address'
-#sanitizers=''
+sanitizers=''
 
 libs_common=''
 libs=''

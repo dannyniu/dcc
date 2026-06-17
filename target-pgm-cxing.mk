@@ -2,7 +2,7 @@
 
 ## basic information. ##
 
-ProgramName = fpcalc
+ProgramName = cxing
 ProductName = ${ProgramName}
 MajorVer = 0
 MinorVer = 1
@@ -28,13 +28,8 @@ OBJS_GROUP_WITH_ADDITION =
 CFLAGS_GROUP_WITH = `cat compile_flags.txt`
 
 INPUT_OBJECTS = \
-    ${OBJ_CONTRIB_LIBREMATCH} \
-    ${OBJ_CONTRIB_SAFETYPES2} \
-    ${OBJ_SRC_MISC} \
-    ${OBJ_SRC_PARSER_COMMON} \
-    ${OBJ_SRC_LANGLEX_C} \
-    ${OBJ_SRC_PGM_FPCALC} \
-    ${OBJS_GROUP_WITH_ADDITION}
+    ${OBJ_CONTRIB_LIBREMATCH} ${OBJ_CONTRIB_SAFETYPES2} \
+    ${OBJ_SRC_MISC} ${OBJ_SRC_PARSER_COMMON} ${OBJ_SRC_PGM_CXING}
 
 CFLAGS = ${ccOpts} ${CFLAGS_GROUP_WITH}
-LDFLAGS = -lreadline
+# LDFLAGS = -lreadline # Not needed for a non-interactive interpreter.

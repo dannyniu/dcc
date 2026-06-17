@@ -1,0 +1,20 @@
+subr main_2exit()
+{
+    decl cmdl = array() [
+        "sh", "-c", "sort ../tests/cxing-stdlib/proc-02.cxing ; exit 12", null];
+    decl cret = CmdInterp().
+        Argv(cmdl).
+        Argc(cmdl.len() - 1).Exec().Wait();
+    print(cret);
+
+    CmdInterp().Argv(array()[ "sh", "-c", "true", null, ]).Argc(3).Exec().Wait();
+    return cret;
+}
+
+subr main()
+{
+    print(main_2exit());
+    print(main_2exit());
+    print(main_2exit());
+    print(main_2exit());
+}

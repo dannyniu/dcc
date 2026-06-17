@@ -1,0 +1,10 @@
+subr main()
+{
+    decl pp = CmdInterp().Argc(1).Argv(array()[ "cat", null ]);
+    decl fh = open("../tests/cxing-stdlib/proc-03b.cxing", 0\r);
+    print(_Uncast(fh));
+    print(0\r);
+    pp.SetSourceForStdin(fh);
+    decl ph = pp.Exec();
+    print(ph.Wait());
+}

@@ -134,6 +134,7 @@ lex_token_t *PP_StrLitConcat_Cxing(pp_strlit_concat_ctx *ctx)
             cooked = lex_token_create(); // TODO 2026-01-25: handle error.
             cooked->lineno = ret->lineno;
             cooked->column = ret->column;
+            cooked->identity = TOKIDENT_DEQUOTED;
             cooked->completion = langlex_str_cooked;
         }
 

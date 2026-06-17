@@ -1,0 +1,63 @@
+subr main_pipeline()
+{
+    # sketch of pipeline structure:
+    # `grep ou | dd`
+    # where this program supplies the input,
+    # invokes `grep` and `dd` separately,
+    # and retrieves the standard output and standard error.
+
+    decl ofp, efp;
+    decl ifp;
+
+    decl grepper = CmdInterp().Argc(3).Argv(array()[ "tr", "a-z", "A-Z", null ]);
+    grepper.ObtainPipeForStdin();
+    grepper.ObtainPipeForStdout();
+    print(grepper);
+
+    decl grepping = grepper.Exec();
+    ifp = grepping.infile;
+
+    decl dd = CmdInterp().Argc(2).Argv(array()[ "dd", "bs=8", null ]);
+    dd and dd.SetSourceForStdin(grepping.outfile),
+    dd.ObtainPipeForStderr().ObtainPipeForStdout();
+    print(dd);
+
+    decl dd1 = dd ? dd.Exec() : grepping;
+    efp = dd1.errfile;
+    ofp = dd1.outfile;
+
+    ifp.write("Hello World! Proudly from Shanghai!\n");
+    ifp.flush();
+    ifp.close();
+    grepping.Wait();
+    print("dd-odata: ");
+    print(ofp.read(4096));
+    print("dd-estat: ");
+    print(efp.read(4096));
+}
+
+subr main_leak_exam()
+{
+    decl outfile;
+    autorelease: {
+    decl grepper = CmdInterp().Argc(2).Argv(array()[ "cat", "-uv", null ]);
+    grepper.ObtainPipeForStdin();
+    grepper.ObtainPipeForStdout();
+
+    decl grepping = grepper.Exec();
+    outfile = grepping.outfile;
+    grepping.infile.write("Hello World!\n");
+    grepping.infile.flush(); }
+    print(outfile.read(13));
+}
+
+subr main()
+{
+    main_leak_exam();
+    main_leak_exam();
+    main_leak_exam();
+    main_leak_exam();
+    main_leak_exam();
+
+    main_pipeline();
+}

@@ -1,0 +1,4 @@
+subr main()
+{
+    print("true");
+}

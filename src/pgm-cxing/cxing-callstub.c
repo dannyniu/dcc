@@ -1,7 +1,5 @@
 /* DannyNiu/NJF, 2026-01-13. Public Domain. */
 
-#include "common.h"
-
 // Inspiration: https://github.com/cpredef/predef
 
 # if defined(_WIN32)

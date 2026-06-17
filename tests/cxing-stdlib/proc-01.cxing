@@ -1,0 +1,44 @@
+subr main()
+{
+    decl cmdl = array() ["sh", "-c", "export -p", null];
+    decl envp = dict() {
+        "hello": "world",
+        "nihao": "shijie",
+        "shampoo": "Duang",
+        "CPlusPlus": "AbsolutelyAtrocious",
+        "C": "Lingua Franca",
+        "Rust": "Esolang for Production Safety",
+        "NonVendorNeutral": "C#, TypeScript, Swift, Java",
+        "CXING": "New kid in the town",
+        "HOME": "/home/cxing/Shanghai Changxing Island",
+        "dcc": "Reference Implementation",
+        "TERM": "VT110",
+        "COLUMNS": "80",
+        "LINES": "24",
+        "CC": "dcc",
+        "LD": "TODO",
+        "LC_ALL": "C.UTF-8",
+        "DISPLAY": "Donno.",
+        "HF_ENDPOINT": "http://255.255.255.255/dont-flood",
+        "GpuBackend": "cuda,vulkan,metal",
+        "amd64": "supported",
+        "arm64": "supported",
+        "ppc64": "not-yet",
+        "i386": "Seriously?",
+        "sparc64": "perhaps",
+        "armv7": "probably",
+        "ia-64": "what's that?",
+        "sysv-elf": "definitely",
+        "efi-coff": "yeah",
+        "mach-o": "lacking demand",
+        "cpython": "must-compile",
+        "ffmpeg": "must-compile",
+        "cmake": "must-compile",
+        "VLA": "wont-support",
+        "PATH": "/bin:/usr/bin:/usr/local/bin",
+    };
+    CmdInterp().
+        Argv(cmdl).
+        Argc(cmdl.len() - 1).
+        Envp(envp).Exec().Wait();
+}

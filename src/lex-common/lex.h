@@ -45,10 +45,21 @@ typedef struct {
     s2obj_base;
     s2data_t *str;
     lexer_state_t completion;
-    int32_t identity; // reserved as of 2025-08-09.
+    int32_t identity; // 2026-06-13: see below.
     int32_t classification; // reserved as of 2025-08-09.
     int32_t lineno, column; // both are 1-based.
 } lex_token_t;
+
+// 2026-06-13:
+// The rope shifter sets the `identity` field to 0,
+// the lexer consults this identity when considering
+// 'stoken' static string matching.
+#define TOKIDENT_PRISTINE 0
+
+// 2026-06-13:
+// This is the only other defined value for now.
+// For now, the parser ignore this and every other non-pristine enumerations.
+#define TOKIDENT_DEQUOTED 1
 
 lex_token_t *lex_token_create();
 
