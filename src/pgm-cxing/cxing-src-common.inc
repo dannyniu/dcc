@@ -18,6 +18,7 @@ cxing-stdlib-thrd.c
 mathemu-stubs.c
 langsem.c
 runtime.c
+runtime-typeobjs.c
 runtime-str.c
 runtime-dict.c
 runtime-array.c

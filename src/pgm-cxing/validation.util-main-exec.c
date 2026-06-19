@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
     CxingRuntimeInit();
 
     module = CXOpen(argv[1]);
+    assert( module && module->error_count == 0 );
     //CxingModuleDump(module);
 
     func = CXSym(module, "main");

@@ -17,6 +17,11 @@
 #include <stdio.h>
 #include "../pathutils/pathutils.h"
 
+#if _WIN32
+#else // Assume POSIX.
+#include <dlfcn.h>
+#endif // _WIN32
+
 static void cxing_module_final(cxing_module_t *module)
 {
     if( module->filename ) free(module->filename);
@@ -41,6 +46,19 @@ static void cxing_module_final(cxing_module_t *module)
             s2obj_release(module->SymTab[t]->pobj);
         }
         free(module->SymTab);
+    }
+
+    if( module->dll_array_cap )
+    {
+        intptr_t t;
+        for(t=1; t<*module->dll_handles; t++)
+        {
+#if _WIN32
+#else // Assume POSIX.
+            dlclose((void *)module->dll_handles[t]);
+#endif // _WIN32
+        }
+        free(module->dll_handles);
     }
 }
 
@@ -162,7 +180,7 @@ static bool ProcessTU(
     de = parsed->bottom->production; // repurposed a bit.
     while( true )
     {
-        if( cxing_grammar_rules[de->semantic_rule] == TU_genrule )
+        if( cxing_grammar_rules[de->semantic_rule] == TU_genrule ) //>RULEIMPL<//
         {
             subret = s2list_insert(
                 tu, de->terms[1].production->pobj, s2_setter_kept);
@@ -220,7 +238,8 @@ static bool ProcessTU(
             {
                 // new declaration/definition.
 
-                ++ *func_defs_cnt;
+                if( entRule(de->terms[3].production) == stmt_brace )
+                    ++ *func_defs_cnt;
                 subret = s2dict_set(module->entities, ss->str,
                                     de->pobj, s2_setter_kept);
                 IfClause_AssertSetterSuccess;
@@ -285,7 +304,8 @@ static bool ProcessTU(
                     continue;
                 }
 
-                ++ *func_defs_cnt;
+                if( entRule(de->terms[3].production) == stmt_brace )
+                    ++ *func_defs_cnt;
                 subret = s2dict_set(module->entities, ss->str,
                                     de->pobj, s2_setter_kept);
                 IfClause_AssertSetterSuccess;
@@ -397,6 +417,7 @@ static bool ProcessTU(
             }
             else
             {
+                // TODO 2026-06-19:
                 CxingFatal("Predefined paths hadn't been implemented yet.\n");
                 abort();
             }
@@ -416,6 +437,58 @@ static bool ProcessTU(
             // `incpath` was allocated from a TU without mem-intercept.
             // Parenthesize it to avoid relevant macro-expandsion.
             if( incpath ) (free)(incpath);
+        }
+
+        else if( entRule(de) == entdecl_soload )
+        {
+            const char *file = s2data_weakmap(de->terms[1].terminal->str);
+
+            if( !module->dll_array_cap )
+            {
+                module->dll_handles = calloc(
+                    module->dll_array_cap = 8, sizeof(intptr_t));
+
+                if( !module->dll_handles )
+                {
+                    CxingFatal("[ProcessTU]: Unable to allocate memory "
+                               "for holding shared objects 01.\n");
+                    module->dll_array_cap = 0;
+                    ret = cont = false;
+                    continue;
+                }
+                *module->dll_handles = 1;
+            }
+
+            else if( ++ *module->dll_handles >= module->dll_array_cap )
+            {
+                void *T = realloc(
+                    module->dll_handles,
+                    sizeof(intptr_t) *
+                    (module->dll_array_cap += 8));
+
+                if( !T )
+                {
+                    CxingFatal("[ProcessTU]: Unable to allocate memory "
+                               "for holding shared objects 01.\n");
+                    module->dll_array_cap -= 8;
+                    ret = cont = false;
+                    continue;
+                }
+                module->dll_handles = T;
+            }
+
+#if _WIN32
+#else // Assume POSIX.
+            module->dll_handles[*module->dll_handles] =
+                (intptr_t)dlopen(file, RTLD_NOW|RTLD_GLOBAL);
+            if( !module->dll_handles[*module->dll_handles] )
+            {
+                CxingFatal("[ProcessTU]: Unable to open "
+                           "the shared object: %s.\n", file);
+                ret = cont = false;
+                continue;
+            }
+#endif // _WIN32
         }
 
         else assert( 0 );
@@ -466,6 +539,9 @@ static bool CreateCallStubs(cxing_module_t *module, long func_defs_cnt)
     {
         if( entRule(((lalr_prod_t *)ei->value)) != funcdecl_subr &&
             entRule(((lalr_prod_t *)ei->value)) != funcdecl_method )
+            continue;
+
+        if( entRule(((lalr_prod_t *)ei->value)->terms[3].production) != stmt_brace )
             continue;
 
         memcpy(cxing_callxfer_bridge.sz_callstub * t + module->CallStubs,
@@ -737,25 +813,31 @@ void CxingModuleDump(cxing_module_t *restrict module)
     ei->final(ei);
 }
 
+extern void *CxingInterpLoadedDyn;
 void *CXSym(cxing_module_t *restrict module, const char *restrict sym)
 {
     size_t t;
+    void *ret;
 
     for(t=0; t<module->func_defs_cnt; t++)
     {
         if( strcmp(s2data_weakmap(module->SymTab[t]), sym) == 0 )
-            break;
+        {
+            return module->CallStubs +
+                cxing_callxfer_bridge.sz_callstub * t +
+                cxing_callxfer_bridge.sz_relocdat;
+        }
     }
 
-    if( t >= module->func_defs_cnt )
+    ret = dlsym(CxingInterpLoadedDyn, sym);
+
+    if( !ret )
     {
         CxingDebug("Symbol Definition for %s Not Found.\n", sym);
         return NULL;
     }
 
-    return module->CallStubs +
-        cxing_callxfer_bridge.sz_callstub * t +
-        cxing_callxfer_bridge.sz_relocdat;
+    return ret;
 }
 
 // 2026-01-17 TODO: resolve identifiers in the module for linked defs.

@@ -50,6 +50,8 @@ typedef struct cxing_module {
     long error_count;
 
     // ... TODO (2025-12-13, 2026-01-25).
+    long dll_array_cap;
+    intptr_t *dll_handles;
 } cxing_module_t;
 
 #define S2_OBJ_TYPE_SYM_INFO 0x2113

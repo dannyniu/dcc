@@ -6,6 +6,11 @@
 #include "cxing-stdlib.h"
 #include <SafeTypes2.h>
 
+#if _WIN32
+#else // Assume POSIX.
+#include <dlfcn.h>
+#endif // _WIN32
+
 struct value_nativeobj CxingImpl_s2Obj_Copy(
     int argn, struct value_nativeobj args[])
 {
@@ -71,22 +76,6 @@ const type_nativeobj_struct_p0 type_nativeobj_morgoth = {
 // The "blessed" null.
 const type_nativeobj_struct_p0 type_nativeobj_null = {
     .typeid = valtyp_null, .n_entries = 0, .static_members[0] = {} };
-
-// The arithmetic types.
-const type_nativeobj_struct_p0 type_nativeobj_long = {
-    .typeid = valtyp_long, .n_entries = 0, .static_members[0] = {} };
-
-const type_nativeobj_struct_p0 type_nativeobj_ulong = {
-    .typeid = valtyp_ulong, .n_entries = 0, .static_members[0] = {} };
-
-const type_nativeobj_struct_p0 type_nativeobj_double = {
-    .typeid = valtyp_double, .n_entries = 0, .static_members[0] = {} };
-
-const type_nativeobj_struct_p0 type_nativeobj_subr = {
-    .typeid = valtyp_subr, .n_entries = 0, .static_members[0] = {} };
-
-const type_nativeobj_struct_p0 type_nativeobj_method = {
-    .typeid = valtyp_method, .n_entries = 0, .static_members[0] = {} };
 
 struct s2cxing_value_iter {
     struct s2ctx_iter base;
@@ -295,6 +284,7 @@ cxing_builtin_def_t CxingRuntimeBuiltins[] = {
 };
 
 s2dict_t *CxingBuiltins = NULL;
+void *CxingInterpLoadedDyn = NULL;
 
 bool CxingRuntimeInit()
 {
@@ -394,10 +384,20 @@ bool CxingRuntimeInit()
 
     if( CxingInitialization_DefineStandardLibrary() != 0 )
     {
-        CxingFatal("Unable to load standard library!\n");
+        CxingFatal("Unable to load the standard libraries!\n");
         ret = false;
         goto builtin_dict_dealloc;
     }
+
+#if _WIN32
+#else // Assume POSIX.
+    if( !(CxingInterpLoadedDyn = dlopen(NULL, RTLD_GLOBAL)) )
+    {
+        CxingFatal("Unable to open the handle to the global symbols table.\n");
+        ret = false;
+        goto builtin_dict_dealloc;
+    }
+#endif // _WIN32
 
     return ret;
 

@@ -29,6 +29,9 @@ int main(int argc, char *argv[])
     CxingRuntimeInit();
 
     module = CXOpen(argv[1]);
+    if( !module || module->error_count > 0 )
+        goto cxing_over;
+
     func = CXSym(module, "main");
 
     idat = s2data_create(sizeof(int64_t));
@@ -56,11 +59,12 @@ int main(int argc, char *argv[])
     funcarg[0].type = (const void *)&type_nativeobj_long;
     
     progret = func(2, funcarg);
+    subret = progret.proper.l;
 
+cxing_over:
     s2obj_release(module->pobj);
     CxingRuntimeFinal();
     CXParserFinalCommon();
 
-    subret = progret.proper.l;
     return subret;
 }

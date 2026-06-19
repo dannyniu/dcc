@@ -1,0 +1,3 @@
+_Load "./dll-stub.so";
+subr CxingSoLoadTestMe();
+subr main(){ return CxingSoLoadTestMe(); }

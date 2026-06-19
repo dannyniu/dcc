@@ -15,6 +15,7 @@ subr main()
     ctx { "num": 0, "cv": condvar(core) };
     print(ctx.cv);
     print(ctx.cv.wait);
+    ctx = null; // so that the mutex goes out of scope after the dict.
 
     decl even = thrd_create(EvenThrd, core);
     decl odd = thrd_create(OddThrd, core);

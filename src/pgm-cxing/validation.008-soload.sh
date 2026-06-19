@@ -1,12 +1,18 @@
 #!/bin/sh
 
-optimize=debug
-: ${inst:=}
+optimize=optimize
 testfunc()
 {
+    echo Building Stub DLL.
+    ${CC:-$target_cc} -c $cflags_common ../src/pgm-cxing/dll-stub.c
+    if [ X"$sysname" = XDarwin ]
+    then cc -o dll-stub.so -Xlinker -dylib dll-stub.o runtime-typeobjs.o
+    else cc -o dll-stub.so -Xlinker -shared dll-stub.o runtime-typeobjs.o
+    fi
+
     echo Test Start.
     #lldb \
-        $exec ../tests/cxing-stdlib/thrd-01.cxing
+        $exec ../tests/cxing/soload-01.cxing
 }
 
 cd "$(dirname "$0")"
