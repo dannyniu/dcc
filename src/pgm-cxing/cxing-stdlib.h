@@ -22,11 +22,17 @@ extern const type_nativeobj_struct_p6 type_nativeobj_Regex;
 extern const type_nativeobj_struct_p13 type_nativeobj_CmdInterp;
 extern const type_nativeobj_struct_p8 type_nativeobj_ProcHndl;
 
+extern const type_nativeobj_struct_p3 type_nativeobj_Mutex;
+extern const type_nativeobj_struct_p4 type_nativeobj_Gift;
+extern const type_nativeobj_struct_p5 type_nativeobj_CondVar;
+extern const type_nativeobj_struct_p5 type_nativeobj_ThrdHndl;
+
 extern cxing_builtin_def_t CxingStdlibStructBuiltins[];
 extern cxing_builtin_def_t CxingStdlibIoBuiltins[];
 extern cxing_builtin_def_t CxingStdlibMathBuiltins[];
 extern cxing_builtin_def_t CxingStdlibRegexBuiltins[];
 extern cxing_builtin_def_t CxingStdlibProcBuiltins[];
+extern cxing_builtin_def_t CxingStdlibThrdBuiltins[];
 int CxingInitialization_DefineStandardLibrary();
 
 // Error Number Name Space.

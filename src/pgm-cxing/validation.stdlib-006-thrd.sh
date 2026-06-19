@@ -4,11 +4,9 @@ optimize=debug
 : ${inst:=}
 testfunc()
 {
-    echo Test Start. &&
-        $exec ../tests/cxing-stdlib/proc-01.cxing &&
-        $exec ../tests/cxing-stdlib/proc-02.cxing &&
-        $exec ../tests/cxing-stdlib/proc-03a.cxing &&
-        $exec ../tests/cxing-stdlib/proc-03b.cxing || echo $?
+    echo Test Start.
+    lldb \
+        $exec ../tests/cxing-stdlib/thrd-01.cxing
 }
 
 cd "$(dirname "$0")"

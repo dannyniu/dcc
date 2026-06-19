@@ -1,0 +1,57 @@
+subr main2()
+{
+    decl core = mutex("Hello World!");
+    decl gift = core.acquire();
+    print(gift.v);
+}
+
+subr main()
+{
+    print(EvenThrd);
+    print(OddThrd);
+
+    decl ctx = dict();
+    decl core = mutex(ctx);
+    ctx { "num": 0, "cv": condvar(core) };
+    print(ctx.cv);
+    print(ctx.cv.wait);
+
+    decl even = thrd_create(EvenThrd, core);
+    decl odd = thrd_create(OddThrd, core);
+    even.join();
+    odd.join();
+    print("Done");
+}
+
+subr EvenThrd(core)
+{
+    decl gift = core.acquire();
+    print(gift.v.cv);
+    while( gift.v.num < 10 )
+    {
+        while( gift.v.num % 2 != 0 )
+        {
+            gift.v.cv.signal();
+            gift.v.cv.wait();
+        }
+        print("From Even:");
+        print(gift.v.num ++);
+    }
+    gift.v.cv.signal();
+}
+
+subr OddThrd(core)
+{
+    decl gift = core.acquire();
+    while( gift.v.num < 10 )
+    {
+        while( gift.v.num % 2 != 1 )
+        {
+            gift.v.cv.signal();
+            gift.v.cv.wait();
+        }
+        print("From Odd:");
+        print(gift.v.num ++);
+    }
+    gift.v.cv.signal();
+}

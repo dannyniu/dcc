@@ -14,6 +14,7 @@ cxing-stdlib-fpmath.c
 cxing-stdlib-struct.c
 cxing-stdlib-regex.c
 cxing-stdlib-proc.c
+cxing-stdlib-thrd.c
 mathemu-stubs.c
 langsem.c
 runtime.c
@@ -25,6 +26,7 @@ lalr-common/lalr.c
 langlex/langlex-cxing.c
 lex-common/lex.c
 lex-common/rope.c
+infra/ArcBase.c
 infra/s2bools.c
 infra/strvec.c
 infra/rfdict.c
