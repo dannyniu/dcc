@@ -7,6 +7,7 @@
 #include <SafeTypes2.h>
 
 #if _WIN32
+#include <windows.h>
 #else // Assume POSIX.
 #include <dlfcn.h>
 #endif // _WIN32
@@ -390,8 +391,14 @@ bool CxingRuntimeInit()
     }
 
 #if _WIN32
+    if( !(CxingInterpLoadedDyn = GetModuleHandle(NULL)) )
+    {
+        CxingFatal("Unable to open the handle to the global symbols table.\n");
+        ret = false;
+        goto builtin_dict_dealloc;
+    }
 #else // Assume POSIX.
-    if( !(CxingInterpLoadedDyn = dlopen(NULL, RTLD_GLOBAL)) )
+    if( !(CxingInterpLoadedDyn = dlopen(NULL, RTLD_NOW|RTLD_GLOBAL)) )
     {
         CxingFatal("Unable to open the handle to the global symbols table.\n");
         ret = false;

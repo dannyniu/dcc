@@ -1,5 +1,6 @@
 /* DannyNiu/NJF, 2026-01-14. Public Domain. */
 
+#include <stdbool.h>
 #include <windows.h>
 
 static void *VirtAlloc_Writable(size_t cnt, size_t sz)

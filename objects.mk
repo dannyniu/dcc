@@ -16,6 +16,7 @@ OBJ_CONTRIB_SAFETYPES2 = \
     contrib/SafeTypes2/src/siphash.o
 
 OBJ_SRC_MISC = \
+    src/infra/ArcBase.o \
     src/infra/kvtab.o \
     src/infra/rfdict.o \
     src/infra/s2bools.o \
@@ -43,6 +44,7 @@ OBJ_SRC_PGM_CXING = \
     src/pgm-cxing/cxing-stdlib-proc.o \
     src/pgm-cxing/cxing-stdlib-regex.o \
     src/pgm-cxing/cxing-stdlib-struct.o \
+    src/pgm-cxing/cxing-stdlib-thrd.o \
     src/pgm-cxing/expr-arith.o \
     src/pgm-cxing/expr-bits.o \
     src/pgm-cxing/expr-lex.o \
@@ -53,6 +55,7 @@ OBJ_SRC_PGM_CXING = \
     src/pgm-cxing/runtime-dict.o \
     src/pgm-cxing/runtime-str.o \
     src/pgm-cxing/runtime-tracing.o \
+    src/pgm-cxing/runtime-typeobjs.o \
     src/pgm-cxing/runtime.o \
     src/pgm-cxing/cxing.o
 

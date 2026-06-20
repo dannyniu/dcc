@@ -4,11 +4,26 @@ optimize=optimize
 testfunc()
 {
     echo Building Stub DLL.
-    ${CC:-$target_cc} -c $cflags_common ../src/pgm-cxing/dll-stub.c
-    if [ X"$sysname" = XDarwin ]
-    then cc -o dll-stub.so -Xlinker -dylib dll-stub.o runtime-typeobjs.o
-    else cc -o dll-stub.so -Xlinker -shared dll-stub.o runtime-typeobjs.o
-    fi
+    ${CC:-$target_cc} -c $cflags_proj -fPIC ../src/pgm-cxing/dll-stub.c
+    
+    case "$(uname -s)" in
+        Darwin)
+            cc -o dll-stub.so -Xlinker -dylib dll-stub.o runtime-typeobjs.o
+            ;;
+        
+        Linux)
+            ${LD:-$target_ld} -o dll-stub.so -shared -s dll-stub.o runtime-typeobjs.o
+            ;;
+
+        CYGWIN_NT-*|MINGW*_NT-*)
+            cc -o dll-stub.so -mdll dll-stub.o runtime-typeobjs.o
+            ;;
+
+        *)
+            echo Unrecognized operating system, not sure how to build DLL.
+            return 1
+            ;;
+    esac
 
     echo Test Start.
     #lldb \

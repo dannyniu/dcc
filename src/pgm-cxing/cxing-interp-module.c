@@ -18,6 +18,7 @@
 #include "../pathutils/pathutils.h"
 
 #if _WIN32
+#include <windows.h>
 #else // Assume POSIX.
 #include <dlfcn.h>
 #endif // _WIN32
@@ -54,6 +55,7 @@ static void cxing_module_final(cxing_module_t *module)
         for(t=1; t<*module->dll_handles; t++)
         {
 #if _WIN32
+            FreeLibrary((HANDLE)module->dll_handles[t]);
 #else // Assume POSIX.
             dlclose((void *)module->dll_handles[t]);
 #endif // _WIN32
@@ -478,9 +480,12 @@ static bool ProcessTU(
             }
 
 #if _WIN32
-#else // Assume POSIX.
+            module->dll_handles[*module->dll_handles] =
+                (intptr_t)LoadLibrary(file);
+#else // Assume  POSIX.
             module->dll_handles[*module->dll_handles] =
                 (intptr_t)dlopen(file, RTLD_NOW|RTLD_GLOBAL);
+#endif // _WIN32
             if( !module->dll_handles[*module->dll_handles] )
             {
                 CxingFatal("[ProcessTU]: Unable to open "
@@ -488,14 +493,9 @@ static bool ProcessTU(
                 ret = cont = false;
                 continue;
             }
-#endif // _WIN32
         }
 
         else assert( 0 );
-
-        // 2026-03-01 TODO:
-        // '_Include' (done 2026-03-08) and
-        // '_Load' (yet todo 2026-03-08).
     }
 
     s2obj_release(tu->pobj);
@@ -829,7 +829,17 @@ void *CXSym(cxing_module_t *restrict module, const char *restrict sym)
         }
     }
 
+#if _WIN32
+    ret = GetProcAddress(CxingInterpLoadedDyn, sym);
+#else // Assume POSIX.
     ret = dlsym(CxingInterpLoadedDyn, sym);
+#endif // _WIN32
+
+    for(t=1; t<=(size_t)*module->dll_handles; t++)
+    {
+        if( ret ) break;
+        ret = GetProcAddress((HANDLE)module->dll_handles[t], sym);
+    }
 
     if( !ret )
     {

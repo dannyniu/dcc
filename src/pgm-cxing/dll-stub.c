@@ -2,6 +2,10 @@
 
 #include "runtime.h"
 
+#if _WIN32
+__declspec(dllexport)
+#endif // _WIN32
+
 struct value_nativeobj CxingSoLoadTestMe(
     int argn, struct value_nativeobj args[])
 {
