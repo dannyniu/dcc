@@ -136,6 +136,9 @@ typedef struct TYPE_NATIVEOBJ_STRUCT(14) type_nativeobj_struct_p13;
 typedef struct TYPE_NATIVEOBJ_STRUCT(15) type_nativeobj_struct_p14;
 typedef struct TYPE_NATIVEOBJ_STRUCT(16) type_nativeobj_struct_p15;
 
+// Add only on demand.
+typedef struct TYPE_NATIVEOBJ_STRUCT(21) type_nativeobj_struct_p20;
+
 // The "Morgoth" null.
 extern const type_nativeobj_struct_p0 type_nativeobj_morgoth;
 

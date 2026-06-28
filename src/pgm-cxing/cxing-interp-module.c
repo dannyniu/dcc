@@ -831,15 +831,15 @@ void *CXSym(cxing_module_t *restrict module, const char *restrict sym)
 
 #if _WIN32
     ret = GetProcAddress(CxingInterpLoadedDyn, sym);
-#else // Assume POSIX.
-    ret = dlsym(CxingInterpLoadedDyn, sym);
-#endif // _WIN32
 
     for(t=1; t<=(size_t)*module->dll_handles; t++)
     {
         if( ret ) break;
         ret = GetProcAddress((HANDLE)module->dll_handles[t], sym);
     }
+#else // Assume POSIX.
+    ret = dlsym(CxingInterpLoadedDyn, sym);
+#endif // _WIN32
 
     if( !ret )
     {

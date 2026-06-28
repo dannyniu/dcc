@@ -27,12 +27,18 @@ extern const type_nativeobj_struct_p4 type_nativeobj_Gift;
 extern const type_nativeobj_struct_p5 type_nativeobj_CondVar;
 extern const type_nativeobj_struct_p5 type_nativeobj_ThrdHndl;
 
+extern const type_nativeobj_struct_p20 type_nativeobj_Socket;
+extern const type_nativeobj_struct_p5 type_nativeobj_SockAddr;
+extern const type_nativeobj_struct_p5 type_nativeobj_SockLinger;
+extern const type_nativeobj_struct_p5 type_nativeobj_IPv6MReq;
+
 extern cxing_builtin_def_t CxingStdlibStructBuiltins[];
 extern cxing_builtin_def_t CxingStdlibIoBuiltins[];
 extern cxing_builtin_def_t CxingStdlibMathBuiltins[];
 extern cxing_builtin_def_t CxingStdlibRegexBuiltins[];
 extern cxing_builtin_def_t CxingStdlibProcBuiltins[];
 extern cxing_builtin_def_t CxingStdlibThrdBuiltins[];
+extern cxing_builtin_def_t CxingStdlibSocketsBuiltins[];
 int CxingInitialization_DefineStandardLibrary();
 
 // Error Number Name Space.

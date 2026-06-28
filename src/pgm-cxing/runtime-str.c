@@ -146,14 +146,36 @@ struct value_nativeobj CxingImpl_s2Data_CmpWith(
 struct value_nativeobj CxingImpl_s2Data_Equals(
     int argn, struct value_nativeobj args[])
 {
+    size_t t;
+    uint8_t d = 0, *a, *b;
     AssertArgN(2);
     AssertArgImpl(0, s2impl_str, "string");
     AssertArgImpl(1, s2impl_str, "string");
 
     // TODO (2026-03-12).
-    CxingFatal("The `equals` method for strings had not been _correctly_ implemented yet\n");
+    //CxingFatal("The `equals` method for strings had not been _correctly_ implemented yet\n");
+
+    if( (t = s2data_len(args[0].proper.p)) != s2data_len(args[1].proper.p) )
+    {
+        return (struct value_nativeobj){
+            .proper.l = false,
+            .type = (const void *)&type_nativeobj_long };
+    }
+
+    a = s2data_weakmap(args[0].proper.p);
+    b = s2data_weakmap(args[1].proper.p);
+
+    while( t --> 0 )
+    {
+        d |= a[t] ^ b[t];
+    }
+
+    d |= d >> 4;
+    d |= d >> 2;
+    d |= d >> 1;
+    d = (d ^ 1) & 1;
 
     return (struct value_nativeobj){
-        .proper.l = s2data_cmp(args[0].proper.p, args[1].proper.p) == 0,
+        .proper.l = d,
         .type = (const void *)&type_nativeobj_long };
 }

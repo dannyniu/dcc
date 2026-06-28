@@ -1,0 +1,29 @@
+subr main()
+{
+    decl ee;
+    decl srv = socket(AF_INET, SOCK_STREAM, 0);
+    srv.bind(sockaddr() { "sa_family": AF_INET, "sin_port": 8080, });
+    srv.listen(0);
+    print(srv.getconfig("SOL_SOCKET/SO_ACCEPTCONN"));
+    decl conn = srv.accept();
+    print(conn.getconfig("peername")["sin_addr.s_addr"]);
+
+    // 2026-06-28
+    // This is an edge case in automatic resource management.
+    // It's left as an wont-fix for the moment.
+    ## conn.getconfig("sockname")["sin_addr"];
+
+    print(conn.getconfig("SOL_SOCKET/SO_RCVBUF"));
+    print(conn.getconfig("SOL_SOCKET/SO_SNDBUF"));
+
+    while( true )
+    {
+        decl httpline = conn.getline();
+        if( httpline == "" || httpline == "\n" || httpline == "\r\n" )
+        {
+            conn.write("HTTP/1.1 200 Ok\nConnection: close\n\n");
+            conn.write("<h1>Hello World!</h1>\n");
+            break;
+        }
+    }
+}

@@ -15,6 +15,9 @@ cxing-stdlib-struct.c
 cxing-stdlib-regex.c
 cxing-stdlib-proc.c
 cxing-stdlib-thrd.c
+cxing-stdsocks.c
+cxing-stdsocks-sockaddr.c
+cxing-stdsocks-dsfa-misc.c
 mathemu-stubs.c
 langsem.c
 runtime.c

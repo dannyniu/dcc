@@ -11,6 +11,7 @@ int CxingInitialization_DefineStandardLibrary()
         CxingStdlibRegexBuiltins,
         CxingStdlibProcBuiltins,
         CxingStdlibThrdBuiltins,
+        CxingStdlibSocketsBuiltins,
         NULL,
     };
     int i, j;

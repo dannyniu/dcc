@@ -644,7 +644,7 @@ if( theRule == bitor_bitor || //>RULEIMPL<//
     }
     else if( instruction->operand_index == 2 )
     {
-        ClearLValue();
+        DemoteLValue(); // Changed from `ClearLValue` on 2026-06-27.
 
         // Actually, this is to save the first operand
         // in `ax` for subsequent evaluation.
@@ -656,7 +656,7 @@ if( theRule == bitor_bitor || //>RULEIMPL<//
     else if( instruction->operand_index ==
              instruction->node_body->terms_count )
     {
-        ClearLValue();
+        DemoteLValue(); // Changed from `ClearLValue` on 2026-06-27.
         if( evalmode == cxing_func_eval_mode_execute )
         {
             struct value_nativeobj newval;
@@ -724,6 +724,8 @@ if( theRule == bitor_bitor || //>RULEIMPL<//
             if( theRule == mulexpr_remainder )
                 newval = ArithModExpr(instruction->ax, valreg);
 
+            ValueDestroy(instruction->ax); // Added 2026-06-27.
+            ValueDestroy(valreg); // Added 2026-06-27.
             PassResultBack(newval);
         }
     }
