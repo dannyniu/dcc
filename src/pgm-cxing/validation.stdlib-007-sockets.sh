@@ -6,8 +6,10 @@ testfunc()
 {
     delay() { { sleep 5 ; "$@" ; } & }
     echo Test Start.
-    delay curl http://localhost:8080
-    $exec ../tests/cxing-stdlib/sockets-01.cxing
+    $exec ../tests/cxing-stdlib/sockets-03.cxing ; return
+        $exec ../tests/cxing-stdlib/sockets-02.cxing &&
+        { delay curl http://localhost:8080
+          $exec ../tests/cxing-stdlib/sockets-01.cxing ; }
 }
 
 cd "$(dirname "$0")"

@@ -49,20 +49,22 @@ struct value_nativeobj CxingImpl_SockAddr_Get(
     int argn, struct value_nativeobj args[])
 {
     struct sockaddr *backing;
+    const char *key;
 
     AssertArgN(2);
     AssertArgImpl(0, SockAddr, "socket address");
     AssertArgImpl(1, s2impl_str, "string");
 
     backing = s2data_weakmap(args[0].proper.p);
+    key = s2data_weakmap(args[1].proper.p);
 
     if( backing->sa_family == AF_INET )
-        return SockAddr_IPv4_GetImpl0(argn, args);
+        return SockAddr_IPv4_GetImpl0(backing, key);
 
     if( backing->sa_family == AF_INET6 )
-        return SockAddr_IPv6_GetImpl0(argn, args);
+        return SockAddr_IPv6_GetImpl0(backing, key);
 
-    return SockAddr_GetImpl0(argn, args);
+    return SockAddr_GetImpl0(backing, key);
 }
 
 struct value_nativeobj CxingImpl_SockAddr_Set(

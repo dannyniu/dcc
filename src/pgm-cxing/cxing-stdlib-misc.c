@@ -106,5 +106,5 @@ int64_t CXEnsCookie(const char *str)
         s = (s << 8) ^ crctab[(s >> 24) ^ c];
     }
 
-    return ~s;
+    return ((int64_t)~s) << 32;
 }

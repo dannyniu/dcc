@@ -32,6 +32,12 @@ extern const type_nativeobj_struct_p5 type_nativeobj_SockAddr;
 extern const type_nativeobj_struct_p5 type_nativeobj_SockLinger;
 extern const type_nativeobj_struct_p5 type_nativeobj_IPv6MReq;
 
+extern const type_nativeobj_struct_p3 type_nativeobj_AddrInfos;
+extern const type_nativeobj_struct_p3 type_nativeobj_Addr1Info;
+extern const type_nativeobj_struct_p3 type_nativeobj_SockAddrRO;
+extern const type_nativeobj_struct_p3 type_nativeobj_NameInfo;
+
+
 extern cxing_builtin_def_t CxingStdlibStructBuiltins[];
 extern cxing_builtin_def_t CxingStdlibIoBuiltins[];
 extern cxing_builtin_def_t CxingStdlibMathBuiltins[];

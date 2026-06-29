@@ -47,15 +47,8 @@
     }
 
 struct value_nativeobj DSFA_GetImpl0(
-    int argn, struct value_nativeobj args[])
+    const void *backing, const char *key)
 {
-    // The underlying backing is an `s2data_t`.
-    const void *backing = s2data_weakmap(args[0].proper.p);
-    const char *key = s2data_weakmap(args[1].proper.p);
-
-    // 2026-06-23 (tentative): Assertions on arguments by caller.
-    (void)argn;
-
 #include DSFA_Xmacros_Defs
 
     CxingDebug("Unrecognized structure field: %s.\n", key);

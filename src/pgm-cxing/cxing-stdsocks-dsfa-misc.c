@@ -39,10 +39,14 @@ CxingMethodValueWithImpl(IPv6MReq, Final);
     struct value_nativeobj CxingImpl_##typeabbrev##_Get(                \
         int argn, struct value_nativeobj args[])                        \
     {                                                                   \
+        const void *backing;                                            \
+        const char *key;                                                \
         AssertArgN(2);                                                  \
         AssertArgImpl(0, typeabbrev, typename);                         \
         AssertArgImpl(1, s2impl_str, "string");                         \
-        return typeabbrev##_GetImpl0(argn, args);                       \
+        backing = s2data_weakmap(args[0].proper.p);                     \
+        key = s2data_weakmap(args[1].proper.p);                         \
+        return typeabbrev##_GetImpl0(backing, key);                     \
     }                                                                   \
                                                                         \
     struct value_nativeobj CxingImpl_##typeabbrev##_Set(                \

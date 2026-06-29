@@ -8,7 +8,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-static socklen_t SockAddrLen(struct sockaddr *backing)
+socklen_t SockAddrLen(struct sockaddr *backing)
 {
     switch( backing->sa_family )
     {
@@ -1088,6 +1088,12 @@ struct value_nativeobj CxingImpl_Socket_SetConfig(
         .type = (const void *)&type_nativeobj_morgoth };
 }
 
+struct value_nativeobj CxingSockets_GetAddrInfo(
+    int argn, struct value_nativeobj args[]);
+
+struct value_nativeobj CxingSockets_GetNameInfo(
+    int argn, struct value_nativeobj args[]);
+
 cxing_builtin_def_t CxingStdlibSocketsBuiltins[] = {
     { "socket", (struct value_nativeobj){
             .proper.p = CxingImpl_Socket_Create,
@@ -1110,6 +1116,14 @@ cxing_builtin_def_t CxingStdlibSocketsBuiltins[] = {
             .proper.l = id ,                                    \
             .type = (const void *)&type_nativeobj_long } },
 #include "cxing-stdsocks-iconsts.inc"
+
+    { "getaddrinfo", (struct value_nativeobj){
+            .proper.p = CxingSockets_GetAddrInfo,
+            .type = (const void *)&type_nativeobj_subr } },
+
+    { "getnameinfo", (struct value_nativeobj){
+            .proper.p = CxingSockets_GetNameInfo,
+            .type = (const void *)&type_nativeobj_subr } },
 
     { 0 },
 };

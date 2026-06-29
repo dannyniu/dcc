@@ -17,7 +17,9 @@ cxing-stdlib-proc.c
 cxing-stdlib-thrd.c
 cxing-stdsocks.c
 cxing-stdsocks-sockaddr.c
+cxing-stdsocks-netdb.c
 cxing-stdsocks-dsfa-misc.c
+bsfa.c
 mathemu-stubs.c
 langsem.c
 runtime.c

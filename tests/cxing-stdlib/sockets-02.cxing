@@ -1,0 +1,15 @@
+subr main()
+{
+    decl aai = getaddrinfo("cloudflare.com", "80", AF_INET, SOCK_STREAM, 0, 0);
+    decl ai = aai.get(0);
+    print(ai.get("addr")["sin_addr.s_addr"]);
+    print(ai.get("addr")["sin_port"]);
+    print(ai.get("cname"));
+
+    decl conn = socket(ai.get("family"), ai.get("socktype"), ai.get("protocol"));
+    decl ee = conn.connect(ai.get("addr"));
+    ee ?? print(_Uncast(ee));
+
+    ee = conn.write("GET / HTTP/1.1\r\n\r\n") _Fallback print(_Uncast(ee));
+    print(conn.read(8192));
+}
