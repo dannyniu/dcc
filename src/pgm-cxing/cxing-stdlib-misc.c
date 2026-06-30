@@ -1,10 +1,31 @@
 /* DannyNiu/NJF, 2026-05-08. Public Domain. */
 
 #include "cxing-stdlib.h"
+#include <time.h>
+
+struct value_nativeobj CxingStdlibFunc_Time(
+    int argn, struct value_nativeobj args[])
+{
+    (void)argn;
+    (void)args;
+
+    return (struct value_nativeobj){
+        .proper.l = time(NULL),
+        .type = (const void *)&type_nativeobj_long };
+}
+
+cxing_builtin_def_t CxingStdlibMiscBuiltins[] = {
+    { "time", (struct value_nativeobj){
+            .proper.p = CxingStdlibFunc_Time,
+            .type = (const void *)&type_nativeobj_subr } },
+
+    {}
+};
 
 int CxingInitialization_DefineStandardLibrary()
 {
     cxing_builtin_def_t *CxingStandardLibraries[] = {
+        CxingStdlibMiscBuiltins,
         CxingStdlibStructBuiltins,
         CxingStdlibIoBuiltins,
         CxingStdlibMathBuiltins,

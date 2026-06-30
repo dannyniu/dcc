@@ -1,0 +1,12 @@
+subr main()
+{
+    decl srv = socket(AF_INET, SOCK_STREAM, 0);
+    srv.bind(sockaddr() { "sa_family": AF_INET, "sin_port": 8080, });
+    srv.listen(0);
+
+    decl ps = pollset(1) { srv: POLLIN };
+    print(time());
+    print(ps.poll(12000));
+    print(time());
+    print(ps.revents(0));
+}

@@ -3,9 +3,27 @@
 #include "cxing-stdlib.h"
 #include "bsfa.h"
 #include "../infra/kvtab.h"
-#include <netdb.h>
 
-socklen_t SockAddrLen(struct sockaddr *backing);
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2def.h>
+#include <ws2ipdef.h>
+#include <ws2tcpip.h>
+#include <windows.h>
+typedef int PLATFORM_INT;
+typedef int PLATFORM_BOOL;
+typedef int32_t PLATFORM_SOCKLEN;
+typedef struct timeval PLATFORM_TIMEVAL;
+#else // Assume POSIX.
+#include <netdb.h>
+typedef int PLATFORM_INT;
+typedef int PLATFORM_BOOL;
+typedef socklen_t PLATFORM_SOCKLEN;
+typedef struct timeval PLATFORM_TIMEVAL;
+#endif // _WIN32
+
+
+PLATFORM_SOCKLEN SockAddrLen(struct sockaddr *backing);
 
 CxingMethodValueWithImpl(AddrInfos, Get);
 CxingMethodValueWithImpl(AddrInfos, Copy);
@@ -212,7 +230,14 @@ const type_nativeobj_struct_p3 type_nativeobj_Addr1Info = {
 };
 
 #ifdef _WIN32
-#error TODO: Define `CxAddrInfoErr()` function-like macro..
+//#error TODO: Define `CxAddrInfoErr()` function-like macro..
+
+extern int64_t CxSockErr();
+int64_t CxAddrInfoErr(int64_t EAI)
+{
+    (void)EAI;
+    return CxSockErr();
+}
 
 #else // Assume POSIX.
 int64_t CxAddrInfoErr(int64_t EAI)
@@ -349,7 +374,6 @@ struct value_nativeobj CxingSockets_GetNameInfo(
             .proper.p = ret,
             .type = (const void *)&type_nativeobj_NameInfo };
     }
-    printf("xx %x xx\n", subret);
     s2obj_leave(ret->pobj);
 
     return (struct value_nativeobj){

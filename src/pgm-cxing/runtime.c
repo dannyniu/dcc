@@ -293,6 +293,9 @@ bool CxingRuntimeInit()
     uint8_t seed[16] = {0};
     bool ret = true;
     int i;
+#ifdef _WIN32
+    WSADATA wsaData;
+#endif // _WIN32
 
     //
     // Initialize seed for SipHash.
@@ -397,6 +400,12 @@ bool CxingRuntimeInit()
         ret = false;
         goto builtin_dict_dealloc;
     }
+    if( 0 != (i = WSAStartup(MAKEWORD(2,2), &wsaData)) )
+    {
+        CxingWarning("Unable to initialize network stack! "
+                     "If the application uses networking, it could fail.\n"
+                     "The return value of `WSAStartup` was: %d.\n", i);
+    }
 #else // Assume POSIX.
     if( !(CxingInterpLoadedDyn = dlopen(NULL, RTLD_NOW|RTLD_GLOBAL)) )
     {
@@ -428,6 +437,10 @@ strings_dealloc:
 void CxingRuntimeFinal()
 {
     int i;
+
+#ifdef _WIN32
+    WSACleanup();
+#endif // _WIN32
 
     if( CxingBuiltins )
     {

@@ -1,6 +1,7 @@
 subr main()
 {
-    decl aai = getaddrinfo("cloudflare.com", "80", 0, 0, 0, 0);
+    decl aai = getaddrinfo("cloudflare.com", "80", 0, 0, 0, AI_NUMERICSERV);
+    print(aai);
     decl ai = aai.get(0);
     decl sa = ai.get("addr");
     decl ni = getnameinfo(sa, 0);

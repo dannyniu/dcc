@@ -36,7 +36,7 @@ extern const type_nativeobj_struct_p3 type_nativeobj_AddrInfos;
 extern const type_nativeobj_struct_p3 type_nativeobj_Addr1Info;
 extern const type_nativeobj_struct_p3 type_nativeobj_SockAddrRO;
 extern const type_nativeobj_struct_p3 type_nativeobj_NameInfo;
-
+extern const type_nativeobj_struct_p5 type_nativeobj_PollSet;
 
 extern cxing_builtin_def_t CxingStdlibStructBuiltins[];
 extern cxing_builtin_def_t CxingStdlibIoBuiltins[];

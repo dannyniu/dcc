@@ -1,14 +1,30 @@
 /* DannyNiu/NJF, 2026-06-22. Public Domain. */
 
 #include "cxing-stdlib.h"
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2def.h>
+#include <ws2ipdef.h>
+#include <ws2tcpip.h>
+#include <windows.h>
+typedef int PLATFORM_INT;
+typedef int PLATFORM_BOOL;
+typedef int32_t PLATFORM_SOCKLEN;
+typedef struct timeval PLATFORM_TIMEVAL;
+#else // Assume POSIX.
 #include <fcntl.h>
 #include <netdb.h>
 #include <netinet/tcp.h>
 #include <poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
+typedef int PLATFORM_INT;
+typedef int PLATFORM_BOOL;
+typedef socklen_t PLATFORM_SOCKLEN;
+typedef struct timeval PLATFORM_TIMEVAL;
+#endif // _WIN32
 
-socklen_t SockAddrLen(struct sockaddr *backing)
+PLATFORM_SOCKLEN SockAddrLen(struct sockaddr *backing)
 {
     switch( backing->sa_family )
     {
@@ -50,10 +66,58 @@ CxingMethodValueWithImpl(Socket, SetConfig);
 
 #ifdef _WIN32
 
-#error TODO: Define `CxSockErr()` function-like macro..
+//#error TODO: Define `CxSockErr()` function-like macro..
+
+#define CxMapWsaErr(ident) case WSAE##ident: ret = E##ident; break;
+
+int64_t CxSockErr()
+{
+    int64_t ret = CXErrNS(WSAGetLastError, ());
+    switch( ret & 0xffffffff )
+    {
+        CxMapWsaErr(INTR)
+        CxMapWsaErr(BADF)
+        CxMapWsaErr(ACCES)
+        CxMapWsaErr(FAULT)
+        CxMapWsaErr(INVAL)
+        CxMapWsaErr(MFILE)
+        CxMapWsaErr(WOULDBLOCK)
+        CxMapWsaErr(INPROGRESS)
+        CxMapWsaErr(ALREADY)
+        CxMapWsaErr(NOTSOCK)
+        CxMapWsaErr(DESTADDRREQ)
+        CxMapWsaErr(MSGSIZE)
+        CxMapWsaErr(PROTOTYPE)
+        CxMapWsaErr(NOPROTOOPT)
+        CxMapWsaErr(PROTONOSUPPORT)
+        CxMapWsaErr(OPNOTSUPP)
+        CxMapWsaErr(AFNOSUPPORT)
+        CxMapWsaErr(ADDRINUSE)
+        CxMapWsaErr(ADDRNOTAVAIL)
+        CxMapWsaErr(NETDOWN)
+        CxMapWsaErr(NETUNREACH)
+        CxMapWsaErr(NETRESET)
+        CxMapWsaErr(CONNABORTED)
+        CxMapWsaErr(CONNRESET)
+        CxMapWsaErr(NOBUFS)
+        CxMapWsaErr(ISCONN)
+        CxMapWsaErr(NOTCONN)
+        CxMapWsaErr(TIMEDOUT)
+        CxMapWsaErr(CONNREFUSED)
+        CxMapWsaErr(LOOP)
+        CxMapWsaErr(NAMETOOLONG)
+        CxMapWsaErr(HOSTUNREACH)
+        CxMapWsaErr(NOTEMPTY)
+
+    default:
+        break;
+    }
+    return ret;
+}
+
 static void CxingImpl_Socket_Close0(void *socket)
 {
-    closesocket(socket);
+    closesocket((intptr_t)socket);
 }
 
 #else // Assume POSIX.
@@ -88,7 +152,7 @@ struct value_nativeobj CxingImpl_Socket_Read(
     ret = s2data_create((size_t)args[1].proper.u);
     if( !ret )
         return (struct value_nativeobj){
-            .proper.l = CxSockErr(),
+            .proper.l = errno,
             .type = (const void *)&type_nativeobj_null };
 
     s2obj_keep(ret->pobj);
@@ -131,7 +195,7 @@ struct value_nativeobj CxingImpl_Socket_GetDelim(
     ret = s2data_create(0);
     if( !ret )
         return (struct value_nativeobj){
-            .proper.l = CxSockErr(),
+            .proper.l = errno,
             .type = (const void *)&type_nativeobj_null };
 
     s2obj_keep(ret->pobj);
@@ -182,7 +246,7 @@ struct value_nativeobj CxingImpl_Socket_GetDelim(
         {
             if( 0 != s2data_putfin(ret) )
             {
-                c = CxSockErr();
+                c = errno;
                 s2obj_leave(ret->pobj);
                 return (struct value_nativeobj){
                     .proper.l = c,
@@ -199,7 +263,7 @@ struct value_nativeobj CxingImpl_Socket_GetDelim(
         {
             if( 0 != s2data_puts(ret, buf, sret) )
             {
-                c = CxSockErr();
+                c = errno;
                 s2obj_leave(ret->pobj);
                 return (struct value_nativeobj){
                     .proper.l = c,
@@ -220,7 +284,7 @@ struct value_nativeobj CxingImpl_Socket_GetDelim(
                 0 != s2data_putfin(ret) )
             {
                 // the string rotted,
-                c = CxSockErr();
+                c = errno;
                 s2obj_leave(ret->pobj);
                 return (struct value_nativeobj){
                     .proper.l = c,
@@ -339,7 +403,7 @@ struct value_nativeobj CxingImpl_Socket_SetSync(
     fd = SocketThis;
     sn = !ValueNativeObj2Logic(args[1]);
 
-    if( setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &sn, sizeof sn) == 0 )
+    if( setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (void *)&sn, sizeof sn) == 0 )
     {
         return (struct value_nativeobj){
             .proper.l = 0,
@@ -418,7 +482,7 @@ struct value_nativeobj CxingImpl_Socket_Recv(
     ret = s2data_create((size_t)args[1].proper.u);
     if( !ret )
         return (struct value_nativeobj){
-            .proper.l = CxSockErr(),
+            .proper.l = errno,
             .type = (const void *)&type_nativeobj_null };
 
     s2obj_keep(ret->pobj);
@@ -491,7 +555,7 @@ struct value_nativeobj CxingImpl_Socket_RecvFrom(
 {
     s2data_t *ret;
     s2data_t *peer;
-    socklen_t salen;
+    PLATFORM_SOCKLEN salen;
     ssize_t sret;
     AssertArgN(4);
     AssertArgImpl(0, Socket, "socket");
@@ -518,7 +582,7 @@ struct value_nativeobj CxingImpl_Socket_RecvFrom(
     ret = s2data_create((size_t)args[1].proper.u);
     if( !ret )
         return (struct value_nativeobj){
-            .proper.l = CxSockErr(),
+            .proper.l = errno,
             .type = (const void *)&type_nativeobj_null };
 
     s2obj_keep(ret->pobj);
@@ -681,7 +745,7 @@ struct value_nativeobj CxingImpl_Socket_Accept(
 {
     s2ref_t *RefCntSocket;
     s2data_t *sa = NULL;
-    socklen_t sz = 0;
+    PLATFORM_SOCKLEN sz = 0;
     void *backing = NULL;
     int oobinline = true;
     AssertArgN(1);
@@ -690,7 +754,7 @@ struct value_nativeobj CxingImpl_Socket_Accept(
     if( !(RefCntSocket = s2ref_create(NULL, NULL)) )
     {
         return (struct value_nativeobj){
-            .proper.l = CxSockErr(),
+            .proper.l = errno,
             .type = (const void *)&type_nativeobj_null };
     }
 
@@ -706,7 +770,7 @@ struct value_nativeobj CxingImpl_Socket_Accept(
         SocketThis, backing, sa ? &sz : NULL);
 
 #ifdef _WIN32
-    if( RefCntSocket->ptr == INVALID_SOCKET )
+    if( RefCntSocket->ptr == (void *)INVALID_SOCKET )
     {
         return (struct value_nativeobj){
             .proper.l = CxSockErr(),
@@ -723,7 +787,7 @@ struct value_nativeobj CxingImpl_Socket_Accept(
 
     setsockopt((intptr_t)RefCntSocket->ptr,
                SOL_SOCKET, SO_OOBINLINE,
-               &oobinline, sizeof(oobinline));
+               (void *)&oobinline, sizeof(oobinline));
 
     RefCntSocket->finalizer = (s2ref_final_func_t)CxingImpl_Socket_Close0;
     return (struct value_nativeobj){
@@ -768,7 +832,7 @@ struct value_nativeobj CxingImpl_Socket_Create(
     if( !(RefCntSocket = s2ref_create(NULL, NULL)) )
     {
         return (struct value_nativeobj){
-            .proper.l = CxSockErr(),
+            .proper.l = errno,
             .type = (const void *)&type_nativeobj_null };
     }
 
@@ -778,7 +842,7 @@ struct value_nativeobj CxingImpl_Socket_Create(
         args[2].proper.l);
 
 #ifdef _WIN32
-    if( RefCntSocket->ptr == INVALID_SOCKET )
+    if( RefCntSocket->ptr == (void *)INVALID_SOCKET )
     {
         return (struct value_nativeobj){
             .proper.l = CxSockErr(),
@@ -795,7 +859,7 @@ struct value_nativeobj CxingImpl_Socket_Create(
 
     setsockopt((intptr_t)RefCntSocket->ptr,
                SOL_SOCKET, SO_OOBINLINE,
-               &oobinline, sizeof(oobinline));
+               (void *)&oobinline, sizeof(oobinline));
 
     RefCntSocket->finalizer = (s2ref_final_func_t)CxingImpl_Socket_Close0;
     return (struct value_nativeobj){
@@ -866,15 +930,6 @@ struct value_nativeobj CxingSockets_SockLinger(
 struct value_nativeobj CxingSockets_IPv6MReq(
     int argn, struct value_nativeobj args[]);
 
-#ifdef _WIN32
-#error TODO: Implement Me!
-#else // Assume POSIX.
-typedef int PLATFORM_INT;
-typedef int PLATFORM_BOOL;
-typedef socklen_t PLATFORM_SOCKLEN;
-typedef struct timeval PLATFORM_TIMEVAL;
-#endif // _WIN32
-
 struct value_nativeobj CxingImpl_Socket_GetConfig(
     int argn, struct value_nativeobj args[])
 {
@@ -893,7 +948,7 @@ struct value_nativeobj CxingImpl_Socket_GetConfig(
     {                                                           \
         PLATFORM_INT v;                                         \
         PLATFORM_SOCKLEN sz = sizeof v;                         \
-        getsockopt(SocketThis, level, opt, &v, &sz);            \
+        getsockopt(SocketThis, level, opt, (void *)&v, &sz);    \
         return (struct value_nativeobj){                        \
             .proper.l = v,                                      \
             .type = (const void *)&type_nativeobj_long };       \
@@ -904,7 +959,7 @@ struct value_nativeobj CxingImpl_Socket_GetConfig(
     {                                                           \
         PLATFORM_BOOL v = 19700101;                             \
         PLATFORM_SOCKLEN sz = sizeof v;                         \
-        getsockopt(SocketThis, level, opt, &v, &sz);            \
+        getsockopt(SocketThis, level, opt, (void *)&v, &sz);    \
         return (struct value_nativeobj){                        \
             .proper.l = v,                                      \
             .type = (const void *)&type_nativeobj_long };       \
@@ -916,7 +971,7 @@ struct value_nativeobj CxingImpl_Socket_GetConfig(
         PLATFORM_TIMEVAL ov;                                    \
         PLATFORM_SOCKLEN sz = sizeof ov;                        \
         double v;                                               \
-        getsockopt(SocketThis, level, opt, &ov, &sz);           \
+        getsockopt(SocketThis, level, opt, (void *)&ov, &sz);   \
         v = ov.tv_sec + ov.tv_usec * 0.000001;                  \
         return (struct value_nativeobj){                        \
             .proper.f = v,                                      \
@@ -935,7 +990,7 @@ struct value_nativeobj CxingImpl_Socket_GetConfig(
         backing = s2data_weakmap(valobj.proper.p);              \
         getsockopt(SocketThis, level, opt, backing, &sz);       \
         return valobj;                                          \
-}
+    }
 
 #include "cxing-stdsocks-options.inc"
 #undef X_SockOpt_Int
@@ -948,7 +1003,7 @@ struct value_nativeobj CxingImpl_Socket_GetConfig(
     {
         struct value_nativeobj valobj;
         void *backing;
-        socklen_t sz;
+        PLATFORM_SOCKLEN sz;
         valobj = CxingSockets_SockAddr(0, NULL);
         if( IsNull(valobj) ) return valobj;
         sz = sizeof(struct sockaddr_storage);
@@ -961,7 +1016,7 @@ struct value_nativeobj CxingImpl_Socket_GetConfig(
     {
         struct value_nativeobj valobj;
         void *backing;
-        socklen_t sz;
+        PLATFORM_SOCKLEN sz;
         valobj = CxingSockets_SockAddr(0, NULL);
         if( IsNull(valobj) ) return valobj;
         sz = sizeof(struct sockaddr_storage);
@@ -1003,7 +1058,7 @@ struct value_nativeobj CxingImpl_Socket_SetConfig(
                 .type = (const void *)&type_nativeobj_morgoth };        \
         }                                                               \
         v = args[2].proper.l;                                           \
-        setsockopt(SocketThis, level, opt, &v, sz);                     \
+        setsockopt(SocketThis, level, opt, (void *)&v, sz);             \
         return (struct value_nativeobj){                                \
             .proper.l = v,                                              \
             .type = (const void *)&type_nativeobj_long };               \
@@ -1023,7 +1078,7 @@ struct value_nativeobj CxingImpl_Socket_SetConfig(
                 .type = (const void *)&type_nativeobj_morgoth };        \
         }                                                               \
         v = args[2].proper.l != 0;                                      \
-        setsockopt(SocketThis, level, opt, &v, sz);                     \
+        setsockopt(SocketThis, level, opt, (void *)&v, sz);             \
         return (struct value_nativeobj){                                \
             .proper.l = v,                                              \
             .type = (const void *)&type_nativeobj_long };               \
@@ -1058,7 +1113,7 @@ struct value_nativeobj CxingImpl_Socket_SetConfig(
         ov.tv_sec = v;                                                  \
         ov.tv_usec = v * 1000000;                                       \
         ov.tv_usec %= 1000000;                                          \
-        setsockopt(SocketThis, level, opt, &ov, sz);                    \
+        setsockopt(SocketThis, level, opt, (void *)&ov, sz);            \
         return (struct value_nativeobj){                                \
             .proper.f = v,                                              \
             .type = (const void *)&type_nativeobj_double };             \
@@ -1094,6 +1149,9 @@ struct value_nativeobj CxingSockets_GetAddrInfo(
 struct value_nativeobj CxingSockets_GetNameInfo(
     int argn, struct value_nativeobj args[]);
 
+struct value_nativeobj CxingSockets_PollSet(
+    int argn, struct value_nativeobj args[]);
+
 cxing_builtin_def_t CxingStdlibSocketsBuiltins[] = {
     { "socket", (struct value_nativeobj){
             .proper.p = CxingImpl_Socket_Create,
@@ -1123,6 +1181,10 @@ cxing_builtin_def_t CxingStdlibSocketsBuiltins[] = {
 
     { "getnameinfo", (struct value_nativeobj){
             .proper.p = CxingSockets_GetNameInfo,
+            .type = (const void *)&type_nativeobj_subr } },
+
+    { "pollset", (struct value_nativeobj){
+            .proper.p = CxingSockets_PollSet,
             .type = (const void *)&type_nativeobj_subr } },
 
     { 0 },

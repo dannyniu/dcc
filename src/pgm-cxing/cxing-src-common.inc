@@ -18,6 +18,7 @@ cxing-stdlib-thrd.c
 cxing-stdsocks.c
 cxing-stdsocks-sockaddr.c
 cxing-stdsocks-netdb.c
+cxing-stdsocks-poll.c
 cxing-stdsocks-dsfa-misc.c
 bsfa.c
 mathemu-stubs.c
@@ -67,7 +68,7 @@ case "$(uname -s)" in
         ;;
 
     CYGWIN_NT-*|MINGW*_NT-*)
-        libs_common=-lpthread
+        libs_common="-lpthread -lws2_32"
         ;;
 esac
 

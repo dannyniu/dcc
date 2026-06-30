@@ -1,7 +1,22 @@
 /* DannyNiu/NJF, 2026-06-27. Public Domain. */
 
 #include "cxing-stdlib.h"
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2ipdef.h>
+#include <windows.h>
+typedef int PLATFORM_INT;
+typedef int PLATFORM_BOOL;
+typedef int32_t PLATFORM_SOCKLEN;
+typedef struct timeval PLATFORM_TIMEVAL;
+#else // Assume POSIX.
 #include <netinet/in.h>
+#include <sys/socket.h>
+typedef int PLATFORM_INT;
+typedef int PLATFORM_BOOL;
+typedef socklen_t PLATFORM_SOCKLEN;
+typedef struct timeval PLATFORM_TIMEVAL;
+#endif // _WIN32
 
 #define DSFA_GetImpl0 SockAddr_IPv4_GetImpl0
 #define DSFA_SetImpl0 SockAddr_IPv4_SetImpl0
