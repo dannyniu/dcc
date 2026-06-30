@@ -12,6 +12,7 @@ largely complete, and is ready for extensive testing.
 On POSIX platforms:
 
 ```
+git submodule update --init --recursive # do this once at the beginning.
 ./configure
 make
 make install # this one requires appropriate priviledge to relevant directory.
