@@ -33,6 +33,7 @@ OBJ_SRC_LANGLEX_C = \
 
 OBJ_SRC_PGM_CXING = \
     src/langlex/langlex-cxing.o \
+    src/pgm-cxing/bsfa.o \
     src/pgm-cxing/cxing-callstub.o \
     src/pgm-cxing/cxing-grammar.o \
     src/pgm-cxing/cxing-interp-func-exec.o \
@@ -45,6 +46,11 @@ OBJ_SRC_PGM_CXING = \
     src/pgm-cxing/cxing-stdlib-regex.o \
     src/pgm-cxing/cxing-stdlib-struct.o \
     src/pgm-cxing/cxing-stdlib-thrd.o \
+    src/pgm-cxing/cxing-stdsocks-dsfa-misc.o \
+    src/pgm-cxing/cxing-stdsocks-netdb.o \
+    src/pgm-cxing/cxing-stdsocks-poll.o \
+    src/pgm-cxing/cxing-stdsocks-sockaddr.o \
+    src/pgm-cxing/cxing-stdsocks.o \
     src/pgm-cxing/expr-arith.o \
     src/pgm-cxing/expr-bits.o \
     src/pgm-cxing/expr-lex.o \
