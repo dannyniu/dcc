@@ -214,7 +214,7 @@ struct value_nativeobj CxingImpl_Socket_GetDelim(
 
     while( true )
     {
-        uint8_t buf[64], *eptr;
+        char buf[64], *eptr;
         ssize_t sret = recv(SocketThis, buf, sizeof buf, MSG_PEEK);
 
         // ret.len == 0:

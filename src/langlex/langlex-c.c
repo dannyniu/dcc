@@ -38,11 +38,15 @@ lex_elem_t CLexElems[] = {
       .completion = langlex_ppnum },
 
     { .pattern =
-      "%:%:|\\.{3,3}|(<<|>>|[*/%+-&^|])=|->|"
+      "%:%:|\\.{3,3}|(<<|>>|[-*/%+&^|])=|->|"
       "[+][+]|--|<<|>>|[<>=!]=|&&|[|][|]|::|"
       "##|<:|:>|<%|%>|%:|"
       "[[.].][.[.](){}.&*+[.-.]~!/%<>\\^|?:;=,#]",
       .cflags = LIBREG_EXTENDED, .completion = langlex_punct },
+
+    { .pattern = ".",
+      .cflags = LIBREG_EXTENDED,
+      .completion = langlex_invalid },
 
     {},
 };

@@ -4,8 +4,9 @@ optimize=debug
 testfunc()
 {
     #ASAN_OPTIONS=detect_leaks=1
-    $exec -f ../tests/dcc-preproc/undef.c
-    $exec -f ../tests/dcc-preproc/ctrl-exprs.c
+    $exec -f ../tests/dcc-preproc/undef.c &&
+    $exec -f ../tests/dcc-preproc/ctrl-exprs.c &&
+    $exec -f ../tests/dcc-preproc/strlitcat.c
 }
 
 cd "$(dirname "$0")"

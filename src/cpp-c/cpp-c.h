@@ -3,17 +3,18 @@
 // 2026-04-12:
 // this is a work-in-progress header that may likely
 // have some of its declarations moved elsewhere.
+//
+// 2026-07-05:
+// TODOs:
+// - include guards.
 
 /// @brief
 /// A translation unit at its pre-processing stage.
 #define S2_OBJ_TYPE_CPPTU 0x2042
 typedef struct cpptu cpptu_t;
 
+#include "../c-misc/diagnose.h"
 #include "macro.h"
-
-// declaration to be moved elsewhere (2026-03-21 Maybe TODO).
-void ccDiagnoseError(cpptu_t *restrict ctx_tu, const char *fmt, ...);
-void ccDiagnoseWarning(cpptu_t *restrict ctx_tu, const char *fmt, ...);
 
 struct cppBufferedShifter {
     lex_token_t *sv;
@@ -60,6 +61,17 @@ struct cpptu {
     // - On transition to {Initial}, decrement {Level}.
     // - Invariant: a line group at any {Level} is always entered with {Initial}.
     uint8_t condinc_state[1022];
+
+    // Keeps track of how to expand the `__FILE__` special macro
+    // amdist `#include`s and nested `#include`s.
+    s2list_t *Include__FILE__Stack;
+
+    // Include file search directories.
+    // 2026-07-05:
+    // think about how to support different kind of include directories,
+    // such as `-I`, `-iquote` (if plan commits), `-isystem` (desired),
+    // preferably with a set of flag bits in the `ctxinfo` field.
+    s2list_t *IncPaths; 
 };
 
 // basically just a 'pair', and is a type external to SafeTypes2.

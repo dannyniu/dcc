@@ -17,9 +17,9 @@ extern const char *special_objlike_macros[];
 // - rescan using {ScanningShifter}.
 
 #define PRINT_STACK_DEPTH() /* do {                                     \
-                            printf("- %td -\n",                         \
-                            (char *)ctx - (char *)&ctx->ctx_tu->rescan_stackbase); \
-                            } while( false ) */
+                               printf("- %td -\n",                      \
+                               (char *)ctx - (char *)&ctx->ctx_tu->rescan_stackbase); \
+                               } while( false ) */
 
 static lex_token_t *ChainFallbackShifter(struct cppMacroExpandShifter *ctx)
 {
@@ -40,13 +40,7 @@ static lex_token_t *ChainFallbackShifter(struct cppMacroExpandShifter *ctx)
     }
 }
 
-struct MacroArgPointer
-{
-    s2list_t *args_found; // Not owned (or thus released).
-    struct s2ctx_list_element *argp; // weak ref.
-};
-
-static lex_token_t *ArgTokSeqShifter(struct MacroArgPointer *arg)
+lex_token_t *ArgTokSeqShifter(struct MacroArgPointer *arg)
 {
     lex_token_t *ret;
     if( arg->argp == &arg->args_found->anch_tail )
@@ -65,11 +59,13 @@ static inline int i2hex(int v)
     else return (v - 10) + 'A';
 }
 
-static void Quote1Token(s2data_t *out, lex_token_t *telem)
+void Quote1Token(s2data_t *out, lex_token_t *telem)
 {
     const char *ts = s2data_weakmap(telem->str);
     size_t tl = s2data_len(telem->str);
     size_t i;
+
+    assert( telem->identity == TOKIDENT_PRISTINE );
 
     for(i=0; i<tl; i++)
     {
@@ -100,7 +96,21 @@ static s2data_t *QuoteTokens(
     while( s2list_pos(tseq) < s2list_len(tseq) )
     {
         s2list_get_T(lex_token_t)(tseq, &telem);
-        s2data_putc(ret, sep);
+
+        if( sep == ' ' )
+        {
+            // conditionally output space based on
+            // whether the token was actually preceeded by a space.
+            if( (telem->attrs & TOKATTR_BLANKDELIM) == TOKATTR_BLANKDELIM )
+                s2data_putc(ret, sep);
+        }
+        else
+        {
+            // sep is the quote character,
+            // output it unconditionally.
+            s2data_putc(ret, sep);
+        }
+
         Quote1Token(ret, telem);
         sep = ' ';
         s2list_seek(tseq, 1, S2_LIST_SEEK_CUR);
@@ -117,6 +127,8 @@ static struct MacroArgPointer *FindArg(
     cppmacro_t *macdef,
     s2list_t *args)
 {
+    s2list_t *ret;
+
     s2list_seek(macdef->params, 0, S2_LIST_SEEK_SET);
     while( s2list_pos(macdef->params) < s2list_len(macdef->params) )
     {
@@ -125,7 +137,6 @@ static struct MacroArgPointer *FindArg(
 
         if( s2data_cmp(argname->str, pn->str) == 0 )
         {
-            s2list_t *ret;
             s2list_seek(args, s2list_pos(macdef->params), S2_LIST_SEEK_SET);
             s2list_get_T(s2list_t)(args, &ret);
 
@@ -136,12 +147,28 @@ static struct MacroArgPointer *FindArg(
 
         s2list_seek(macdef->params, 1, S2_LIST_SEEK_CUR);
     }
-    out->args_found = NULL;
-    out->argp = NULL;
-    return NULL;
-}
 
-static void ScanningRecursion(struct cppMacroExpandShifter *ctx);
+    if( // This is not a variadic macro.
+        !macdef->is_variadic ||
+
+        // The identifier does not refer to the variadic argument.
+        strcmp(s2data_weakmap(argname->str),  "__VA_ARGS__") != 0 ||
+
+        // The variadic argument is not supplied.
+        s2list_len(args) == s2list_len(macdef->params) )
+    {
+        out->args_found = NULL;
+        out->argp = NULL;
+        return NULL;
+    }
+
+    s2list_seek(args, s2list_pos(macdef->params), S2_LIST_SEEK_SET);
+    s2list_get_T(s2list_t)(args, &ret);
+
+    out->args_found = ret;
+    out->argp = ret->anch_head.next;
+    return out;
+}
 
 bool SpecialEval_Defined(lex_token_t *identifier);
 
@@ -161,17 +188,6 @@ static s2list_t *ExpandMacro(
     struct s2ctx_list_element *lptr;
 
     PRINT_STACK_DEPTH();
-
-    if( ctx->flags == MACEXP_FLAG_EVALCTX_CTRLLINE )
-    {
-        // This callee doesn't release `args`.
-        ret = ExpandSpecial(ctx, macname, args);
-        if( ret )
-        {
-            if( args ) s2obj_release(args->pobj);
-            return ret;
-        }
-    }
 
     ret = s2list_create();
 
@@ -201,15 +217,23 @@ static s2list_t *ExpandMacro(
 
             struct cppMacroExpandShifter argeval = *ctx;
             struct MacroArgPointer argptr;
-            argeval.pushlist = s2list_create();
-            argeval.hotlist = NULL;
-
             assert( args ); // object-like macros cannot have parameters.
 
-            // 2026-03-28: TODO variadic macros.
+            // 2026-03-28: TODO variadic macros. // DONE (2026-07-03).
             argeval.coldlist = FindArg(&argptr, cur, macdef, args);
             argeval.coldlist_shifter = (token_shifter_t)ArgTokSeqShifter;
             Reached("MacExp.Para: `%s`,\n", (char *)s2data_weakmap(cur->str));
+
+            if( !argeval.coldlist )
+            {
+                // `FindArg` returned `NULL` - may happen with variadic macros.
+                assert( strcmp(s2data_weakmap(cur->str), "__VA_ARGS__") == 0 );
+                lptr = lptr->next;
+                continue;
+            }
+
+            argeval.pushlist = s2list_create();
+            argeval.hotlist = NULL;
 
             while( argptr.argp != &argptr.args_found->anch_tail )
             {
@@ -223,6 +247,7 @@ static s2list_t *ExpandMacro(
             {
                 lex_token_t *tx;
                 s2list_shift_T(lex_token_t)(argeval.pushlist, &tx);
+                Reached("attr: %d.\n", tx->attrs);
                 Reached("MacExp.Push: `%s`,\n", (char *)s2data_weakmap(tx->str));
                 s2list_push(ret, tx->pobj, s2_setter_gave);
             }
@@ -243,8 +268,14 @@ static s2list_t *ExpandMacro(
 
             assert( args ); // object-like macros cannot have parameters.
 
-            // 2026-03-28: TODO variadic macros.
-            FindArg(&argptr, cur, macdef, args);
+            // 2026-03-28: TODO variadic macros. // DONE (2026-07-03).
+            if( !FindArg(&argptr, cur, macdef, args) )
+            {
+                // `FindArg` returned `NULL` - may happen with variadic macros.
+                assert( strcmp(s2data_weakmap(cur->str), "__VA_ARGS__") == 0 );
+                lptr = lptr->next;
+                continue;
+            }
             Reached("MacExp.Para: `%s`,\n", (char *)s2data_weakmap(cur->str));
 
             s2list_seek(argptr.args_found, 0, S2_LIST_SEEK_SET);
@@ -272,10 +303,22 @@ static s2list_t *ExpandMacro(
             struct MacroArgPointer arg;
             lex_token_t *re;
 
-            FindArg(&arg, cur, macdef, args);
             re = lex_token_create();
-            QuoteTokens(re->str, arg.args_found);
+            if( FindArg(&arg, cur, macdef, args) )
+            {
+                QuoteTokens(re->str, arg.args_found);
+            }
+            else
+            {
+                assert( strcmp(s2data_weakmap(cur->str), "__VA_ARGS__") == 0 );
+                s2data_puts(re->str, "\"\"", 2);
+                s2data_putfin(re->str);
+            }
             re->completion = langlex_strlit;
+
+            // 2026-07-14:
+            // Preserve TOKATTR_BLANKDELIM, may drop others.
+            re->attrs = cur->attrs;
             re->lineno = macname->lineno;
             re->column = macname->column;
             Reached("MacExp.Push: `%s`,\n", (char *)s2data_weakmap(re->str));
@@ -299,6 +342,10 @@ static s2list_t *ExpandMacro(
                     s2data_weakmap(prev->str),
                     s2data_len(prev->str));
                 first->completion = prev->completion;
+
+                // 2026-07-14:
+                // Preserve TOKATTR_BLANKDELIM, may drop others.
+                first->attrs = prev->attrs;
                 first->lineno = prev->lineno;
                 first->column = prev->column;
                 s2obj_release(prev->pobj);
@@ -350,13 +397,14 @@ static s2list_t *ExpandMacro(
     return ret;
 }
 
-static s2list_t *ArgCollect(struct cppMacroExpandShifter *ctx)
+static s2list_t *ArgCollect(struct cppMacroExpandShifter *ctx, int variadic_position)
 {
     // starts from one after the left-parenthesis token,
     // stops at _the_ unmatched right-parenthesis.
 
     s2list_t *ret = s2list_create();
     s2list_t *argelem = s2list_create();
+    const char *sv;
     int level = 0;
 
     PRINT_STACK_DEPTH();
@@ -364,18 +412,13 @@ static s2list_t *ArgCollect(struct cppMacroExpandShifter *ctx)
     while( true )
     {
         lex_token_t *px = ctx->coldlist_shifter(ctx->coldlist);
-        const char *sv = s2data_weakmap(px->str);
         if( !px )
         {
-            ccDiagnoseError(
-                ctx->ctx_tu,
-                "[%s]: Tokens exhausted during preprocessing!\n",
-                __func__);
+            ccDiagnoseError(ctx->ctx_tu, "Tokens Exhausted.", "", 0);
             s2obj_release(ret->pobj);
             return NULL;
         }
-
-        eprintf("%s ", (char *)s2data_weakmap(px->str));
+        sv = s2data_weakmap(px->str);
 
         if( strcmp("(", sv) == 0 )
         {
@@ -396,11 +439,19 @@ static s2list_t *ArgCollect(struct cppMacroExpandShifter *ctx)
 
         else if( strcmp(",", sv) == 0 && level == 0 )
         {
-            eprintf("@( 1 more arg )\n");
-            s2list_push(ret, argelem->pobj, s2_setter_gave);
-            argelem = s2list_create();
-            s2obj_release(px->pobj);
-            continue;
+            // 2026-07-03: Check for variadic arguments.
+            if( variadic_position >= 0 && // the macro is indeed variadic.
+                s2list_len(ret) >= // there indeed is actual variadic arguments.
+                variadic_position )
+                ; // If so, don't consider further commas as delimiting arguments.
+            else
+            {
+                eprintf("@( 1 more arg )\n");
+                s2list_push(ret, argelem->pobj, s2_setter_gave);
+                argelem = s2list_create();
+                s2obj_release(px->pobj);
+                continue;
+            }
         }
 
         s2list_push(argelem, px->pobj, s2_setter_gave);
@@ -424,7 +475,7 @@ static int findHotname(struct cppMacroExpandShifter *ctx, lex_token_t *name)
     }
 }
 
-static void ScanningRecursion(struct cppMacroExpandShifter *ctx)
+void ScanningRecursion(struct cppMacroExpandShifter *ctx)
 {
     lex_token_t *tx, *la;
     cppmacro_t *macdef;
@@ -445,22 +496,20 @@ check_start:
     if( findHotname(ctx, tx) )
     {
         Reached("hot-token: `%s`.\n", (char *)s2data_weakmap(tx->str));
-        s2list_push(ctx->pushlist, tx->pobj, s2_setter_gave); // should've been gave, 2026-05-14: but was kept.
+        s2list_push(ctx->pushlist, tx->pobj, s2_setter_gave); // should've been gave, 2026-05-14: but was kept. 2026-07-08: remove this comment when appropriate.
         return;
     }
 
     macdef = NULL;
-    macdef_special = false;
+    macdef_special = 0;
+
+    // == Looking Up the Macro Definition == //
     if( tx->completion == langlex_identifier )
     {
-        // 2026-05-16 TODO:
-        // Handle special macros: defined(), __has_include(), and other __has_*().
-        // Doing some right now.
-        // 2026-05-16:
-        // Additionally, there's a form of `defined` without parenthesis.
-        // Think about how to handle that.
+        // 2026-07-04: there's a form of `defined` without parenthesis.
         macdef = cppLookup1Macro(ctx->ctx_tu, tx);
 
+        // == If So, Look Out for Control-Line-Special Macros. == //
         if( ctx->flags == MACEXP_FLAG_EVALCTX_CTRLLINE )
         {
             int i;
@@ -485,8 +534,10 @@ check_start:
             }
         }
     }
+
     if( !macdef && !macdef_special )
     {
+        // == Ordinary Non-Macro Token == //
         Reached("lang-token: `%s`.\n", (char *)s2data_weakmap(tx->str));
         eprintf(" ScnRecr pllp: %td, %td.\n", s2list_pos(ctx->pushlist), s2list_len(ctx->pushlist));
         s2list_push(ctx->pushlist, tx->pobj, s2_setter_gave);
@@ -494,9 +545,14 @@ check_start:
     }
 
     la = NULL;
-    if( macdef->params || macdef_special == 1 )
+
+    // Examine `macdef_special` on the left-side of the expression,
+    // because macdef could be `NULL`, but not unless it's not a special macro.
+    if( macdef_special == 1 || macdef->params )
     {
         la = ctx->coldlist_shifter(ctx->coldlist);
+
+        // -- special case for function-like macros and special predicates -- //
         if( !la || strcmp("(", s2data_weakmap(la->str)) != 0 )
         {
             if( 0 == strcmp("defined", s2data_weakmap(tx->str)) &&
@@ -507,13 +563,14 @@ check_start:
                 s2obj_release(tx->pobj);
 
                 tx = lex_token_create();
-                if( SpecialEval_Defined(la) )
+                if( SpecialEval_Defined(la) ||
+                    cppLookup1Macro(ctx->ctx_tu, la) )
                 {
                     s2data_putc(tx->str, '1');
                     s2data_putfin(tx->str);
                     tx->completion = langlex_declit;
                     tx->lineno = la->lineno;
-                    tx->column = la->lineno;
+                    tx->column = la->column;
                 }
                 else
                 {
@@ -521,7 +578,7 @@ check_start:
                     s2data_putfin(tx->str);
                     tx->completion = langlex_octlit;
                     tx->lineno = la->lineno;
-                    tx->column = la->lineno;
+                    tx->column = la->column;
                 }
 
                 s2list_push(ctx->pushlist, tx->pobj, s2_setter_gave);
@@ -536,18 +593,46 @@ check_start:
                 tx = la;
                 goto check_start;
 
-                // 2026-05-16:
-                // Unlike the preceeding clause, `la` could be the introducer
-                // of the next one. Therefore we need to goto the start to
-                // check for sure.
+                // 2026-05-16: (editorial amendments on 2026-07-04)
+                // `la` could be the introducer of a next macro label.
+                // Therefore we need to goto the start to check for sure.
             }
         }
     }
 
-    eprintf(" Expanding Macro%s.\n", la ? " with Collected Arguments" : "");
-    ctx->hotlist = ExpandMacro(ctx, tx, macdef, la ? ArgCollect(ctx) : NULL);
-    eprintf(" Got a replacement list with %td elements.\n", s2list_len(ctx->hotlist));
+    if( macdef_special == 1 )
+    {
+        eprintf(" Expanding Special Function-Like Macro.\n");
+        ctx->hotlist = ExpandSpecial(ctx, tx, ArgCollect(ctx, 0));
+        eprintf(" Yielded a replacement list with %td elements.\n", s2list_len(ctx->hotlist));
+    }
+    else if( macdef_special == 2 )
+    {
+        // handle pre-defined object-like macros.
+    }
+    else if( la )
+    {
+        eprintf(" Expanding Macro with Collected Arguments.\n");
+        ctx->hotlist = ExpandMacro(
+            ctx, tx, macdef, ArgCollect(
+                ctx, macdef->is_variadic ?
+                s2list_len(macdef->params) : -1));
+        eprintf(" Got a replacement list with %td elements.\n", s2list_len(ctx->hotlist));
+    }
+    else
+    {
+        eprintf(" Expanding Object-Like Macro.\n");
+        ctx->hotlist = ExpandMacro(ctx, tx, macdef, NULL);
+        eprintf(" Substituted with %td elements.\n", s2list_len(ctx->hotlist));
+    }
     s2list_seek(ctx->hotlist, 0, S2_LIST_SEEK_SET);
+
+    // 2026-07-01:
+    // The TOKATTR_BLANKDELIM attribute need to be preserved into the expansion.
+    // There may be future attributes that're not preserved.
+    if( s2list_len(ctx->hotlist) > 0 )
+        ((lex_token_t *)ctx->hotlist->anch_head.next->value)->attrs = tx->attrs;
+    Reached("t==%s, a==%d.\n", s2data_weakmap(tx->str), tx->attrs);
 
     if( la ) { s2obj_release(la->pobj); la = NULL; }
 

@@ -9,6 +9,9 @@ static bool isTokenParam(s2list_t *params, lex_token_t *tok)
     bool ret = false;
     if( !params ) return false;
 
+    if( strcmp(s2data_weakmap(tok->str), "__VA_ARGS__") == 0 )
+        return true;
+
     s2list_seek(params, 0, S2_LIST_SEEK_SET);
     while( s2list_pos(params) < s2list_len(params) )
     {
@@ -45,6 +48,7 @@ int cppProcessDefineDirective(
     s2list_t *repllist;
     int is_variadic = false;
     int next_cls = 0;
+    int next_attr = 0;
 
     RegexLexContext *shifter_rope = ctx_shifter;
     assert( shifter == (token_shifter_t)RegexLexFromRope_Shift );
@@ -52,12 +56,7 @@ int cppProcessDefineDirective(
     macro_name = shifter(ctx_shifter);
     if( macro_name->completion != langlex_identifier )
     {
-        ccDiagnoseError(ctx_tu,
-                        "[%s]: Token `%s` at line %d byte %d "
-                        "is not a valid identifier for a macro name!\n",
-                        __func__,
-                        (const char *)s2data_weakmap(macro_name->str),
-                        macro_name->lineno, macro_name->column);
+        ccDiagnoseError(ctx_tu, "Expected identifier for `#define` directive.", spelling_and_site(macro_name));
     }
 
     eprintf("Start define 1 macro `%s`: ",
@@ -82,12 +81,32 @@ int cppProcessDefineDirective(
 
             if( tok->completion == langlex_identifier )
             {
-                // 2026-03-23 TODO: Check for duplicates.
+                // 2026-03-23 TODO: Check for duplicates. // DONE (2026-07-03).
+                s2list_seek(funcmacro_params, 0, S2_LIST_SEEK_SET);
+                while( s2list_pos(funcmacro_params) < s2list_len(funcmacro_params) )
+                {
+                    lex_token_t *cp;
+                    s2list_get_T(lex_token_t)(funcmacro_params, &cp);
+                    if( s2data_cmp(cp->str, tok->str) == 0 )
+                    {
+                        ccDiagnoseError(ctx_tu, "Duplicate macro parameter", spelling_and_site(macro_name));
+                    }
+                    if( is_variadic )
+                    {
+                        ccDiagnoseError(ctx_tu, "Extraneous parameter in variadic macro", spelling_and_site(macro_name));
+                    }
+                    s2list_seek(funcmacro_params, 1, S2_LIST_SEEK_CUR);
+                }
                 s2list_push(funcmacro_params, tok->pobj, s2_setter_gave);
             }
             else if( strcmp("...", s2data_weakmap(tok->str)) == 0 )
             {
+                if( is_variadic )
+                {
+                    ccDiagnoseError(ctx_tu, "Duplicate ellipsis in variadic macro", spelling_and_site(macro_name));
+                }
                 is_variadic = true;
+                s2obj_release(tok->pobj);
             }
             else if( strcmp(")", s2data_weakmap(tok->str)) == 0 )
             {
@@ -96,14 +115,7 @@ int cppProcessDefineDirective(
             }
             else
             {
-                ccDiagnoseError(ctx_tu,
-                                "[%s]: Token `%s` at line %d byte %d "
-                                "is not a valid identifier "
-                                "for a macro parameter!\n",
-                                __func__,
-                                (const char *)s2data_weakmap(macro_name->str),
-                                macro_name->lineno, macro_name->column);
-                // 2026-03-21 TODO: more graceful error handling?
+                ccDiagnoseError(ctx_tu, "Expected identifier for macro parameter.", spelling_and_site(macro_name));
             }
 
             // looking out for comma and right-parenthesis delimiters.
@@ -121,9 +133,7 @@ int cppProcessDefineDirective(
             }
             else
             {
-                ccDiagnoseError(
-                    ctx_tu,"[%s]: Expected `)` or `,`.\n", __func__);
-                // 2026-03-21 TODO: more graceful error handling?
+                ccDiagnoseError(ctx_tu, "Expected `)` or `,`.", "", 0);
             }
         }
 
@@ -135,15 +145,9 @@ int cppProcessDefineDirective(
 
     if( strcmp("##", s2data_weakmap(tok->str)) == 0 )
     {
-        ccDiagnoseError(ctx_tu,
-                        "[%s]: The replacement list cannot begin with `##`. "
-                        "The offending macro definition was `%s` "
-                        "at line %d byte %d.\n",
-                        __func__,
-                        (const char *)s2data_weakmap(macro_name->str),
-                        macro_name->lineno, macro_name->column);
+        ccDiagnoseError(ctx_tu, "The replacement list cannot begin with `##`.", " The offending macro definition was" spelling_and_site(macro_name));
     }
-    
+
     for( ; tok; tok = look_ahead_for_genuine_newline(shifter_rope) ?
              NULL : // encountered a newline, the repllist is terminated.
              shifter(ctx_shifter) )
@@ -169,6 +173,7 @@ int cppProcessDefineDirective(
                  funcmacro_params )
         {
             next_cls |= PPTOK_CLS_STRINGIFY;
+            next_attr = tok->attrs;
             s2obj_release(tok->pobj);
             continue;
         }
@@ -179,24 +184,20 @@ int cppProcessDefineDirective(
         }
         else if( next_cls & PPTOK_CLS_STRINGIFY )
         {
-            ccDiagnoseError(ctx_tu,
-                            "[%s]: The `#` operator expects a parameter "
-                            "but `%s` is not a parameter.\n",
-                            __func__,
-                            s2data_weakmap(tok->str));
+            ccDiagnoseError(ctx_tu, "The `#` operator expects a parameter.", " The token was not a parameter." spelling_and_site(macro_name));
         }
 
         tok1 = tok;
         tok->classification |= next_cls;
+        tok->attrs |= next_attr;
         s2list_push(repllist, tok->pobj, s2_setter_gave);
         next_cls = 0;
+        next_attr = 0;
     }
 
     if( next_cls )
     {
-        ccDiagnoseError(ctx_tu,
-                        "[%s]: The replacement list ended with "
-                        "a dangling operator.\n", __func__);
+        ccDiagnoseError(ctx_tu, "The replacement list ended with a dangling operator.\n", "", 0);
     }
 
     macrodef = (cppmacro_t *)s2gc_obj_alloc(

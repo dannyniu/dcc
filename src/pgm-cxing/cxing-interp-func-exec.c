@@ -689,7 +689,10 @@ static struct TYPE_NATIVEOBJ_STRUCT(4) type_nativeobj_localvars = {
         }                                                               \
         varreg.key = NULL;                                              \
         if( instruction[1].opts == ast_node_scope_was_rvalue )          \
+        {                                                               \
             ValueDestroy(varreg.scope);                                 \
+            instruction[1].opts = ast_node_opt_default;                 \
+        }                                                               \
     } while( false )
 
 // convert lvalue for use as rvalue that's eligible for `ValueDestroy`.

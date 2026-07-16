@@ -78,6 +78,8 @@ int logger(void *ctx, const char *msg)
     return 0;
 }
 
+const char *SourceCodeFileName = "- Unknown -";
+
 int main(int argc, char *argv[])
 {
     union {
@@ -112,6 +114,7 @@ int main(int argc, char *argv[])
     {
         lex_getc_init_from_str(&expr_getc.fromstr, argv[2]);
     }
+    SourceCodeFileName = argv[2];
     rope = CreateRopeFromGetc(&expr_getc.base, 0);
     LexerInit;
 
@@ -157,7 +160,7 @@ for(i=0; gctail; i++)
     {
         printf("%s (%p, %zd bytes)\n",
                (const char *)s2data_weakmap((s2data_t *)gctail),
-               gctail, s2data_len(gctail));
+               gctail, s2data_len((s2data_t *)gctail));
     }
 
     gctail = gctail->gc_prev;

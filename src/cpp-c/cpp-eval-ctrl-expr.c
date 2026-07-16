@@ -203,7 +203,7 @@ start_eval_1term:
         *valreg = uintmax_eval_operand(1);
         signedness = signedness_of_operand(1);
     }
-// omitting a lot for now (2026-05-15).
+// omitting a lot for now (2026-05-15). 2026-07-01: probably no longer the case.
     else if( theRule == unary_positive )
     {
         *valreg = intmax_eval_operand(1);
@@ -221,11 +221,8 @@ start_eval_1term:
     }
     else if( theRule == unary_logicnot )
     {
-        // 2026-05-15 TODO:
-        // check back whether the not operator
-        // preserves the signedness of its operands.
         *valreg = !intmax_eval_operand(1);
-        signedness = signedness_of_operand(1);
+        signedness = 1; // did checking, unary `!` is always signed.
     }
     else if( theRule == mulexpr_multiply )
     {
@@ -409,7 +406,7 @@ start_eval_1term:
         // 2026-05-15:
         // Supposedly no need for short-circuit evaluation in this context.
         // So not complicating it for now.
-        // 2026-05-15 TODO: Check back for typing (in)consistencies.
+        // 2026-07-03: did check that type is always signed.
         *valreg =
             uintmax_eval_operand(0) &&
             uintmax_eval_operand(2);
@@ -514,10 +511,7 @@ int cppEvaluateCtrlExpr(
 
         if( PPTokGraduate(tok) != 0 )
         {
-            ccDiagnoseError(ctx_tu, "[%s]: Invalid token: `%s` "
-                            "at line %d, column %d.\n",
-                            __func__, s2data_weakmap(tok->str),
-                            tok->lineno, tok->column);
+            ccDiagnoseError(ctx_tu, "Invalid Token", spelling_and_site(tok));
             s2obj_release(astsource->pobj);
             s2obj_release(logicline->pobj);
             s2obj_release(evalline->pobj);
@@ -553,10 +547,7 @@ int cppEvaluateCtrlExpr(
 
     if( i != 0 )
     {
-        ccDiagnoseError(
-            ctx_tu,
-            "[%s]: parsing of pre-processing control expression failed: %d.\n",
-            __func__, i);
+        ccDiagnoseError(ctx_tu, "Parsing Error", " parser return: %d.", i);
         s2obj_release(parsed->pobj);
         s2obj_release(astsource->pobj);
         s2obj_release(logicline->pobj);

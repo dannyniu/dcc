@@ -790,6 +790,20 @@ int lalr_parse(
                 // 2025-01-19:
                 // this block is present so that trailing optional terms
                 // won't disrupt potential complete matches.
+
+                // 2026-07-16:
+                // make the expectation mechanism additionally aware
+                // of the potential optional terms.
+                *expect_chain = *mt;
+                if( !(expect_chain->next =
+                      calloc(1, sizeof(lalr_rule_symbol_t))) )
+                {
+                    lalr_rule_symbol_free(expect);
+                    if( candidates_bitmap ) free(candidates_bitmap);
+                    return -1; // [host error].
+                }
+                expect_chain = expect_chain->next;
+                
                 mt++;
             }
 
@@ -815,6 +829,7 @@ int lalr_parse(
                 // 2025-01-27:
                 // Currently, 'expectation' mechanism
                 // doesn't handle optional terms.
+                // 2026-07-16 T 11:25 UTC+8, Moment of truth...
 
                 *expect_chain = *mr;
                 if( !(expect_chain->next =

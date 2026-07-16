@@ -30,10 +30,30 @@ lex_token_t *lex_token_create()
     ret->completion = lex_exceptional;
     ret->identity = 0; // the pristine token identity.
     ret->classification = 0;
+    ret->props = ret->attrs = 0;
     ret->lineno = ret->column = 0;
 
     ret->base.itercreatf = NULL;
     ret->base.finalf = (s2func_final_t)lex_token_final;
+
+    return ret;
+}
+
+lex_token_t *lex_token_clone(lex_token_t *tx)
+{
+    lex_token_t *ret = lex_token_create();
+    assert( ret );
+
+    s2data_puts(ret->str, tx->str, s2data_len(tx->str));
+    s2data_putfin(ret->str);
+
+    ret->completion = tx->completion;
+    ret->identity = tx->identity;
+    ret->classification = tx->classification;
+    ret->props = tx->props;
+    ret->attrs = tx->attrs;
+    ret->lineno = tx->lineno;
+    ret->column = tx->column;
 
     return ret;
 }

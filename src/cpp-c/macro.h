@@ -7,6 +7,13 @@
 #include <s2list.h>
 #include <s2dict.h>
 
+struct MacroArgPointer
+{
+    s2list_t *args_found; // Not owned (or thus released).
+    struct s2ctx_list_element *argp; // weak ref.
+};
+lex_token_t *ArgTokSeqShifter(struct MacroArgPointer *arg);
+
 /// @brief
 /// Represents a C pre-processing macro.
 #define S2_OBJ_TYPE_CPPMACRO 0x2041
@@ -15,7 +22,11 @@ typedef struct cppmacro cppmacro_t;
 struct cppmacro {
     s2obj_base;
     s2list_t *repllist;
-    s2list_t *params; // non-NULL if function-like, otherwise object-like.
+
+    // non-NULL if function-like, otherwise object-like.
+    // doesn't contain the ellipsis - it's indicated in `is_variadic`.
+    // which means its length equals the number of _named_ parameters.
+    s2list_t *params;
     int is_variadic;
 };
 
@@ -34,7 +45,7 @@ struct cppMacroExpandShifter {
 #define MACEXP_FLAG_EVALCTX_CTRLLINE    1
     int flags;
 
-    // Always positioned at the tail.
+    // Positioned at the tail during expansions.
     s2list_t *pushlist;
 
     // Always positioned at the head.
@@ -48,11 +59,25 @@ struct cppMacroExpandShifter {
     // coldlist is external and upstack is nullptr if the top-most context.
     void *coldlist;
     token_shifter_t coldlist_shifter;
+
+    // 2026-07-08:
+    // the `coldlist_shifter` is the authoritative shifter implementation
+    // for the cold list, regardless of the aliasing between `coldlist`
+    // and `upstack`.
+    //
+    // `upstack` is not used as shifter context, but as a linked list
+    // for looking up 'hotnames', which are excluded from expansion
+    // as mentioned above.
     struct cppMacroExpandShifter *upstack;
 
     // context pointer to the translation unit.
     struct cpptu *ctx_tu;
 };
+
+// called by
+// 1. `cppTokenJet`: to obtain thoroughly expanded tokens.
+// 2. `ExpandMacro` & `ExpandSpecial`: to look for 'other' tokens to expand.
+void ScanningRecursion(struct cppMacroExpandShifter *ctx);
 
 // conforms to `token_shifter_t`.
 lex_token_t *cppTokenJet(struct cppMacroExpandShifter *ctx);

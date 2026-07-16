@@ -45,9 +45,14 @@ typedef struct {
     s2obj_base;
     s2data_t *str;
     lexer_state_t completion;
-    int32_t identity; // 2026-06-13: see below.
-    int32_t classification; // reserved as of 2025-08-09.
-    int32_t lineno, column; // both are 1-based.
+    int16_t identity; // 2026-06-13: see below.
+    int16_t classification; // reserved as of 2025-08-09.
+
+    int16_t props; // reserved as of 2026-07-01.
+    int16_t attrs; // 2026-07-01: see below.
+
+    // both are 1-based.
+    int32_t lineno, column;
 } lex_token_t;
 
 // 2026-06-13:
@@ -61,7 +66,14 @@ typedef struct {
 // For now, the parser ignore this and every other non-pristine enumerations.
 #define TOKIDENT_DEQUOTED 1
 
+// 2026-07-01:
+// The token was delimited by a blank,
+// i.e. a character satisfying `isspace` preceeded it.
+// Used by the C pre-processor to handle literal spellings of tokens.
+#define TOKATTR_BLANKDELIM 1
+
 lex_token_t *lex_token_create();
+lex_token_t *lex_token_clone(lex_token_t *tx); // Added 2026-07-01.
 
 // a 'base class' for retrieving individual characters (bytes actually)
 // from a piece of source code, be it a file or a nul-terminated string,

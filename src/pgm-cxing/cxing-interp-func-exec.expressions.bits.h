@@ -401,7 +401,7 @@ if( theRule == funccall_somearg ) //>RULEIMPL<//
              instruction->node_body->terms_count )
     {
         Reached();
-        ClearLValue();
+        DemoteLValue(); // Fixed from `ClearLValue` on 2026-07-16.
 
         if( evalmode == cxing_func_eval_mode_execute )
         {

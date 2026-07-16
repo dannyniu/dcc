@@ -15,3 +15,12 @@ LEX_ENUM(langlex_ppnum)
 LEX_ENUM(langlex_charlit)
 LEX_ENUM(langlex_strlit)
 LEX_ENUM(langlex_punct)
+
+// 2026-07-06:
+// Because system headers (i.e. ones encosed in angle brackets) are lexed
+// differently than user headers (i.e. ones encosed in double quotes),
+// we need a catch-all completion to accept characters (bytes actually)
+// that could be valid _or_ invalid when appearing elsewhere.
+// This completion is automatically rejected by the C parser for there being
+// no grammar rule accepting them.
+LEX_ENUM(langlex_invalid)

@@ -187,6 +187,10 @@ lex_token_t *RegexLexFromRope_Shift(RegexLexContext *ctx)
                 ctx->offsub  + 1 -
                 (ctx->lineind > 0 ? lin[ctx->lineind - 1] : 0);
             ret->identity = ret->classification = 0;
+
+            if( ctx->offsub > 0 && isspace(src[ctx->offsub - 1]) )
+                ret->attrs |= TOKATTR_BLANKDELIM;
+            
             ctx->offsub += matched.rm_eo - matched.rm_so;
         }
         else ctx->offsub ++;

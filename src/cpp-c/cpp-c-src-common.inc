@@ -5,6 +5,8 @@ cpp-macro-expand.c
 cpp-macro-expand-special.c
 cpp-master.c
 ppexpr-grammar.c
+c-misc/dequoting.c
+c-misc/diagnose.c
 langlex/langlex-c.c
 lex-common/lex.c
 lex-common/rope.c
@@ -31,3 +33,19 @@ memintercept='-DINTERCEPT_MEM_CALLS'
 
 sanitizers='-fsanitize=address'
 #sanitizers=''
+
+libs_common=''
+libs=''
+
+case "$(uname -s)" in
+    CYGWIN_NT-*|MINGW*_NT-*)
+        libs_common="-lpthread"
+        ;;
+esac
+
+LD_sv="$LD"
+LD=ld_add_libs
+
+ld_add_libs() {
+    ${LD_sv:-cc} "$@" $libs_common $libs
+}

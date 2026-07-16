@@ -4,26 +4,6 @@
 #include <s2ref.h>
 #include <stdarg.h>
 
-void ccDiagnoseError(cpptu_t *restrict ctx_tu, const char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    fprintf(stderr, "[Error]: ");
-    vfprintf(stderr, fmt, ap);
-    va_end(ap);
-    (void)ctx_tu;
-}
-
-void ccDiagnoseWarning(cpptu_t *restrict ctx_tu, const char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    fprintf(stderr, "[Warning]: ");
-    vfprintf(stderr, fmt, ap);
-    va_end(ap);
-    (void)ctx_tu;
-}
-
 void cpptu_macdef_free(cpptu_macdef_t *x)
 {
     if( x->mname ) s2obj_release(x->mname->pobj);
@@ -95,11 +75,7 @@ int cppDefine1Macro(
     olddef = cppLookup1Macro(ctx_tu, macro_name);
     if( olddef && !areMacrosIdentical(olddef, macrodef) )
     {
-        ccDiagnoseWarning(
-            ctx_tu, "[%s]: The macro `%s` is being redefined at line %d.\n",
-            __func__,
-            (const char *)s2data_weakmap(macro_name->str),
-            macro_name->lineno);
+        ccDiagnoseWarn(ctx_tu, "Macro redefined", spelling_and_site(macro_name));
     }
 
     macdef->mname = macro_name;
@@ -269,10 +245,7 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
 
         if( PPTokGraduate(tok) != 0 )
         {
-            ccDiagnoseError(ctx_tu, "[%s]: Invalid token: `%s` "
-                            "at line %d, column %d.\n",
-                            __func__, s2data_weakmap(tok->str),
-                            tok->lineno, tok->column);
+            ccDiagnoseError(ctx_tu, "Invalid Token", spelling_and_site(tok));
         }
         return tok; // Emptying the `pushlist` positions it to the tail.
     }
@@ -298,10 +271,7 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
                 // This line group is not skipped.
                 if( PPTokGraduate(tok) != 0 )
                 {
-                    ccDiagnoseError(ctx_tu, "[%s]: Invalid token: `%s` "
-                                    "at line %d, column %d.\n",
-                                    __func__, s2data_weakmap(tok->str),
-                                    tok->lineno, tok->column);
+                    ccDiagnoseError(ctx_tu, "Invalid Token", spelling_and_site(tok));
                 }
                 return tok;
             }
@@ -328,10 +298,7 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
                 // This line group is not skipped.
                 if( PPTokGraduate(tok) != 0 )
                 {
-                    ccDiagnoseError(ctx_tu, "[%s]: Invalid token: `%s` "
-                                    "at line %d, column %d.\n",
-                                    __func__, s2data_weakmap(tok->str),
-                                    tok->lineno, tok->column);
+                    ccDiagnoseError(ctx_tu, "Invalid Token", spelling_and_site(tok));
                 }
                 return tok;
             }
@@ -452,10 +419,7 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
             }
             else
             {
-                ccDiagnoseError(
-                    ctx_tu, "[%s]: `elif` at line %d was not preceeded "
-                    "by a conditionaly-included line group.\n",
-                    __func__, tok->lineno);
+                ccDiagnoseError(ctx_tu, "Unpaired preprocessing group", spelling_and_site(tok));
             }
         }
         else if( 0 == strcmp("else", tokstr) )
@@ -482,10 +446,7 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
             }
             else
             {
-                ccDiagnoseError(
-                    ctx_tu, "[%s]: `else` at line %d was not preceeded "
-                    "by a conditionaly-included line group.\n",
-                    __func__, tok->lineno);
+                ccDiagnoseError(ctx_tu, "Unpaired preprocessing group", spelling_and_site(tok));
             }
         }
         else if( 0 == strcmp("endif", tokstr) )
@@ -493,11 +454,9 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
             ctx_tu->condinc_level --;
             if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INITIAL )
             {
-                ccDiagnoseError(
-                    ctx_tu, "[%s]: `endif` at line %d was not preceeded "
-                    "by a conditionaly-included line group.\n",
-                    __func__, tok->lineno);
+                ccDiagnoseError(ctx_tu, "Unpaired preprocessing group", spelling_and_site(tok));
             }
+            ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_INITIAL;
             assert( ctx_tu->condinc_level >= 0 );
         }
 

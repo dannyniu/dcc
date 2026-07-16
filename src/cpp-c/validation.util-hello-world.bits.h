@@ -42,6 +42,16 @@ tu->rescan_stackbase.pushlist = tu->pushlist;
 tu->condinc_level = 0;
 tu->condinc_state[0] = CONDINC_INITIAL;
 
+tu->Include__FILE__Stack = s2list_create();
+s2list_insert(
+    tu->Include__FILE__Stack,
+    s2data_from_str(SourceCodeFileName)->pobj,
+    s2_setter_gave);
+
+tu->IncPaths = s2list_create();
+s2list_insert(tu->IncPaths, s2data_from_str(
+                  "../tests/dcc-preproc")->pobj, s2_setter_gave);
+
 //*
 while( true )
 {
@@ -74,6 +84,8 @@ if( doti != stdout )
 
 s2obj_release(tu->macros->pobj);
 s2obj_release(tu->pushlist->pobj);
+s2obj_release(tu->Include__FILE__Stack->pobj);
+s2obj_release(tu->IncPaths->pobj);
 //s2obj_release(tu->pobj);
 
 perfcounter = clock() - perfcounter;
