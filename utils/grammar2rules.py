@@ -92,7 +92,7 @@ def Emit1Rule(lhs, lhl, prod, lab):
         opt = ""
         val = "value"
         if p.optional: opt = "lalr_opt "
-        if p.type == "vtoken": val = "vtype"
+        if p.type in { "vtoken", "tokset" }: val = "vtype"
         print(" "*8+"{"+" symtype_{}, .{} = {}, {}".format(
             p.type, val, p.value, opt)+"},")
 
@@ -141,13 +141,21 @@ for t in shift1():
 
         case "expect_terms":
             if t in vtokens:
-                prod += [ sym("vtoken", t.endswith("_opt"), t) ]
+                prod += [ sym("vtoken",
+                              t.endswith("_opt"),
+                              t.removesuffix("_opt")) ]
             elif t[0] == '"':
                 prod += [ sym("stoken", False, t) ]
+            elif t[0] == '!':
+                prod += [ sym("symset", False, t) ]
+            elif t[0] == '@':
+                prod += [ sym("symset", True, t) ]
             elif t == '%':
                 fsm = "expect_label_for_rule"
             else:
-                prod += [ sym("prod", t.endswith("_opt"), '"'+t+'"') ]
+                prod += [ sym("prod",
+                              t.endswith("_opt"),
+                              '"'+t.removesuffix("_opt")+'"') ]
 
         case "expect_label_for_rule":
             if t in ":|;%" or t[0] == '"':

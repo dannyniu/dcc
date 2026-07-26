@@ -60,8 +60,10 @@ struct RegexLexContext {
 
     source_rope_t *rope; // source code input.
     lex_elem_t *regices; // set of known lexical elements.
-    const char **keywords; // 2026-01-09: found to be unused.
-    void *misc; // For the lexer hack to be used with C.
+
+    // 2026-07-24: removed 2 unused fields:
+    //- const char **keywords; // 2026-01-09: discovered to be unused.
+    //- void *misc; // For the lexer hack to be used with C.
 
     // current position in the rope-represented source code text. zero-based.
     // 2026-04-13: always positioned adjacently after the first non-blank char.

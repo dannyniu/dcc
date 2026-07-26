@@ -59,7 +59,7 @@ static inline int i2hex(int v)
     else return (v - 10) + 'A';
 }
 
-void Quote1Token(s2data_t *out, lex_token_t *telem)
+static void Quote1Token(s2data_t *out, lex_token_t *telem)
 {
     const char *ts = s2data_weakmap(telem->str);
     size_t tl = s2data_len(telem->str);
@@ -485,6 +485,8 @@ void ScanningRecursion(struct cppMacroExpandShifter *ctx)
     // 1: special func-like,
     // 2: special obj-like.
     int macdef_special;
+    
+    bool space_delimit_next_token = false;
 
     PRINT_STACK_DEPTH();
 
@@ -492,6 +494,29 @@ void ScanningRecursion(struct cppMacroExpandShifter *ctx)
 
 check_start:
     if( !tx ) return;
+
+    if( tx->completion == langlex_comment )
+    {
+        // 2026-07-21:
+        // An essential mid-processing, as comments are
+        // considered whitespaces before such significance
+        // is lost during syntax parsing phase.
+        space_delimit_next_token = true;
+        s2obj_release(tx->pobj);
+        tx = ctx->coldlist_shifter(ctx->coldlist);
+        goto check_start;
+    }
+    else if( space_delimit_next_token )
+    {
+        // 2026-07-21:
+        // This assertion is so that in case other non-flag attrs
+        // are added in the future.
+        assert( tx->attrs == 0 || tx->attrs == 1 );
+
+        tx->attrs |= TOKATTR_BLANKDELIM;
+        space_delimit_next_token = false;
+    }
+    // In effect, the above clauses implements comment stripping.
 
     if( findHotname(ctx, tx) )
     {
@@ -608,7 +633,7 @@ check_start:
     }
     else if( macdef_special == 2 )
     {
-        // handle pre-defined object-like macros.
+        // TODO: handle pre-defined object-like macros.
     }
     else if( la )
     {

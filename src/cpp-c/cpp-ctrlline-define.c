@@ -50,8 +50,8 @@ int cppProcessDefineDirective(
     int next_cls = 0;
     int next_attr = 0;
 
-    RegexLexContext *shifter_rope = ctx_shifter;
-    assert( shifter == (token_shifter_t)RegexLexFromRope_Shift );
+    // 2026-07-24:
+    // incorporate comment-stripping by replacing RegexLexContext with s2list.
 
     macro_name = shifter(ctx_shifter);
     if( macro_name->completion != langlex_identifier )
@@ -143,14 +143,13 @@ int cppProcessDefineDirective(
     // start building (transcribing - i.e. shallow compile) replacement list.
     repllist = s2list_create();
 
-    if( strcmp("##", s2data_weakmap(tok->str)) == 0 )
+    if( tok && // 2026-07-24: the replacement list may be empty.
+        strcmp("##", s2data_weakmap(tok->str)) == 0 )
     {
         ccDiagnoseError(ctx_tu, "The replacement list cannot begin with `##`.", " The offending macro definition was" spelling_and_site(macro_name));
     }
 
-    for( ; tok; tok = look_ahead_for_genuine_newline(shifter_rope) ?
-             NULL : // encountered a newline, the repllist is terminated.
-             shifter(ctx_shifter) )
+    for( ; tok; tok = shifter(ctx_shifter) )
     {
         // invariants:
         // - `tok` is the current token,

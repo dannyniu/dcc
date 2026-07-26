@@ -1,0 +1,598 @@
+c % goal : translation-unit % TU ;
+
+identifier % ident
+: langlex_identifier % ident
+;
+
+constant % const
+: "true" % true
+| "false" % false
+| "nullptr" % nullptr
+| langlex_binlit % binlit
+| langlex_declit % declit
+| langlex_octlit % octlit
+| langlex_hexlit % hexlit
+| langlex_decfplit % decfplit
+| langlex_hexfplit % hexfplit
+| langlex_charlit % charlit
+;
+
+string-literal % strlit
+: langlex_str_cooked % strlit
+;
+
+primary-expr % primary
+: identifier % ident
+| constant % const
+| string-literal % strlit
+| "(" expression ")" % paren
+| generic-selection % generics
+;
+
+generic-selection % generics
+: "_Generic" "(" generic-controlling-operand "," generic-assoc-list ")" % generics
+;
+
+generic-controlling-operand % gen_ctrl_opnd
+: assign-expr % assign_expr
+| type-name % typename
+;
+
+generic-assoc-list % gen_assoc_list
+: generic-association % base
+| generic-assoc-list "," generic-association % genrule
+;
+
+generic-association % gen_assoc
+: type-name ":" assign-expr % typed
+| "default" ":" assign-expr % default
+;
+
+postfix-expr % postfix
+: primary-expr % degenerate
+| postfix-expr "[" expression "]" % indirect
+| postfix-expr "(" arg-expr-list_opt ")"
+| postfix-expr "." identifier % member
+| postfix-expr "->" identifier % field
+| postfix-expr "++" % inc
+| postfix-expr "--" % dec
+| compound-literal % complit
+;
+
+arg-expr-list % arg_expr_list
+: assign-expr % base
+| arg-expr-list "," assign-expr % genrule
+;
+
+compound-literal % complit
+: "(" storage-class-specs_opt type-name ")" brace-initializer % complit
+;
+
+storage-class-specs % stor_cls_specs
+: storage-class-spec % base
+| storage-class-specs storage-class-spec % genrule
+;
+
+unary-expr % unary
+: postfix-expr % degenerate
+| "++" unary-expr % inc
+| "--" unary-expr % dec
+| "&" unary-expr % addrof
+| "*" unary-expr % deref
+| "+" unary-expr % positive
+| "-" unary-expr % negative
+| "~" unary-expr % bitcompl
+| "!" unary-expr % logicnot
+| "_Countof" unary-expr % cntof
+| "_Countof" "(" type-name ")" % cntof_paren
+| "sizeof" unary-expr % szof
+| "sizeof" "(" type-name ")" % szof_paren
+| "alignof" "(" type-name ")" % alignof
+| static-assertion % static_assert
+;
+
+static-assertion % static_assert
+: "static_assert" "(" const-expr "," string-literal ")" % msg
+| "static_assert" "(" const-expr ")" % mime
+;
+
+cast-expr % cast
+: unary-expr % degenerate
+| "(" type-name ")" cast-expr % cast
+;
+
+mul-expr % mulexpr
+: cast-expr % degenerate
+| mul-expr "*" unary-expr % multiply
+| mul-expr "/" unary-expr % divide
+| mul-expr "%" unary-expr % remainder
+;
+
+add-expr % addexpr
+: mul-expr % degenerate
+| add-expr "+" mul-expr % add
+| add-expr "-" mul-expr % subtract
+;
+
+bit-shift-expr % shiftexpr
+: add-expr % degenerate
+| bit-shift-expr "<<" add-expr % lshift
+| bit-shift-expr ">>" add-expr % rshift
+;
+
+rel-expr % relops
+: bit-shift-expr % degenerate
+| rel-expr "<" bit-shift-expr % lt
+| rel-expr ">" bit-shift-expr % gt
+| rel-expr "<=" bit-shift-expr % le
+| rel-expr ">=" bit-shift-expr % ge
+;
+
+eq-expr % eqops
+: rel-expr % degenerate
+| eq-expr "==" rel-expr % eq
+| eq-expr "!=" rel-expr % ne
+;
+
+bit-and % bitand
+: eq-expr % degenerate
+| bit-and "&" eq-expr % bitand
+;
+
+bit-xor % bitxor
+: bit-and % degenerate
+| bit-xor "^" bit-and % bitxor
+;
+
+bit-or % bitor
+: bit-xor % degenerate
+| bit-or "|" bit-xor % bitor
+;
+
+logic-and % logicand
+: bit-or % degenerate
+| logic-and "&&" bit-or % logicand
+;
+
+logic-or % logicor
+: logic-and % degenerate
+| logic-or "||" logic-and % logicor
+;
+
+cond-expr % tenary
+: logic-or % degenerate
+| logic-or "?" expressions-list ":" cond-expr % tenary
+;
+
+assign-expr % assignment
+: cond-expr % degenerate
+| unary-expr "=" assign-expr % directassign
+| unary-expr "*=" assign-expr % mulassign
+| unary-expr "/=" assign-expr % divassign
+| unary-expr "%=" assign-expr % remassign
+| unary-expr "+=" assign-expr % addassign
+| unary-expr "-=" assign-expr % subassign
+| unary-expr "<<=" assign-expr % lshiftassign
+| unary-expr ">>=" assign-expr % rshiftassign
+| unary-expr "&=" assign-expr % andassign
+| unary-expr "^=" assign-expr % xorassign
+| unary-expr "|=" assign-expr % orassign
+;
+
+expression % expr
+: assign-expr % degenerate
+| expression "," assign-expr % exprlist
+;
+
+const-expr % const_expr
+: cond-expr % degenerate
+;
+
+const-range-expr % range
+: const-expr "..." const-expr % range
+;
+
+declaration % decl
+: decl-specs init-decl-list_opt ";" % decl
+| attr-spec-seq decl-specs init-decl-list ";" % with_attr
+| attr-decl % attr_decl
+;
+
+decl-specs % declspecs
+: decl-spec attr-spec-seq_opt % base
+| decl-spec decl-specs % genrule
+;
+
+decl-spec % declspec
+: storage-class-spec % stor
+| type-spec-qual % typequal
+| func-spec % funcspec
+;
+
+init-decl-list % initdecls
+: init-declarator % base
+| init-decl-list "," init-declarator % genrule
+;
+
+init-declarator % initdecl
+: declarator % noinit
+| declarator "=" initializer % init
+;
+
+attr-decl % attrdecl
+: attr-spec-seq % attr_spec_seq
+;
+
+simple-declaration % simpdecl
+: attr-spec-seq_opt decl-specs declarator "=" initializer % simpdecl
+;
+
+storage-class-spec % stor_cls_spec
+: "auto" % auto
+| "constexpr" % constexpr
+| "extern" % extern
+| "register" % register
+| "static" % static
+| "thread_local" % thrd_local
+| "typedef" % typedef
+;
+
+type-specifier % typespec
+: "void" % void
+| "char" % char
+| "short" % short
+| "int" % int
+| "long" % long
+| "float" % float
+| "double" % double
+| "signed" % signed
+| "unsigned" % unsigned
+| "bool" % bool
+| struct-or-union-specifier % aggr
+| enum-specifier % enum
+| typedef-name % typedef_name
+| typeof-specifier % typeof_spec
+;
+
+struct-or-union-specifier % aggr
+: struct-or-union attr-spec-seq_opt identifier_opt "{" member-decl-list "}" % def
+| struct-or-union attr-spec-seq_opt identifier % decl
+;
+
+struct-or-union % aggrkind
+: "struct" % struct
+| "union" % union
+;
+
+member-decl-list % member_decl_list
+: member-decl % base
+| member-decl-list member-decl % genrule
+;
+
+member-decl % member_decl
+: attr-spec-seq_opt spec-qual-list member-declarator-list_opt ";" % member_decl
+| static-assertion ";" % static_assert
+;
+
+spec-qual-list % spec_qual_list
+: type-spec-qual attr-spec-seq_opt % base
+| type-spec-qual spec-qual-list % genrule
+;
+
+type-spec-qual % type_spec_qual
+: type-specifier % typespec
+| type-qualifier % typequal
+| alignment-specifier % alignspec
+;
+
+member-declarator-list % member_declarators_list
+: member-declarator % base
+| member-declarator-list "," member-declarator % genrule
+;
+
+member-declarator % member_declarator
+: declarator % field
+| declarator_opt ":" const-expr % bitfield
+;
+
+enum-specifier % enum
+: "enum" attr-spec-seq_opt identifier_opt enum-type-spec_opt "{" enum-list "}" % nocomma
+| "enum" attr-spec-seq_opt identifier_opt enum-type-spec_opt "{" enum-list "," "}" % comma
+| "enum" identifier enum-type-spec_opt % decl
+;
+
+enum-list % enumlist
+: enumerator % base
+| enum-list "," enumerator % genrule
+;
+
+enumerator % enumerator
+: enum-const attr-spec-seq_opt % implicit
+| enum-const "=" const-expr % explicit
+;
+
+enum-type-spec % enum_typespec
+: ":" spec-qual-list % enum_typespec
+;
+
+typeof-specifier % typeof_spec
+: "typeof" "(" typeof-specifier-operand ")" % qual
+| "typeof_unqual" "(" typeof-specifier-operand ")" % unqual
+;
+
+typeof-specifier-operand % typeof_spec_opnd
+: expression % expr
+| type-name % typename
+;
+
+type-qualifier % typequal
+: "const" % const
+| "restrict" % restrict
+| "volatile" % volatile
+;
+
+func-spec % funcspec
+: "inline" % inline
+| "_Noreturn" % noret
+;
+
+alignment-specifier % alignspec
+: "alignas" "(" type-name ")" % typename
+| "alignas" "(" const-expr ")" % constexpr
+;
+
+declarator % declarator
+: direct-declarator % direct
+| pointer direct-declarator % pointer
+;
+
+direct-declarator % direct_declarator
+: identifier attr-spec-seq_opt % ident
+| "(" declarator ")" % paren
+| array-declarator attr-spec-seq_opt % array
+| function-declarator attr-spec-seq_opt % func
+;
+
+array-declarator % array_declarator
+: direct-declarator "[" type-qual-list_opt assign-expr_opt "]" % classic
+| direct-declarator "[" "static" type-qual-list_opt assign-expr "]" % static
+| direct-declarator "[" type-qual-list "static" assign-expr "]" % qual
+| direct-declarator "[" type-qual-list_opt "*" "]" % asterisk
+;
+
+function-declarator % function_declarator
+: direct-declarator "(" parameter-type-list_opt ")" % funcdecl
+;
+
+pointer % pointer
+: "*" attr-spec-seq_opt type-qual-list_opt % base
+| "*" attr-spec-seq_opt type-qual-list_opt pointer % genrule
+;
+
+type-qual-list % type_qual_list
+: type-qualifier % base
+| type-qual-list type-qualifier % genrule
+;
+
+parameter-type-list % param_type_list
+: parameter-list % classic
+| parameter-list "," "..." % variadic
+| "..." % neo_variadic
+;
+
+parameter-list % param_list
+: parameter-declaration % base
+| parameter-list "," parameter-declaration % genrule
+;
+
+parameter-declaration % param_decl
+: attr-spec-seq_opt decl-specs declarator % named
+| attr-spec-seq_opt decl-specs abstract-declarator_opt % anon
+;
+
+type-name % typename
+: spec-qual-list abstract-declarator_opt % typename
+;
+
+abstract-declarator % abstract_declarator
+: pointer % pointer
+| pointer_opt direct-abstract-declarator % direct
+;
+
+direct-abstract-declarator % direct_abstract_declarator
+: "(" abstract-declarator ")" % paren
+| array-abstract-declarator attr-spec-seq_opt % array
+| function-abstract-declarator attr-spec-seq_opt % func
+;
+
+array-abstract-declarator % array_abstract_declarator
+: direct-abstract-declarator_opt "[" type-qual-list_opt assign-expr_opt "]" % classic
+| direct-abstract-declarator_opt "[" "static" type-qual-list_opt assign-expr "]" % static
+| direct-abstract-declarator_opt "[" type-qual-list "static" assign-expr "]" % qual
+| direct-abstract-declarator_opt "[" type-qual-list_opt "*" "]" % asterisk
+;
+
+function-abstract-declarator % function_abstract_declarator
+: direct-abstract-declarator_opt "(" parameter-type-list_opt ")" % funcdecl
+;
+
+typedef-name % typedefname
+: lexer_hack_typedef_name % ident
+;
+
+brace-initializer % brace_init
+: "{" "}" % empty
+| "{" initializer-list "}" % nocomma
+| "{" initializer-list "," "}" % comma
+;
+
+initializer % initializer
+: assign-expr % expr
+| brace-initializer % brace
+;
+
+initializer-list % initlist
+: designation_opt initializer % base
+| initializer-list "," designation_opt initializer % genrule
+;
+
+designation % designation
+: designator-list "=" % designation
+;
+
+designator-list % desiglist
+: designator % base
+| designator-list designator % genrule
+;
+
+designator % designator
+: "[" const-expr "]" % indirect
+| "." identifier % member
+;
+
+
+attr-spec-seq % attrspecs
+: attr-spec-seq_opt attr-spec % attrspecs
+;
+
+attr-spec % attrspec
+: "[" "[" attribute-list "]" "]" % attrspec
+;
+
+attr-list % attrlist
+: attribute_opt % base
+| attr-list "," attribute_opt % genrule
+;
+
+attribute % attr
+: attrtok attr-arg-clause_opt % attr
+;
+
+attrtok % attrtok
+: standard-attribute % std
+| attr-prefix-tok % ns
+;
+
+standard-attribute % stdattr
+: identifier % ident
+;
+
+attr-prefix-tok % nsattr
+: attr-prefix "::" identifier % nsattr
+;
+
+attr-prefix % attrprefix
+: identifier % ident
+;
+
+attr-arg-clause % aaclause
+: "(" balanced-token-seq_opt ")" % aaclause
+;
+
+balanced-token-seq % balanced_tokseq
+: balanced-token % base
+| balanced-token-seq balanced-token % genrule
+;
+
+balanced-token % balanced_token
+: "(" balanced-token-seq_opt ")" % paren
+| "[" balanced-token-seq_opt "]" % bracket
+| "{" balanced-token-seq_opt "}" % brace
+| ! "(" ")" "[" "]" "{" "}" % other
+;
+
+statement % stmt
+: labeled-statement % labelled
+| unlabeled-statement % stmt
+;
+
+unlabeled-statement % ustmt
+: expr-stmt % expr
+| attr-spec-seq_opt primary-block % blk
+| attr-spec-seq_opt jump-statement % jmp
+;
+
+primary-block % primaryblk
+: compound-statement % compound
+| selection-statement % selection
+| iteration-statement % iteration
+;
+
+secondary-block % secondaryblk
+: statement % stmt
+;
+
+label % label
+: attr-spec-seq_opt identifier ":" % ident
+| attr-spec-seq_opt "case" const-range-expr ":" % caserange
+| attr-spec-seq_opt "case" const-expr ":" % caseconst
+| attr-spec-seq_opt "default" ":" % default
+;
+
+labeled-statement % lstmt
+: label statement % lstmt
+;
+
+compound-statement % compoundstmt
+: "{" block-item-list_opt "}" % brace
+;
+
+block-item-list % blk_item_list
+: block-item % base
+| block-item-list block-item % genrule
+;
+
+block-item % blk_item
+: declaration % decl
+| unlabeled-statement % ustmt
+| label % label
+;
+
+expression-statement % expr_stmt
+: expression_opt ";" % expr
+| attr-spec-seq_opt expressions ";" % attr
+;
+
+selection-statement % selstmt
+: "if" "(" selection-header ")" secondary-block % base
+| "if" "(" selection-header ")" secondary-block "else" secondary-block % genrule
+| "switch" "(" selection-header ")" secondary-block % switch
+;
+
+selection-header % selstmt_header
+: expression % expr
+| declaration expression % declexpr
+| simple-declaration % simpldecl
+;
+
+iteration-statement % iterstmt
+: "while" "(" expression ")" secondary-block % while
+| "do" secondary-block "while" "(" expression ")" ";" % dowhile
+| "for" "(" expression_opt ";" expression_opt ";" expression_opt ")" secondary-block % for_classic
+| "for" "(" declaration expression_opt ";" expression_opt ")" secondary-block % for_vardecl
+;
+
+jump-statement % jmp
+: "goto" identifier ";" % goto
+| "continue" identifier_opt ";" % continue
+| "break" identifier_opt ";" % break
+| "return" expression_opt ";" % return
+;
+
+translation-unit % TU
+: external-declaration % base
+| translation-unit external-declaration % genrule
+;
+
+external-declaration % extdecl
+: function-definition % funcdef
+| declaration % decl
+;
+
+function-definition % funcdef
+: attr-spec-seq_opt decl-specs declarator function-body % funcdef
+;
+
+function-body % funcbody
+: compound-statement % funcbody
+;

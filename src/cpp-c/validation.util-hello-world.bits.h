@@ -1,5 +1,7 @@
 /* DannyNiu/NJF, 2026-04-12. Public Domain. */
 
+// This file is obsolete as of 2026-07-24.
+
 #ifdef NextHeader
 
 // In addition to var_lex_elems (which is CLexElems),
@@ -20,17 +22,17 @@ NS_RULES = strvec_create();
 
 perfcounter = clock();
 
-cpptu_t tu_obj = { .base.type = S2_OBJ_TYPE_CPPTU }, *tu = &tu_obj; // (cpptu_t *)s2gc_obj_alloc(S2_OBJ_TYPE_CPPTU, sizeof(cpptu_t));
+//- cpptu_t tu_obj = { .base.type = S2_OBJ_TYPE_CPPTU }, *tu = &tu_obj; // (cpptu_t *)s2gc_obj_alloc(S2_OBJ_TYPE_CPPTU, sizeof(cpptu_t));
 int ll = 1; // last line.
 FILE *doti = stdout;// fmemopen(NULL, 1280, "w+");
 
 tu->macros = s2list_create();
-tu->ctx_shifter = &lexer;
+//- tu->ctx_shifter = &lexer;
 tu->shifter = (token_shifter_t)RegexLexFromRope_Shift;
-tu->pushlist = s2list_create();
 
+tu->pushlist = s2list_create();
 tu->lash.sv = NULL;
-tu->lash.ctx_shifter = tu->ctx_shifter;
+tu->lash.ctx_shifter = &tu->ctx_shifter;
 tu->lash.shifter = tu->shifter;
 
 tu->rescan_stackbase.flags = MACEXP_FLAG_EVALCTX_SOURCE;
@@ -42,11 +44,7 @@ tu->rescan_stackbase.pushlist = tu->pushlist;
 tu->condinc_level = 0;
 tu->condinc_state[0] = CONDINC_INITIAL;
 
-tu->Include__FILE__Stack = s2list_create();
-s2list_insert(
-    tu->Include__FILE__Stack,
-    s2data_from_str(SourceCodeFileName)->pobj,
-    s2_setter_gave);
+tu->HotFile = s2data_from_str(SourceCodeFileName);
 
 tu->IncPaths = s2list_create();
 s2list_insert(tu->IncPaths, s2data_from_str(
@@ -55,7 +53,7 @@ s2list_insert(tu->IncPaths, s2data_from_str(
 //*
 while( true )
 {
-    lex_token_t *tok = cppMainProgramCoroutine(tu);
+    lex_token_t *tok = cppDirectivesDispatch(tu);
     if( !tok ) break;
 
     for(i=0; langlex_token_strtab[i].str; i++)
@@ -84,7 +82,7 @@ if( doti != stdout )
 
 s2obj_release(tu->macros->pobj);
 s2obj_release(tu->pushlist->pobj);
-s2obj_release(tu->Include__FILE__Stack->pobj);
+s2obj_release(tu->HotFile->pobj);
 s2obj_release(tu->IncPaths->pobj);
 //s2obj_release(tu->pobj);
 

@@ -30,6 +30,25 @@ lex_elem_t CLexElems[] = {
     { .pattern = "(u8|[uUL])?\"([^\\\"]|"EscSeq")*\"",
       .cflags = LIBREG_EXTENDED, .completion = langlex_strlit },
 
+    { .pattern =
+      // 2026-07-25: Not yet included: _Atomic, _Decimal*, (_T|t)hread_local
+      "alignas|alignof|_Alignas|_Alignof|sizeof|_Countof|"
+      "auto|bool|_Bool|struct|union|enum|true|false|nullptr|"
+      "void|char|short|int|long|float|double|signed|unsigned|_Generic|_Imaginary|"
+      "static_assert|_Static_assert|typeof(_unqual)|"
+      "return|break|continue|switch|case|default|"
+      "if|else|while|do|for|goto|_Noreturn|"
+      "extern|static|typedef|inline|register|const(expr)?|volatile|restrict",
+      .cflags = LIBREG_EXTENDED, .completion = langlex_keyword },
+
+    { .pattern = "/\\*([^*]|\\*[^/])*\\*/",
+      .cflags = LIBREG_EXTENDED,
+      .completion = langlex_comment },
+
+    { .pattern = "//[^\n]*(\n|$)",
+      .cflags = LIBREG_EXTENDED,
+      .completion = langlex_comment },
+
     { .pattern = Identifier, .cflags = LIBREG_EXTENDED,
       .completion = langlex_identifier },
 
@@ -44,6 +63,10 @@ lex_elem_t CLexElems[] = {
       "[[.].][.[.](){}.&*+[.-.]~!/%<>\\^|?:;=,#]",
       .cflags = LIBREG_EXTENDED, .completion = langlex_punct },
 
+    // 2026-07-19 retro note for 2026-07-06:
+    // angle-bracket form of {__has_}{include,embed}
+    // needs such special treatment.
+    // this is a completion with the lowest priority.
     { .pattern = ".",
       .cflags = LIBREG_EXTENDED,
       .completion = langlex_invalid },

@@ -1,11 +1,11 @@
 /* DannyNiu/NJF, 2026-07-21. Public Domain. */
 
-#include "cpp-c.h"
-#include "ppexpr-grammar.h"
+#include "../cpp-c/cpp-c.h"
+#include "c-grammar.h"
 #include <s2obj.h>
 
-#define GRAMMAR_RULES ppexpr_grammar_rules
-#define NS_RULES ns_rules_ppexpr
+#define GRAMMAR_RULES c_grammar_rules
+#define NS_RULES ns_rules_c
 #define var_lex_elems CLexElems
 #include "../lalr-common/lalr.h"
 
@@ -21,6 +21,9 @@ int logger(void *ctx, const char *msg)
 int main(int argc, char *argv[])
 {
     cpptu_t *cpptu;
+    lalr_stack_t *parsed;
+    lalr_term_t *te;
+    int indentlevel = 0;
     int subret = 0, i;
 
     clock_t perfcounter;
@@ -32,16 +35,12 @@ int main(int argc, char *argv[])
     long rel_after = 0;
 #endif /* INTERCEPT_MEM_CALLS */
 
-    int ll = 1; // last line.
-    FILE *doti = stdout;// fmemopen(NULL, 1280, "w+");
-
     ccPreprocInit();
     perfcounter = clock();
 
-    assert( argc > 2 );
-    assert( strcmp(argv[1], "-f") == 0 );
+    assert( argc > 1 );
 
-    cpptu = cpptu_create(argv[2], NULL);
+    cpptu = cpptu_create(argv[1], NULL);
     s2list_insert(cpptu->IncPaths, s2data_from_str(
                       "../tests/dcc-preproc")->pobj, s2_setter_gave);
     cpptu->ctx_shifter.logger_base = (struct logging_ctxbase){
@@ -53,38 +52,27 @@ int main(int argc, char *argv[])
     rel_before = frees;
 #endif /* INTERCEPT_MEM_CALLS */
 
-//*
-    while( true )
+    perfcounter = clock();
+    i = lalr_parse(&parsed, GRAMMAR_RULES, NULL, NS_RULES,
+                   (token_shifter_t)cppDirectivesDispatch, (void *)cpptu);
+    printf("parsing returned: %d after %ld clock cycles, stack:\n",
+           i, clock() - perfcounter);
+
+    te = parsed->bottom;
+    while( te )
     {
-        lex_token_t *tok = cppDirectivesDispatch(cpptu);
-        if( !tok ) break;
+        printf("%p\t: ", te);
 
-        for(i=0; langlex_token_strtab[i].str; i++)
-            if(  langlex_token_strtab[i].enumerant ==
-                 tok->completion )
-                break;
-
-        // 2026-07-24 TODO: Actually make this program output "*.i" files.
-        // Note: POSIX-2024 has a definition of the contents of "*.i" files.
-        if( tok->lineno > ll )
+        if( s2_is_prod(te->production) )
         {
-            fprintf(doti, "\n");
-            ll = tok->lineno;
+            print_prod(te->production, indentlevel, NS_RULES);
         }
-        fprintf(doti, "%s ", (const char *)s2data_weakmap(tok->str));
+        else print_token(te->terminal, indentlevel);
 
-        s2obj_release(tok->pobj);
+        te = te->up;
     }
-    fprintf(doti, "\n");
 
-    if( doti != stdout )
-    {
-        fseek(doti, 0, SEEK_SET);
-        while( (ll = fgetc(doti)) >= 0 )
-            putchar(ll);
-        fclose(doti);
-    }//*/
-
+    s2obj_release(parsed->pobj);
     s2obj_release(cpptu->pobj);
 
     perfcounter = clock() - perfcounter;
@@ -113,7 +101,7 @@ int main(int argc, char *argv[])
 
         gctail = gctail->gc_prev;
     }
-    s2obj_release(gcsave);//*/
+    s2obj_release(gcsave);
 #endif
 
 #if INTERCEPT_MEM_CALLS

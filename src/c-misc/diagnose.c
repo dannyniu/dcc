@@ -16,7 +16,7 @@ void ccDiagnose(int level, const char *msg, ...)
     va_list ap;
     va_start(ap, msg);
 
-    fprintf(stderr, "[%s]: ", levelmsg[level]);
+    if( level >= 0 ) fprintf(stderr, "[%s]: ", levelmsg[level]);
     vfprintf(stderr, msg, ap);
     va_end(ap);
 }

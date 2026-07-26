@@ -3,714 +3,714 @@
 #include "ppexpr-grammar.h"
 #include "../langlex/langlex-c.h"
 strvec_t *ns_rules_ppexpr;
-void *goal_pp_const_expr(lalr_rule_params)
+void *pp_goal_pp_const_expr(lalr_rule_params)
 {
-    int32_t production = hRule("ppexpr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "expressions-list", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("ppexpr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "expressions-list", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *ident_ident(lalr_rule_params)
+void *pp_ident_ident(lalr_rule_params)
 {
-    int32_t production = hRule("identifier");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_identifier, },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("identifier");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_vtoken, .vtype = langlex_identifier, },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *const_true(lalr_rule_params)
+void *pp_const_true(lalr_rule_params)
 {
-    int32_t production = hRule("constant");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "true", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("constant");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_stoken, .value = "true", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *const_false(lalr_rule_params)
+void *pp_const_false(lalr_rule_params)
 {
-    int32_t production = hRule("constant");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "false", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("constant");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_stoken, .value = "false", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *const_null(lalr_rule_params)
+void *pp_const_null(lalr_rule_params)
 {
-    int32_t production = hRule("constant");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "null", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("constant");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_stoken, .value = "null", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *const_binlit(lalr_rule_params)
+void *pp_const_binlit(lalr_rule_params)
 {
-    int32_t production = hRule("constant");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_binlit, },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("constant");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_vtoken, .vtype = langlex_binlit, },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *const_declit(lalr_rule_params)
+void *pp_const_declit(lalr_rule_params)
 {
-    int32_t production = hRule("constant");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_declit, },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("constant");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_vtoken, .vtype = langlex_declit, },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *const_octlit(lalr_rule_params)
+void *pp_const_octlit(lalr_rule_params)
 {
-    int32_t production = hRule("constant");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_octlit, },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("constant");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_vtoken, .vtype = langlex_octlit, },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *const_hexlit(lalr_rule_params)
+void *pp_const_hexlit(lalr_rule_params)
 {
-    int32_t production = hRule("constant");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_hexlit, },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("constant");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_vtoken, .vtype = langlex_hexlit, },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *const_decfplit(lalr_rule_params)
+void *pp_const_decfplit(lalr_rule_params)
 {
-    int32_t production = hRule("constant");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_decfplit, },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("constant");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_vtoken, .vtype = langlex_decfplit, },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *const_hexfplit(lalr_rule_params)
+void *pp_const_hexfplit(lalr_rule_params)
 {
-    int32_t production = hRule("constant");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_hexfplit, },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("constant");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_vtoken, .vtype = langlex_hexfplit, },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *const_charlit(lalr_rule_params)
+void *pp_const_charlit(lalr_rule_params)
 {
-    int32_t production = hRule("constant");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_charlit, },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("constant");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_vtoken, .vtype = langlex_charlit, },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *const_strlit(lalr_rule_params)
+void *pp_const_strlit(lalr_rule_params)
 {
-    int32_t production = hRule("constant");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_vtoken, .vtype = langlex_strlit, },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("constant");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_vtoken, .vtype = langlex_strlit, },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *primary_paren(lalr_rule_params)
+void *pp_primary_paren(lalr_rule_params)
 {
-    int32_t production = hRule("primary-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "(", },
-        { symtype_prod, .value = "expressions-list", },
-        { symtype_stoken, .value = ")", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("primary-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_stoken, .value = "(", },
+{ symtype_prod, .value = "expressions-list", },
+{ symtype_stoken, .value = ")", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *primary_ident(lalr_rule_params)
+void *pp_primary_ident(lalr_rule_params)
 {
-    int32_t production = hRule("primary-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "identifier", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("primary-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "identifier", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *primary_const(lalr_rule_params)
+void *pp_primary_const(lalr_rule_params)
 {
-    int32_t production = hRule("primary-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "constant", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("primary-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "constant", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *postfix_degenerate(lalr_rule_params)
+void *pp_postfix_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("postfix-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "primary-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("postfix-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "primary-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *unary_degenerate(lalr_rule_params)
+void *pp_unary_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("unary-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "postfix-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("unary-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "postfix-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *unary_positive(lalr_rule_params)
+void *pp_unary_positive(lalr_rule_params)
 {
-    int32_t production = hRule("unary-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "+", },
-        { symtype_prod, .value = "unary-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("unary-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_stoken, .value = "+", },
+{ symtype_prod, .value = "unary-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *unary_negative(lalr_rule_params)
+void *pp_unary_negative(lalr_rule_params)
 {
-    int32_t production = hRule("unary-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "-", },
-        { symtype_prod, .value = "unary-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("unary-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_stoken, .value = "-", },
+{ symtype_prod, .value = "unary-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *unary_bitcompl(lalr_rule_params)
+void *pp_unary_bitcompl(lalr_rule_params)
 {
-    int32_t production = hRule("unary-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "~", },
-        { symtype_prod, .value = "unary-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("unary-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_stoken, .value = "~", },
+{ symtype_prod, .value = "unary-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *unary_logicnot(lalr_rule_params)
+void *pp_unary_logicnot(lalr_rule_params)
 {
-    int32_t production = hRule("unary-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_stoken, .value = "!", },
-        { symtype_prod, .value = "unary-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("unary-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_stoken, .value = "!", },
+{ symtype_prod, .value = "unary-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *mulexpr_degenerate(lalr_rule_params)
+void *pp_mulexpr_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("mul-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "unary-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("mul-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "unary-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *mulexpr_multiply(lalr_rule_params)
+void *pp_mulexpr_multiply(lalr_rule_params)
 {
-    int32_t production = hRule("mul-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "mul-expr", },
-        { symtype_stoken, .value = "*", },
-        { symtype_prod, .value = "unary-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("mul-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "mul-expr", },
+{ symtype_stoken, .value = "*", },
+{ symtype_prod, .value = "unary-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *mulexpr_divide(lalr_rule_params)
+void *pp_mulexpr_divide(lalr_rule_params)
 {
-    int32_t production = hRule("mul-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "mul-expr", },
-        { symtype_stoken, .value = "/", },
-        { symtype_prod, .value = "unary-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("mul-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "mul-expr", },
+{ symtype_stoken, .value = "/", },
+{ symtype_prod, .value = "unary-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *mulexpr_remainder(lalr_rule_params)
+void *pp_mulexpr_remainder(lalr_rule_params)
 {
-    int32_t production = hRule("mul-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "mul-expr", },
-        { symtype_stoken, .value = "%", },
-        { symtype_prod, .value = "unary-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("mul-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "mul-expr", },
+{ symtype_stoken, .value = "%", },
+{ symtype_prod, .value = "unary-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *addexpr_degenerate(lalr_rule_params)
+void *pp_addexpr_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("add-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "mul-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("add-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "mul-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *addexpr_add(lalr_rule_params)
+void *pp_addexpr_add(lalr_rule_params)
 {
-    int32_t production = hRule("add-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "add-expr", },
-        { symtype_stoken, .value = "+", },
-        { symtype_prod, .value = "mul-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("add-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "add-expr", },
+{ symtype_stoken, .value = "+", },
+{ symtype_prod, .value = "mul-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *addexpr_subtract(lalr_rule_params)
+void *pp_addexpr_subtract(lalr_rule_params)
 {
-    int32_t production = hRule("add-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "add-expr", },
-        { symtype_stoken, .value = "-", },
-        { symtype_prod, .value = "mul-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("add-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "add-expr", },
+{ symtype_stoken, .value = "-", },
+{ symtype_prod, .value = "mul-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *shiftexpr_degenerate(lalr_rule_params)
+void *pp_shiftexpr_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("bit-shift-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "add-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("bit-shift-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "add-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *shiftexpr_lshift(lalr_rule_params)
+void *pp_shiftexpr_lshift(lalr_rule_params)
 {
-    int32_t production = hRule("bit-shift-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "bit-shift-expr", },
-        { symtype_stoken, .value = "<<", },
-        { symtype_prod, .value = "add-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("bit-shift-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "bit-shift-expr", },
+{ symtype_stoken, .value = "<<", },
+{ symtype_prod, .value = "add-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *shiftexpr_rshift(lalr_rule_params)
+void *pp_shiftexpr_rshift(lalr_rule_params)
 {
-    int32_t production = hRule("bit-shift-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "bit-shift-expr", },
-        { symtype_stoken, .value = ">>", },
-        { symtype_prod, .value = "add-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("bit-shift-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "bit-shift-expr", },
+{ symtype_stoken, .value = ">>", },
+{ symtype_prod, .value = "add-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *relops_degenerate(lalr_rule_params)
+void *pp_relops_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("rel-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "bit-shift-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("rel-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "bit-shift-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *relops_lt(lalr_rule_params)
+void *pp_relops_lt(lalr_rule_params)
 {
-    int32_t production = hRule("rel-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "rel-expr", },
-        { symtype_stoken, .value = "<", },
-        { symtype_prod, .value = "bit-shift-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("rel-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "rel-expr", },
+{ symtype_stoken, .value = "<", },
+{ symtype_prod, .value = "bit-shift-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *relops_gt(lalr_rule_params)
+void *pp_relops_gt(lalr_rule_params)
 {
-    int32_t production = hRule("rel-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "rel-expr", },
-        { symtype_stoken, .value = ">", },
-        { symtype_prod, .value = "bit-shift-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("rel-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "rel-expr", },
+{ symtype_stoken, .value = ">", },
+{ symtype_prod, .value = "bit-shift-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *relops_le(lalr_rule_params)
+void *pp_relops_le(lalr_rule_params)
 {
-    int32_t production = hRule("rel-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "rel-expr", },
-        { symtype_stoken, .value = "<=", },
-        { symtype_prod, .value = "bit-shift-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("rel-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "rel-expr", },
+{ symtype_stoken, .value = "<=", },
+{ symtype_prod, .value = "bit-shift-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *relops_ge(lalr_rule_params)
+void *pp_relops_ge(lalr_rule_params)
 {
-    int32_t production = hRule("rel-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "rel-expr", },
-        { symtype_stoken, .value = ">=", },
-        { symtype_prod, .value = "bit-shift-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("rel-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "rel-expr", },
+{ symtype_stoken, .value = ">=", },
+{ symtype_prod, .value = "bit-shift-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *eqops_degenerate(lalr_rule_params)
+void *pp_eqops_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("eq-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "rel-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("eq-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "rel-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *eqops_eq(lalr_rule_params)
+void *pp_eqops_eq(lalr_rule_params)
 {
-    int32_t production = hRule("eq-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "eq-expr", },
-        { symtype_stoken, .value = "==", },
-        { symtype_prod, .value = "rel-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("eq-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "eq-expr", },
+{ symtype_stoken, .value = "==", },
+{ symtype_prod, .value = "rel-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *eqops_ne(lalr_rule_params)
+void *pp_eqops_ne(lalr_rule_params)
 {
-    int32_t production = hRule("eq-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "eq-expr", },
-        { symtype_stoken, .value = "!=", },
-        { symtype_prod, .value = "rel-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("eq-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "eq-expr", },
+{ symtype_stoken, .value = "!=", },
+{ symtype_prod, .value = "rel-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *bitand_degenerate(lalr_rule_params)
+void *pp_bitand_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("bit-and");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "eq-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("bit-and");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "eq-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *bitand_bitand(lalr_rule_params)
+void *pp_bitand_bitand(lalr_rule_params)
 {
-    int32_t production = hRule("bit-and");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "bit-and", },
-        { symtype_stoken, .value = "&", },
-        { symtype_prod, .value = "eq-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("bit-and");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "bit-and", },
+{ symtype_stoken, .value = "&", },
+{ symtype_prod, .value = "eq-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *bitxor_degenerate(lalr_rule_params)
+void *pp_bitxor_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("bit-xor");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "bit-and", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("bit-xor");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "bit-and", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *bitxor_bitxor(lalr_rule_params)
+void *pp_bitxor_bitxor(lalr_rule_params)
 {
-    int32_t production = hRule("bit-xor");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "bit-xor", },
-        { symtype_stoken, .value = "^", },
-        { symtype_prod, .value = "bit-and", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("bit-xor");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "bit-xor", },
+{ symtype_stoken, .value = "^", },
+{ symtype_prod, .value = "bit-and", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *bitor_degenerate(lalr_rule_params)
+void *pp_bitor_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("bit-or");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "bit-xor", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("bit-or");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "bit-xor", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *bitor_bitor(lalr_rule_params)
+void *pp_bitor_bitor(lalr_rule_params)
 {
-    int32_t production = hRule("bit-or");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "bit-or", },
-        { symtype_stoken, .value = "|", },
-        { symtype_prod, .value = "bit-xor", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("bit-or");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "bit-or", },
+{ symtype_stoken, .value = "|", },
+{ symtype_prod, .value = "bit-xor", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *logicand_degenerate(lalr_rule_params)
+void *pp_logicand_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("logic-and");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "bit-or", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("logic-and");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "bit-or", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *logicand_logicand(lalr_rule_params)
+void *pp_logicand_logicand(lalr_rule_params)
 {
-    int32_t production = hRule("logic-and");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "logic-and", },
-        { symtype_stoken, .value = "&&", },
-        { symtype_prod, .value = "bit-or", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("logic-and");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "logic-and", },
+{ symtype_stoken, .value = "&&", },
+{ symtype_prod, .value = "bit-or", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *logicor_degenerate(lalr_rule_params)
+void *pp_logicor_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("logic-or");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "logic-and", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("logic-or");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "logic-and", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *logicor_logicor(lalr_rule_params)
+void *pp_logicor_logicor(lalr_rule_params)
 {
-    int32_t production = hRule("logic-or");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "logic-or", },
-        { symtype_stoken, .value = "||", },
-        { symtype_prod, .value = "logic-and", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("logic-or");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "logic-or", },
+{ symtype_stoken, .value = "||", },
+{ symtype_prod, .value = "logic-and", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *tenary_degenerate(lalr_rule_params)
+void *pp_tenary_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("cond-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "logic-or", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("cond-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "logic-or", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *tenary_tenary(lalr_rule_params)
+void *pp_tenary_tenary(lalr_rule_params)
 {
-    int32_t production = hRule("cond-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "logic-or", },
-        { symtype_stoken, .value = "?", },
-        { symtype_prod, .value = "expressions-list", },
-        { symtype_stoken, .value = ":", },
-        { symtype_prod, .value = "cond-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("cond-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "logic-or", },
+{ symtype_stoken, .value = "?", },
+{ symtype_prod, .value = "expressions-list", },
+{ symtype_stoken, .value = ":", },
+{ symtype_prod, .value = "cond-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *assignment_degenerate(lalr_rule_params)
+void *pp_assignment_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("assign-expr");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "cond-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("assign-expr");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "cond-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *exprlist_degenerate(lalr_rule_params)
+void *pp_exprlist_degenerate(lalr_rule_params)
 {
-    int32_t production = hRule("expressions-list");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "assign-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("expressions-list");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "assign-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
-void *exprlist_exprlist(lalr_rule_params)
+void *pp_exprlist_exprlist(lalr_rule_params)
 {
-    int32_t production = hRule("expressions-list");
-    static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "expressions-list", },
-        { symtype_stoken, .value = ",", },
-        { symtype_prod, .value = "assign-expr", },
-        {0},
-    };
-    (void)ctx;
-    return lalr_rule_actions_generic(lalr_rule_gen_args);
+int32_t production = hRule("expressions-list");
+static lalr_rule_symbol_t symbolseq[] = {
+{ symtype_prod, .value = "expressions-list", },
+{ symtype_stoken, .value = ",", },
+{ symtype_prod, .value = "assign-expr", },
+{0},
+};
+(void)ctx;
+return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
 lalr_rule_t ppexpr_grammar_rules[] = {
-    goal_pp_const_expr,
-    ident_ident,
-    const_true,
-    const_false,
-    const_null,
-    const_binlit,
-    const_declit,
-    const_octlit,
-    const_hexlit,
-    const_decfplit,
-    const_hexfplit,
-    const_charlit,
-    const_strlit,
-    primary_paren,
-    primary_ident,
-    primary_const,
-    postfix_degenerate,
-    unary_degenerate,
-    unary_positive,
-    unary_negative,
-    unary_bitcompl,
-    unary_logicnot,
-    mulexpr_degenerate,
-    mulexpr_multiply,
-    mulexpr_divide,
-    mulexpr_remainder,
-    addexpr_degenerate,
-    addexpr_add,
-    addexpr_subtract,
-    shiftexpr_degenerate,
-    shiftexpr_lshift,
-    shiftexpr_rshift,
-    relops_degenerate,
-    relops_lt,
-    relops_gt,
-    relops_le,
-    relops_ge,
-    eqops_degenerate,
-    eqops_eq,
-    eqops_ne,
-    bitand_degenerate,
-    bitand_bitand,
-    bitxor_degenerate,
-    bitxor_bitxor,
-    bitor_degenerate,
-    bitor_bitor,
-    logicand_degenerate,
-    logicand_logicand,
-    logicor_degenerate,
-    logicor_logicor,
-    tenary_degenerate,
-    tenary_tenary,
-    assignment_degenerate,
-    exprlist_degenerate,
-    exprlist_exprlist,
-    NULL,
+  pp_goal_pp_const_expr,
+  pp_ident_ident,
+  pp_const_true,
+  pp_const_false,
+  pp_const_null,
+  pp_const_binlit,
+  pp_const_declit,
+  pp_const_octlit,
+  pp_const_hexlit,
+  pp_const_decfplit,
+  pp_const_hexfplit,
+  pp_const_charlit,
+  pp_const_strlit,
+  pp_primary_paren,
+  pp_primary_ident,
+  pp_primary_const,
+  pp_postfix_degenerate,
+  pp_unary_degenerate,
+  pp_unary_positive,
+  pp_unary_negative,
+  pp_unary_bitcompl,
+  pp_unary_logicnot,
+  pp_mulexpr_degenerate,
+  pp_mulexpr_multiply,
+  pp_mulexpr_divide,
+  pp_mulexpr_remainder,
+  pp_addexpr_degenerate,
+  pp_addexpr_add,
+  pp_addexpr_subtract,
+  pp_shiftexpr_degenerate,
+  pp_shiftexpr_lshift,
+  pp_shiftexpr_rshift,
+  pp_relops_degenerate,
+  pp_relops_lt,
+  pp_relops_gt,
+  pp_relops_le,
+  pp_relops_ge,
+  pp_eqops_degenerate,
+  pp_eqops_eq,
+  pp_eqops_ne,
+  pp_bitand_degenerate,
+  pp_bitand_bitand,
+  pp_bitxor_degenerate,
+  pp_bitxor_bitxor,
+  pp_bitor_degenerate,
+  pp_bitor_bitor,
+  pp_logicand_degenerate,
+  pp_logicand_logicand,
+  pp_logicor_degenerate,
+  pp_logicor_logicor,
+  pp_tenary_degenerate,
+  pp_tenary_tenary,
+  pp_assignment_degenerate,
+  pp_exprlist_degenerate,
+  pp_exprlist_exprlist,
+NULL,
 };

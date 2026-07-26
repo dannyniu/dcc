@@ -91,31 +91,31 @@ start_eval_1term:
     create_value(sp->body->value, uintmax_t);
     valreg = s2data_map((s2data_t *)sp->body->value, 0, sizeof(uintmax_t));
 
-    if( theRule == goal_pp_const_expr )
+    if( theRule == pp_goal_pp_const_expr )
     {
         *valreg = uintmax_eval_operand(0);
     }
-    else if( theRule == ident_ident )
+    else if( theRule == pp_ident_ident )
     {
         assert( 0 ); // All identifiers should've been macro-replaced.
     }
-    else if( theRule == const_true )
+    else if( theRule == pp_const_true )
     {
         *valreg = 1;
         signedness = 1;
     }
-    else if( theRule == const_false )
+    else if( theRule == pp_const_false )
     {
         *valreg = 0;
         signedness = 1;
     }
-    else if( theRule == const_null )
+    else if( theRule == pp_const_null )
     {
         // 2026-05-16:
         // This never happens.
         assert( 0 );
     }
-    else if( theRule == const_binlit )
+    else if( theRule == pp_const_binlit )
     {
         const char *p = s2data_weakmap(
             (s2data_t *)sp->body->terms[0].terminal->str);
@@ -136,7 +136,7 @@ start_eval_1term:
 
         signedness = 0;
     }
-    else if( theRule == const_declit )
+    else if( theRule == pp_const_declit )
     {
         const char *p = s2data_weakmap(
             (s2data_t *)sp->body->terms[0].terminal->str);
@@ -152,7 +152,7 @@ start_eval_1term:
             p++;
         }
     }
-    else if( theRule == const_octlit )
+    else if( theRule == pp_const_octlit )
     {
         const char *p = s2data_weakmap(
             (s2data_t *)sp->body->terms[0].terminal->str);
@@ -170,7 +170,7 @@ start_eval_1term:
         if( s2data_len((s2data_t *)sp->body->terms[0].terminal->str) == 1 &&
             *valreg == 0 ) signedness = 1;
     }
-    else if( theRule == const_hexlit )
+    else if( theRule == pp_const_hexlit )
     {
         const char *p = s2data_weakmap(
             (s2data_t *)sp->body->terms[0].terminal->str);
@@ -192,39 +192,39 @@ start_eval_1term:
 
         signedness = 0;
     }
-    else if( theRule == const_charlit )
+    else if( theRule == pp_const_charlit )
     {
         // 2026-05-16 TODO: handle escape sequences.
         *valreg = ((uint8_t *)s2data_weakmap(
                        (s2data_t *)sp->body->terms[0].terminal->str))[0];
     }
-    else if( theRule == primary_paren )
+    else if( theRule == pp_primary_paren )
     {
         *valreg = uintmax_eval_operand(1);
         signedness = signedness_of_operand(1);
     }
 // omitting a lot for now (2026-05-15). 2026-07-01: probably no longer the case.
-    else if( theRule == unary_positive )
+    else if( theRule == pp_unary_positive )
     {
         *valreg = intmax_eval_operand(1);
         signedness = signedness_of_operand(1);
     }
-    else if( theRule == unary_negative )
+    else if( theRule == pp_unary_negative )
     {
         *valreg = -intmax_eval_operand(1);
         signedness = signedness_of_operand(1);
     }
-    else if( theRule == unary_bitcompl )
+    else if( theRule == pp_unary_bitcompl )
     {
         *valreg = -intmax_eval_operand(1);
         signedness = signedness_of_operand(1);
     }
-    else if( theRule == unary_logicnot )
+    else if( theRule == pp_unary_logicnot )
     {
         *valreg = !intmax_eval_operand(1);
         signedness = 1; // did checking, unary `!` is always signed.
     }
-    else if( theRule == mulexpr_multiply )
+    else if( theRule == pp_mulexpr_multiply )
     {
         *valreg =
             uintmax_eval_operand(0) *
@@ -233,7 +233,7 @@ start_eval_1term:
             signedness_of_operand(0) &
             signedness_of_operand(2);
     }
-    else if( theRule == mulexpr_divide )
+    else if( theRule == pp_mulexpr_divide )
     {
         signedness =
             signedness_of_operand(0) &
@@ -247,7 +247,7 @@ start_eval_1term:
                 uintmax_eval_operand(0) /
                 uintmax_eval_operand(2);
     }
-    else if( theRule == mulexpr_remainder )
+    else if( theRule == pp_mulexpr_remainder )
     {
         signedness =
             signedness_of_operand(0) &
@@ -261,7 +261,7 @@ start_eval_1term:
                 uintmax_eval_operand(0) %
                 uintmax_eval_operand(2);
     }
-    else if( theRule == addexpr_add )
+    else if( theRule == pp_addexpr_add )
     {
         *valreg =
             uintmax_eval_operand(0) +
@@ -270,7 +270,7 @@ start_eval_1term:
             signedness_of_operand(0) &
             signedness_of_operand(2);
     }
-    else if( theRule == addexpr_subtract )
+    else if( theRule == pp_addexpr_subtract )
     {
         *valreg =
             uintmax_eval_operand(0) -
@@ -279,7 +279,7 @@ start_eval_1term:
             signedness_of_operand(0) &
             signedness_of_operand(2);
     }
-    else if( theRule == shiftexpr_lshift )
+    else if( theRule == pp_shiftexpr_lshift )
     {
         *valreg =
             uintmax_eval_operand(0) <<
@@ -287,7 +287,7 @@ start_eval_1term:
         signedness =
             signedness_of_operand(0);
     }
-    else if( theRule == shiftexpr_rshift )
+    else if( theRule == pp_shiftexpr_rshift )
     {
         signedness =
             signedness_of_operand(0);
@@ -300,7 +300,7 @@ start_eval_1term:
                 uintmax_eval_operand(0) <<
                 uintmax_eval_operand(2);
     }
-    else if( theRule == relops_lt )
+    else if( theRule == pp_relops_lt )
     {
         signedness =
             signedness_of_operand(0) &
@@ -314,7 +314,7 @@ start_eval_1term:
                 uintmax_eval_operand(0) <
                 uintmax_eval_operand(2);
     }
-    else if( theRule == relops_gt )
+    else if( theRule == pp_relops_gt )
     {
         signedness =
             signedness_of_operand(0) &
@@ -328,7 +328,7 @@ start_eval_1term:
                 uintmax_eval_operand(0) <
                 uintmax_eval_operand(2);
     }
-    else if( theRule == relops_le )
+    else if( theRule == pp_relops_le )
     {
         signedness =
             signedness_of_operand(0) &
@@ -342,7 +342,7 @@ start_eval_1term:
                 uintmax_eval_operand(0) <=
                 uintmax_eval_operand(2);
     }
-    else if( theRule == relops_ge )
+    else if( theRule == pp_relops_ge )
     {
         signedness =
             signedness_of_operand(0) &
@@ -356,7 +356,7 @@ start_eval_1term:
                 uintmax_eval_operand(0) <=
                 uintmax_eval_operand(2);
     }
-    else if( theRule == eqops_eq )
+    else if( theRule == pp_eqops_eq )
     {
         *valreg =
             uintmax_eval_operand(0) ==
@@ -365,7 +365,7 @@ start_eval_1term:
             signedness_of_operand(0) &
             signedness_of_operand(2);
     }
-    else if( theRule == eqops_ne )
+    else if( theRule == pp_eqops_ne )
     {
         *valreg =
             uintmax_eval_operand(0) !=
@@ -374,7 +374,7 @@ start_eval_1term:
             signedness_of_operand(0) &
             signedness_of_operand(2);
     }
-    else if( theRule == bitand_bitand )
+    else if( theRule == pp_bitand_bitand )
     {
         *valreg =
             uintmax_eval_operand(0) &
@@ -383,7 +383,7 @@ start_eval_1term:
             signedness_of_operand(0) &
             signedness_of_operand(2);
     }
-    else if( theRule == bitxor_bitxor )
+    else if( theRule == pp_bitxor_bitxor )
     {
         *valreg =
             uintmax_eval_operand(0) ^
@@ -392,7 +392,7 @@ start_eval_1term:
             signedness_of_operand(0) &
             signedness_of_operand(2);
     }
-    else if( theRule == bitor_bitor )
+    else if( theRule == pp_bitor_bitor )
     {
         *valreg =
             uintmax_eval_operand(0) |
@@ -401,7 +401,7 @@ start_eval_1term:
             signedness_of_operand(0) &
             signedness_of_operand(2);
     }
-    else if( theRule == logicand_logicand )
+    else if( theRule == pp_logicand_logicand )
     {
         // 2026-05-15:
         // Supposedly no need for short-circuit evaluation in this context.
@@ -412,14 +412,14 @@ start_eval_1term:
             uintmax_eval_operand(2);
         signedness = 1;
     }
-    else if( theRule == logicor_logicor )
+    else if( theRule == pp_logicor_logicor )
     {
         *valreg =
             uintmax_eval_operand(0) ||
             uintmax_eval_operand(2);
         signedness = 1;
     }
-    else if( theRule == tenary_tenary )
+    else if( theRule == pp_tenary_tenary )
     {
         *valreg =
             uintmax_eval_operand(0) ?
@@ -430,7 +430,7 @@ start_eval_1term:
             signedness_of_operand(2) :
             signedness_of_operand(4);
     }
-    else if( theRule == exprlist_exprlist )
+    else if( theRule == pp_exprlist_exprlist )
     {
         *valreg = uintmax_eval_operand(2);
         signedness = signedness_of_operand(2);
@@ -458,6 +458,51 @@ start_eval_1term:
     goto start_eval_1term;
 }
 
+void CtrlLine_ArgCollect(
+    s2list_t *atoks,
+    cpptu_t *restrict ctx_tu,
+    void *restrict ctx_shifter,
+    token_shifter_t shifter)
+{
+    bool space_delimit_next_token = false;
+    lex_token_t *tok;
+    RegexLexContext *shifter_rope = ctx_shifter;
+    assert( shifter == (token_shifter_t)RegexLexFromRope_Shift );
+
+    do {
+        tok = look_ahead_for_genuine_newline(shifter_rope) ?
+            NULL : // encountered a newline, the control line is terminated.
+            shifter(ctx_shifter);
+        if( !tok ) break;
+
+        if( tok->completion == langlex_comment )
+        {
+            // 2026-07-21:
+            // An essential mid-processing, as comments are
+            // considered whitespaces before such significance
+            // is lost during syntax parsing phase.
+            space_delimit_next_token = true;
+            if( strncmp(s2data_weakmap(tok->str), "//", 2) == 0 )
+                ctx_tu->ctx_shifter.offsub -= 1; // save 1 'genuine' newline.
+            s2obj_release(tok->pobj);
+            continue;
+        }
+        else if( space_delimit_next_token )
+        {
+            // 2026-07-21:
+            // This assertion is so that in case other non-flag attrs
+            // are added in the future.
+            assert( tok->attrs == 0 || tok->attrs == 1 );
+
+            tok->attrs |= TOKATTR_BLANKDELIM;
+            space_delimit_next_token = false;
+        }
+        // In effect, the above clauses implements comment stripping.
+
+        s2list_push(atoks, tok->pobj, s2_setter_gave);
+    } while( tok );
+}
+
 int cppEvaluateCtrlExpr(
     cpptu_t *restrict ctx_tu,
     void *restrict ctx_shifter,
@@ -479,7 +524,7 @@ int cppEvaluateCtrlExpr(
     s2list_t *astsource = s2list_create();
 
     // the logical input line.
-    s2list_t *logicline = s2list_create();
+    //- s2list_t *logicline; // 2026-07-24: logical line collected by caller.
 
     // the evaluation line for macro expansions.
     s2list_t *evalline = s2list_create();
@@ -487,21 +532,12 @@ int cppEvaluateCtrlExpr(
     struct cppMacroExpandShifter ppeval = {
         .flags = MACEXP_FLAG_EVALCTX_CTRLLINE,
         .pushlist = evalline,
-        .coldlist = logicline,
-        .coldlist_shifter = (token_shifter_t)shift_from_s2list,
         .ctx_tu = ctx_tu,
     };
 
-    RegexLexContext *shifter_rope = ctx_shifter;
-    assert( shifter == (token_shifter_t)RegexLexFromRope_Shift );
-
-    do {
-        tok = look_ahead_for_genuine_newline(shifter_rope) ?
-            NULL : // encountered a newline, the control line is terminated.
-            shifter(ctx_shifter);
-        if( !tok ) break;
-        s2list_push(logicline, tok->pobj, s2_setter_gave);
-    } while( tok );
+    assert( shifter == (token_shifter_t)shift_from_s2list );
+    ppeval.coldlist = ctx_shifter;
+    ppeval.coldlist_shifter = (token_shifter_t)shift_from_s2list;
 
     //
     // 2. macro-expand it,
@@ -513,7 +549,6 @@ int cppEvaluateCtrlExpr(
         {
             ccDiagnoseError(ctx_tu, "Invalid Token", spelling_and_site(tok));
             s2obj_release(astsource->pobj);
-            s2obj_release(logicline->pobj);
             s2obj_release(evalline->pobj);
             return -1;
         }
@@ -550,7 +585,6 @@ int cppEvaluateCtrlExpr(
         ccDiagnoseError(ctx_tu, "Parsing Error", " parser return: %d.", i);
         s2obj_release(parsed->pobj);
         s2obj_release(astsource->pobj);
-        s2obj_release(logicline->pobj);
         s2obj_release(evalline->pobj);
         return -1;
     }
@@ -560,7 +594,6 @@ int cppEvaluateCtrlExpr(
 
     s2obj_release(parsed->pobj);
     s2obj_release(astsource->pobj);
-    s2obj_release(logicline->pobj);
     s2obj_release(evalline->pobj);
 
     return i >= 0 ? evalres != 0 : i;

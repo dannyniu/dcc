@@ -2,6 +2,8 @@
 
 // 0 is reserved for `lex_token_complete` as end-of-list.
 LEX_ENUM(langlex_identifier)
+LEX_ENUM(langlex_keyword)
+LEX_ENUM(langlex_comment)
 
 LEX_ENUM(langlex_binlit)
 LEX_ENUM(langlex_declit)
@@ -24,3 +26,12 @@ LEX_ENUM(langlex_punct)
 // This completion is automatically rejected by the C parser for there being
 // no grammar rule accepting them.
 LEX_ENUM(langlex_invalid)
+
+// 2026-07-19:
+// Concatenation of adjacent string literals is handled in the token shifter.
+LEX_ENUM(langlex_str_cooked)
+
+// 2026-07-25:
+// A typedef-name identifier as recognized by the lexer,
+// (by looking at the (partial) parse tree).
+LEX_ENUM(lexer_hack_typedef_name)

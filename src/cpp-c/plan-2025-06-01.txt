@@ -4,7 +4,7 @@
 The previous plan were scrubbed. A diagram sketch of the macro expansion
 implementation is available in the docs folder.
 
-The current code here hasn't been tested yet.
+The current code here is checked, but not thoroughly tested yet.
 
 2026-04-12, Roles of Each Files:
 ====
@@ -14,16 +14,26 @@ The current code here hasn't been tested yet.
 
 Implement the behaviors of preprocessing directives,
 
-`cpp-master*`:
+`cpp-master.*`:
 ----
 
-2026-04-12 TODO: document me.
+Watches for and invokes preprocessing directives,
+optionally suppressing the lines skipped by conditional inclusions.
 
-?? Watches for and invokes preprocessing directives ??
-?? .. what else .. ??
+In the final stage of emitting tokens, it coalesces string literals, and
+looks up the (partial) parse tree for typenames. (TODO as of 2026-07-24.)
 
-`cpp-macro-expand.*`:
+`cpp-macro-expand.c`:
 ----
 
 Handles the expansion of macros, by intercepting the token shifter of
 the unprocessed source code file, and produce a stream of processed tokens.
+Due to requirements on rescanning, the actual implementation detail is complex,
+in short, it consist of a scanning recursion and a macro expander that invokes
+each other.
+
+`cpp-macro-expand-special.c`
+----
+
+Deals with special preprocessing predicates/functions that're provided by the
+preprocessor - i.e. that're not definable by user code.

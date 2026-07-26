@@ -109,6 +109,12 @@ struct lalr_rulesym {
         // S means static string. Typically, the spelling of the token
         // determines its meaning.
         lalr_symtype_stoken,
+
+        // Added 2026-07-17:
+        // Followed by a set of symbols to be:
+        // - accepted (vtype == true), or
+        // - excluded (vtype == false).
+        lalr_symtype_symset,
     } type;
 
     bool optional;

@@ -39,7 +39,7 @@ struct cppmacro {
 #define PPTOK_CLS_OPERAND 8 // unevaluated parameter.
 
 struct cppMacroExpandShifter {
-    // 2026-05-14 TODO:
+    // 2026-05-14 TODO (did 2026-07-19):
     // Implement `defined`, `__has_*` operators for the control-line context.
 #define MACEXP_FLAG_EVALCTX_SOURCE      0
 #define MACEXP_FLAG_EVALCTX_CTRLLINE    1

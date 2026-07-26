@@ -1,6 +1,7 @@
 /* DannyNiu, 2026-03-29. Public Domain. */
 
 #include "cpp-c.h"
+#include "../c-misc/dequoting.h"
 #include <s2ref.h>
 #include <stdarg.h>
 
@@ -231,12 +232,13 @@ lex_token_t *cppBufferedShifterCoroutine(struct cppBufferedShifter *ctx)
     else return ctx->shifter(ctx->ctx_shifter);
 }
 
-lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
+lex_token_t *cppDirectivesDispatch(cpptu_t *ctx_tu)
 {
     lex_token_t *tok = NULL;
+    bool space_delimit_next_token = false;
 
-    static long cntr = 0;
-    Reached("CPP Main Counter: %ld.\n", ++cntr);
+    static long cntr = 0; (void)cntr;
+    Reached("CPP Cnd-Inc Counter: %ld.\n", ++cntr);
 
     if( s2list_len(ctx_tu->pushlist) > 0 )
     {
@@ -253,9 +255,25 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
     while( true )
     {
         int pred;
-        int first_of_a_line = is_first_of_the_line(ctx_tu->ctx_shifter);
+        int first_of_a_line;
         const char *tokstr;
 
+        if( ctx_tu->Includee )
+        {
+            // 2026-07-19:
+            // now we're inside an include file.
+            tok = cppDirectivesDispatch(ctx_tu->Includee);
+            if( !tok )
+            {
+                ctx_tu->count_errors += ctx_tu->Includee->count_errors;
+                ctx_tu->count_warnings += ctx_tu->Includee->count_warnings;
+                s2obj_release(ctx_tu->Includee->pobj);
+                ctx_tu->Includee = NULL;
+            }
+            else return tok;
+        }
+
+        first_of_a_line = is_first_of_the_line(&ctx_tu->ctx_shifter);
         Reached("FoL: %c\n", first_of_a_line ? '+' : '-');
 
         if( !(tok = ctx_tu->lash.shifter(ctx_tu->lash.ctx_shifter)) )
@@ -285,6 +303,33 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
 
         tokstr = s2data_weakmap(tok->str);
         Reached("%s\n", tokstr);
+
+        // 2026-07-21:
+        // At this point, this token is certain to take effect.
+
+        if( tok->completion == langlex_comment )
+        {
+            // 2026-07-21:
+            // An essential mid-processing, as comments are
+            // considered whitespaces before such significance
+            // is lost during syntax parsing phase.
+            space_delimit_next_token = true;
+            if( strncmp(tokstr, "//", 2) == 0 )
+                ctx_tu->ctx_shifter.offsub -= 1; // save 1 'genuine' newline.
+            s2obj_release(tok->pobj);
+            continue;
+        }
+        else if( space_delimit_next_token )
+        {
+            // 2026-07-21:
+            // This assertion is so that in case other non-flag attrs
+            // are added in the future.
+            assert( tok->attrs == 0 || tok->attrs == 1 );
+
+            tok->attrs |= TOKATTR_BLANKDELIM;
+            space_delimit_next_token = false;
+        }
+        // In effect, the above clauses implements comment stripping.
 
         if( !first_of_a_line || 0 != strcmp("#", tokstr) )
         {
@@ -325,30 +370,110 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
 
             if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INITIAL )
             {
+                s2list_t *mdef = s2list_create();
+                CtrlLine_ArgCollect(
+                    mdef, ctx_tu, &ctx_tu->ctx_shifter, ctx_tu->shifter);
                 cppProcessDefineDirective(
-                    ctx_tu, ctx_tu->ctx_shifter, ctx_tu->shifter);
+                    ctx_tu, mdef, (token_shifter_t)shift_from_s2list);
+                s2obj_release(mdef->pobj);
+            }
+        }
+        else if( 0 == strcmp("include", tokstr) )
+        {
+            if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INITIAL )
+            {
+                s2list_t *mdef = s2list_create();
+                CtrlLine_ArgCollect(
+                    mdef, ctx_tu, &ctx_tu->ctx_shifter, ctx_tu->shifter);
+                cppProcessIncludeDirective(
+                    ctx_tu, mdef, (token_shifter_t)shift_from_s2list);
+                s2obj_release(mdef->pobj);
             }
         }
         else if( 0 == strcmp("undef", tokstr) )
         {
-            //assert( 0 ); // not testing this yet.
             Reached(" _reached 2_\n");
 
             if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INITIAL )
             {
-                cppUndef1Macro(
-                    ctx_tu, ctx_tu->lash.shifter(
-                        ctx_tu->lash.ctx_shifter));
+                s2list_t *mdef = s2list_create();
+                lex_token_t *tx;
+                CtrlLine_ArgCollect(
+                    mdef, ctx_tu, &ctx_tu->ctx_shifter, ctx_tu->shifter);
+                s2list_seek(mdef, 0, S2_LIST_SEEK_SET);
+                s2list_get_T(lex_token_t)(mdef, &tx);
+
+                if( s2list_len(mdef) != 1 ||
+                    tx->completion != langlex_identifier )
+                {
+                    ccDiagnoseError(ctx_tu, "Expected one identifier", spelling_and_site(tx));
+                }
+
+                cppUndef1Macro(ctx_tu, (lex_token_t *)s2obj_retain(tx->pobj));
+                s2obj_release(mdef->pobj);
             }
         }
 
-        // 2026-05-14: TODO.
+        else if( 0 == strcmp("error", tokstr) )
+        {
+            if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INITIAL )
+            {
+                s2list_t *mdef = s2list_create();
+                lex_token_t *tx;
+                CtrlLine_ArgCollect(
+                    mdef, ctx_tu, &ctx_tu->ctx_shifter, ctx_tu->shifter);
+                s2list_seek(mdef, 0, S2_LIST_SEEK_SET);
+
+                ccDiagnoseError(ctx_tu, "Error directive:", spelling_and_site(tok));
+                while( s2list_shift_T(lex_token_t)(mdef, &tx) == s2_access_success )
+                {
+                    ccDiagnose(elog_raw, " %s", s2data_weakmap(tx->str));
+                    s2obj_release(tx->pobj);
+                }
+                ccDiagnose(elog_raw, "\n");
+
+                s2obj_release(mdef->pobj);
+                ctx_tu->count_errors ++;
+            }
+        }
+
+        else if( 0 == strcmp("warning", tokstr) )
+        {
+            if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INITIAL )
+            {
+                s2list_t *mdef = s2list_create();
+                lex_token_t *tx;
+                CtrlLine_ArgCollect(
+                    mdef, ctx_tu, &ctx_tu->ctx_shifter, ctx_tu->shifter);
+                s2list_seek(mdef, 0, S2_LIST_SEEK_SET);
+
+                ccDiagnoseWarn(ctx_tu, "Warning directive:", spelling_and_site(tok));
+                while( s2list_shift_T(lex_token_t)(mdef, &tx) == s2_access_success )
+                {
+                    ccDiagnose(elog_raw, " %s", s2data_weakmap(tx->str));
+                    s2obj_release(tx->pobj);
+                }
+                ccDiagnose(elog_raw, "\n");
+
+                s2obj_release(mdef->pobj);
+                ctx_tu->count_warnings ++;
+            }
+        }
+
+        // 2026-05-14 TODO:
+        // Remaining as of 2026-07-19:
+        // - embed (next 1st recent).
+        // - pragma (to be planned).
         else if( 0 == strcmp("if", tokstr) )
         {
             if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INITIAL )
             {
+                s2list_t *mdef = s2list_create();
+                CtrlLine_ArgCollect(
+                    mdef, ctx_tu, &ctx_tu->ctx_shifter, ctx_tu->shifter);
                 pred = cppEvaluateCtrlExpr(
-                    ctx_tu, ctx_tu->ctx_shifter, ctx_tu->shifter);
+                    ctx_tu, mdef, (token_shifter_t)shift_from_s2list);
+                s2obj_release(mdef->pobj);
 
                 // Should be `_Countof`, but (assert?) it's a single byte anyway.
                 assert( ctx_tu->condinc_level < sizeof ctx_tu->condinc_state );
@@ -378,13 +503,86 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
             }
             else assert( 0 );
         }
-        else if( 0 == strcmp("elif", tokstr) )
+
+        else if( 0 == strcmp("ifdef", tokstr) ||
+                 0 == strcmp("ifndef", tokstr) )
+        {
+            assert( 0 );
+            // TODO 2026-07-24: This block is new, being worked on!
+            if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INITIAL )
+            {
+                s2list_t *mdef = s2list_create();
+                lex_token_t *tx;
+                CtrlLine_ArgCollect(
+                    mdef, ctx_tu, &ctx_tu->ctx_shifter, ctx_tu->shifter);
+                s2list_seek(mdef, 0, S2_LIST_SEEK_SET);
+                s2list_get_T(lex_token_t)(mdef, &tx);
+
+                if( s2list_len(mdef) != 1 ||
+                    tx->completion != langlex_identifier )
+                {
+                    ccDiagnoseError(ctx_tu, "Expected one identifier", spelling_and_site(tx));
+                }
+
+                pred = !cppLookup1Macro(
+                    ctx_tu, (lex_token_t *)s2obj_retain(tx->pobj));
+                if( 0 == strcmp("ifdef", tokstr) ) pred = !pred;
+
+                s2obj_release(mdef->pobj);
+
+                // Should be `_Countof`, but (assert?) it's a single byte anyway.
+                assert( ctx_tu->condinc_level < sizeof ctx_tu->condinc_state );
+
+                // 2026-05-16:
+                //
+                // Q: specific implementation behavior / actions:
+                // A: see "cpp-c.h", notes below the `CONDINC_*` macros.
+
+                if( pred )
+                {
+                    ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_INCLUDED;
+                    ctx_tu->condinc_level ++;
+                    ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_INITIAL;
+                }
+                else
+                {
+                    ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_TRYNEXT;
+                    ctx_tu->condinc_level ++;
+                    ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_SUPPRESS;
+                }
+            }
+            else if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_SUPPRESS )
+            {
+                ctx_tu->condinc_level ++;
+                ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_SUPPRESS;
+            }
+            else assert( 0 );
+        }
+
+        else if( 0 == strcmp("elifdef", tokstr) ||
+                 0 == strcmp("elifndef", tokstr) )
         {
             ctx_tu->condinc_level --;
             if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_TRYNEXT )
             {
-                pred = cppEvaluateCtrlExpr(
-                    ctx_tu, ctx_tu->ctx_shifter, ctx_tu->shifter);
+                s2list_t *mdef = s2list_create();
+                lex_token_t *tx;
+                CtrlLine_ArgCollect(
+                    mdef, ctx_tu, &ctx_tu->ctx_shifter, ctx_tu->shifter);
+                s2list_seek(mdef, 0, S2_LIST_SEEK_SET);
+                s2list_get_T(lex_token_t)(mdef, &tx);
+
+                if( s2list_len(mdef) != 1 ||
+                    tx->completion != langlex_identifier )
+                {
+                    ccDiagnoseError(ctx_tu, "Expected one identifier", spelling_and_site(tx));
+                }
+
+                pred = !cppLookup1Macro(
+                    ctx_tu, (lex_token_t *)s2obj_retain(tx->pobj));
+                if( 0 == strcmp("elifdef", tokstr) ) pred = !pred;
+
+                s2obj_release(mdef->pobj);
 
                 // Should be `_Countof`, but (assert?) it's a single byte anyway.
                 assert( ctx_tu->condinc_level < sizeof ctx_tu->condinc_state );
@@ -422,6 +620,56 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
                 ccDiagnoseError(ctx_tu, "Unpaired preprocessing group", spelling_and_site(tok));
             }
         }
+
+        else if( 0 == strcmp("elif", tokstr) )
+        {
+            ctx_tu->condinc_level --;
+            if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_TRYNEXT )
+            {
+                s2list_t *mdef = s2list_create();
+                CtrlLine_ArgCollect(
+                    mdef, ctx_tu, &ctx_tu->ctx_shifter, ctx_tu->shifter);
+                pred = cppEvaluateCtrlExpr(
+                    ctx_tu, mdef, (token_shifter_t)shift_from_s2list);
+                s2obj_release(mdef->pobj);
+
+                // Should be `_Countof`, but (assert?) it's a single byte anyway.
+                assert( ctx_tu->condinc_level < sizeof ctx_tu->condinc_state );
+
+                // 2026-05-16:
+                //
+                // Q: specific implementation behavior / actions:
+                // A: see "cpp-c.h", notes below the `CONDINC_*` macros.
+
+                if( pred )
+                {
+                    ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_INCLUDED;
+                    ctx_tu->condinc_level ++;
+                    ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_INITIAL;
+                }
+                else
+                {
+                    ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_TRYNEXT;
+                    ctx_tu->condinc_level ++;
+                    ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_SUPPRESS;
+                }
+            }
+            else if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_INCLUDED )
+            {
+                ctx_tu->condinc_level ++;
+                ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_SUPPRESS;
+            }
+            else if( ctx_tu->condinc_state[ctx_tu->condinc_level] == CONDINC_SUPPRESS )
+            {
+                ctx_tu->condinc_level ++;
+                ctx_tu->condinc_state[ctx_tu->condinc_level] = CONDINC_SUPPRESS;
+            }
+            else
+            {
+                ccDiagnoseError(ctx_tu, "Unpaired preprocessing group", spelling_and_site(tok));
+            }
+        }
+
         else if( 0 == strcmp("else", tokstr) )
         {
             ctx_tu->condinc_level --;
@@ -449,6 +697,7 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
                 ccDiagnoseError(ctx_tu, "Unpaired preprocessing group", spelling_and_site(tok));
             }
         }
+
         else if( 0 == strcmp("endif", tokstr) )
         {
             ctx_tu->condinc_level --;
@@ -464,4 +713,76 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
     }
 
     return NULL;
+}
+
+// 2026-07-24:
+// The token, if of the `langlex_strlit` completion, is:
+#define STRLIT_CLS_ORD 4 // ordinary
+#define STRLIT_CLS_WIDE 5 // wide
+#define STRLIT_CLS_UTF16 6 // is UTF-16 encoded
+#define STRLIT_CLS_UTF32 7 // is UTF-32 encoded
+#define STRLIT_CLS_UTF8 8 // is UTF-8 encoded
+
+lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
+{
+    lex_token_t *ret;
+    lex_token_t *cooked = NULL;
+
+    ret = cppDirectivesDispatch(ctx_tu);
+    if( !ret ) return NULL;
+
+    if( ret->completion == langlex_identifier )
+        ; // 2026-07-24 TODO: type-name lexer hack.
+
+    while( ret->completion == langlex_strlit )
+    {
+        int rcls;
+        char *rstr;
+        size_t rlen;
+
+        if( !cooked )
+        {
+            cooked = lex_token_create(); // TODO (still) 2026-07-21: handle error.
+            cooked->lineno = ret->lineno;
+            cooked->column = ret->column;
+            cooked->identity = TOKIDENT_DEQUOTED; // Concat actually.
+            cooked->completion = langlex_str_cooked;
+            cooked->classification = STRLIT_CLS_ORD;
+        }
+
+        rstr = s2data_weakmap(ret->str);
+        rlen = s2data_len(ret->str);
+        rcls = -1;
+        if( strncmp(rstr, "\"", 1) == 0 ) rcls = STRLIT_CLS_ORD;
+        if( strncmp(rstr, "L\"", 2) == 0 ) rcls = STRLIT_CLS_WIDE;
+        if( strncmp(rstr, "u\"", 2) == 0 ) rcls = STRLIT_CLS_UTF16;
+        if( strncmp(rstr, "U\"", 2) == 0 ) rcls = STRLIT_CLS_UTF32;
+        if( strncmp(rstr, "u8\"", 3) == 0 ) rcls = STRLIT_CLS_UTF8;
+
+        if( cooked->classification == STRLIT_CLS_ORD )
+        {
+            cooked->classification = rcls;
+        }
+        else
+        {
+            ccDiagnoseError(ctx_tu, "Inconsistent kinds of string literals", spelling_and_site(ret));
+        }
+
+        if( rcls == STRLIT_CLS_UTF8 )
+            s2data_puts(cooked->str, rstr+2, rlen-2);
+        else if( rcls == STRLIT_CLS_ORD )
+            s2data_puts(cooked->str, rstr, rlen);
+        else s2data_puts(cooked->str, rstr+1, rlen-1);
+
+        ret = cppDirectivesDispatch(ctx_tu);
+        if( !ret ) break;
+    }
+
+    if( cooked )
+    {
+        s2list_seek(ctx_tu->pushlist, 0, S2_LIST_SEEK_SET);
+        s2list_insert(ctx_tu->pushlist, ret->pobj, s2_setter_gave);
+        return cooked;
+    }
+    else return ret;
 }

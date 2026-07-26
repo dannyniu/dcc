@@ -37,7 +37,7 @@ static void dump_parsing_stack(
     strvec_t *ns_rules,
     const char *t)
 {
-    #define STRBUF_SIZE 58
+#define STRBUF_SIZE 58
     char strbuf[STRBUF_SIZE];
     char *strp;
     eprintf("%s", h);
@@ -78,14 +78,18 @@ void fprint_prod(FILE *fp, lalr_prod_t *prod, int indentlevel, strvec_t *ns)
 {
     size_t t;
     fprintf(fp, "%d:%s<%d:%s>\n",
-           prod->rule,
-           strvec_i2str(ns, prod->production),
-           prod->semantic_rule,
-           strvec_i2str(ns, prod->semantic_production));
+            prod->rule,
+            strvec_i2str(ns, prod->production),
+            prod->semantic_rule,
+            strvec_i2str(ns, prod->semantic_production));
 
     for(t=0; t<prod->terms_count; t++)
     {
-        if( s2_is_prod(prod->terms[t].production) )
+        if( !prod->terms[t].production ) // `|| !prod->terms[t].terminal`.
+        {
+            fprintf(fp, "%*s ./. \n", indentlevel * 2 + 3, "");
+        }
+        else if( s2_is_prod(prod->terms[t].production) )
         {
             fprintf(fp, "%*s [%zi] ", indentlevel * 2 + 3, "", t);
             fprint_prod(fp, prod->terms[t].production, indentlevel + 1, ns);
@@ -108,8 +112,9 @@ static void lalr_prod_final(lalr_prod_t *ctx)
 
     for(t=0; t<ctx->terms_count; t++)
     {
-        // similarly `... production->pobj`.
-        s2obj_release(ctx->terms[t].terminal->pobj);
+
+        if( ctx->terms[t].terminal ) // similarly `... production->pobj`.
+            s2obj_release(ctx->terms[t].terminal->pobj);
     }
 
     free(ctx->terms);
@@ -163,14 +168,18 @@ static bool lalr_symbol_matches_term(
     // predicate: `term` matches `symbol`.
     // gives no regard to `optional` (which is handled elsewhere).
 
+    // Assertion added 2026-07-25:
+    // This function handles only non-NULL operands.
+    assert( term );
+
     if( symbol->type == lalr_symtype_stoken )
     {
         if( !s2_is_token(term->terminal) )
             return false;
 
         if( 0 != strcmp(
-            symbol->value,
-            s2data_weakmap(term->terminal->str)) )
+                symbol->value,
+                s2data_weakmap(term->terminal->str)) )
             return false;
 
         // 2026-06-03:
@@ -182,7 +191,7 @@ static bool lalr_symbol_matches_term(
         // concatenator would have done so while lexing.
         if( term->terminal->identity != TOKIDENT_PRISTINE )
             return false;
-        
+
         return true;
     }
     else if( symbol->type == lalr_symtype_vtoken )
@@ -192,11 +201,9 @@ static bool lalr_symbol_matches_term(
 
         return symbol->vtype == term->terminal->completion;
     }
-    else
+    else if( symbol->type == lalr_symtype_prod )
     {
         const char *strptr = NULL;
-
-        assert( symbol->type == lalr_symtype_prod );
 
         if( !s2_is_prod(term->production) )
             return false;
@@ -206,6 +213,7 @@ static bool lalr_symbol_matches_term(
 
         return strcmp(strptr, symbol->value) == 0;
     }
+    else assert( 0 );
 }
 
 static lalr_rule_symbol_t const *(lalr_rule_match)(
@@ -214,6 +222,31 @@ static lalr_rule_symbol_t const *(lalr_rule_match)(
     strvec_t *ns_rules)
 {
     lalr_term_t *term = anchterm;
+
+    if( symbolseq[0].type == lalr_symtype_symset )
+    {
+        // This block is added 2026-07-17, for handling `symset` - symbol sets.
+
+        int i = 1;
+
+        while( true )
+        {
+            if( !symbolseq[i].type ) // equals 0, i.e. `lalr_symtype_invalid`.
+                break;
+
+            if( lalr_symbol_matches_term(symbolseq, term, ns_rules) )
+                break;
+
+            i ++;
+            // 2026-07-17: Not iterating over terms - top-of-stack is assumed.
+        }
+
+        if( !symbolseq[i].type == !symbolseq->vtype )
+            // 2026-07-17:
+            // 1. term matches 1 symbol and it's an accepting set.
+            // 2. term matches no symbol and it's an exclusion set.
+            return symbolseq;
+    }
 
     while( true )
     {
@@ -267,14 +300,47 @@ static lalr_prod_t *(lalr_rule_reduce)(
         return anchterm->production;
     }
 
-    newprod = lalr_prod_create(terms_count);
-    if( !newprod ) return NULL;
+    if( symbolseq[0].type == lalr_symtype_symset )
+    {
+        // This block is added 2026-07-17, for handling `symset` - symbol sets.
+        assert( !newprod ); // prevents my future self from making mistakes.
+        newprod = lalr_prod_create(1);
+        if( !newprod ) return NULL;
+
+        if( s2_is_prod(terms->production) )
+        {
+            eprintf("%s, ", strvec_i2str(
+                        ns_rules, terms->production->production));
+
+            terms->production->parent = newprod;
+        }
+        else
+        {
+            eprintf("\"%s\", ", (char *)s2data_weakmap(
+                        terms->terminal->str));
+        }
+
+        // could also be `... terms->terminal`.
+        newprod->terms[0].production = terms->production;
+
+        // We're done creating and initializing `newprod`,
+        // set this to 0 to skip the normal path.
+        terms_count = 0;
+    }
+
+    if( terms_count > 0 )
+    {
+        newprod = lalr_prod_create(terms_count);
+        if( !newprod ) return NULL;
+    }
 
     for(i=0; i<terms_count; i++)
     {
-        assert( terms );
+        // commented-out on 2026-07-25 for its
+        // inability to handle optional terms.
+        //- assert( terms );
 
-        if( lalr_symbol_matches_term(symbolseq+i, terms, ns_rules) )
+        if( terms && lalr_symbol_matches_term(symbolseq+i, terms, ns_rules) )
         {
             if( s2_is_prod(terms->production) )
             {
@@ -429,92 +495,133 @@ static bool begins_with_expected(
     lalr_rule_symbol_t const *restrict expected_sym,
     struct traversed_rules *tup, // prevents infinite loop.
     lalr_rule_t grammar_rules[restrict],
+    strvec_t *restrict ns_rules);
+
+static bool begins_with_expected(
+    lalr_rule_symbol_t const *restrict symbolseq, // from the compiled grammar.
+    lalr_rule_symbol_t const *restrict expected_sym,
+    struct traversed_rules *tup, // prevents infinite loop.
+    lalr_rule_t grammar_rules[restrict],
     strvec_t *restrict ns_rules)
 {
     lalr_rule_symbol_t const *rchain; // r = rule/reduction.
-    lalr_rule_t *subsrule; // subs = substitution,
+    lalr_rule_t *subsrule = grammar_rules; // subs = substitution,
+    int ssi = 0; // symbolseq index;
 
-    if( symbolseq[0].type == lalr_symtype_stoken ||
-        symbolseq[0].type == lalr_symtype_vtoken )
+    // 2026-07-25 TODO: Not able to handle `lalr_symtype_symset` yet.
+    //- eprintf("%s.symbolseq: ", __func__); symbol_print_expect_chain(symbolseq);
+#define BEW_TRACE (void)0 //eprintf("bew.Reached-%d: %d %d %d. %td %p,\n", __LINE__, ssi, !!tup, !symbolseq[ssi].optional, subsrule - grammar_rules, tup)
+    for(ssi=0; ; ssi++)
     {
-        // If the current state expect a terminal (in the symbol sequence),
-        // and the term is one, then return true.
-
-        if( expected_sym->type == lalr_symtype_prod )
+        if( symbolseq[ssi].type == lalr_symtype_stoken ||
+            symbolseq[ssi].type == lalr_symtype_vtoken )
         {
-            // 2025-01-20:
-            // Because expectation is a non-terminal, and the 1st symbol
-            // in the current rule isn't one, donot apply the current rule.
-            return false;
+            // If the current state expect a terminal (in the symbol sequence),
+            // and the term is one, then return true.
+
+            if( expected_sym->type == lalr_symtype_prod )
+            {
+                BEW_TRACE;
+                if( !tup || // 2026-07-25: `symbolseq` is actually an `expect_chain`.
+                    !symbolseq[ssi].optional )
+                    // 2025-01-20:
+                    // Because expectation is a non-terminal, and the beginning symbol(s)
+                    // in the current rule isn't one, donot apply the current rule.
+                    return false;
+                else continue;
+            }
+
+            if( expected_sym->type != symbolseq[ssi].type )
+            {
+                BEW_TRACE;
+                if( !tup || // 2026-07-25: `symbolseq` is actually an `expect_chain`.
+                    !symbolseq[ssi].optional )
+                    return false;
+                else continue;
+            }
+
+            BEW_TRACE;
+            if( expected_sym->type == lalr_symtype_stoken )
+                if( strcmp(expected_sym->value, symbolseq[ssi].value) == 0 )
+                    return true;
+
+            BEW_TRACE;
+            if( expected_sym->type == lalr_symtype_vtoken )
+                if( expected_sym->vtype == symbolseq[ssi].vtype )
+                    return true;
+            BEW_TRACE;
         }
 
-        if( expected_sym->type != symbolseq[0].type )
-            return false;
-
-        if( expected_sym->type == lalr_symtype_stoken )
-            if( strcmp(expected_sym->value, symbolseq[0].value) == 0 )
-                return true;
-
-        if( expected_sym->type == lalr_symtype_vtoken )
-            if( expected_sym->vtype == symbolseq[0].vtype )
-                return true;
-    }
-
-    if( expected_sym->type != symbolseq[0].type )
-        return false;
-
-    if( strcmp(expected_sym->value, symbolseq[0].value) == 0 )
-    {
-        lalr_parse_accel_cache_insert(symbolseq, expected_sym, true);
-        return true;
-    }
-
-    for(subsrule = grammar_rules; *subsrule; subsrule++)
-    {
-        struct traversed_rules trav = { .r = *subsrule, .up = tup };
-        int32_t lhs;
-        int query_result;
-        const char *strptr;
-
-        rchain = (*subsrule)(lalr_rule_inspect_symseq,
-                             NULL, -1, NULL,
-                             grammar_rules, ns_rules);
-
-        query_result = lalr_parse_accel_cache_query(
-            rchain, expected_sym);
-        if( query_result == false ) continue;
-
-        lhs = (int32_t)(ptrdiff_t)(*subsrule)(
-            lalr_rule_inspect_lhs,
-            NULL, -1, NULL,
-            grammar_rules, ns_rules);
-        strptr = strvec_i2str(ns_rules, lhs);
-
-        if( strcmp(symbolseq[0].value, strptr) != 0 )
-            // the lhs of subsrule doesn't match the 1st symbol of symbolseq.
-            continue;
-
-        if( rchain->type == lalr_symtype_prod )
-            if( strcmp(rchain[0].value, strptr) == 0 )
-                // The rule's 1st symbol equals its left-hand-side,
-                // avoid its infinite loop.
-                continue;
-
-        if( find_rule_in_traversed(*subsrule, tup) )
-            // catches loop-in-alternation rule pairs and groups.
-            continue;
-
-        if( query_result == true || begins_with_expected(
-                rchain, expected_sym, &trav, grammar_rules, ns_rules) )
+        if( expected_sym->type != symbolseq[ssi].type )
         {
-            lalr_parse_accel_cache_insert(
-                symbolseq, expected_sym, true);
+            BEW_TRACE;
+            if( !tup || // 2026-07-25: `symbolseq` is actually an `expect_chain`.
+                !symbolseq[ssi].optional )
+                return false;
+            else continue;
+        }
+
+        if( strcmp(expected_sym->value, symbolseq[ssi].value) == 0 )
+        {
+            BEW_TRACE;
+            lalr_parse_accel_cache_insert(symbolseq, expected_sym, true);
             return true;
         }
-    }
 
-    lalr_parse_accel_cache_insert(symbolseq, expected_sym, false);
-    return false;
+        for(subsrule = grammar_rules; *subsrule; subsrule++)
+        {
+            struct traversed_rules trav = { .r = *subsrule, .up = tup };
+            int32_t lhs;
+            int query_result;
+            const char *strptr;
+
+            rchain = (*subsrule)(lalr_rule_inspect_symseq,
+                                 NULL, -1, NULL,
+                                 grammar_rules, ns_rules);
+
+            query_result = lalr_parse_accel_cache_query(
+                rchain, expected_sym);
+            if( query_result == false ) continue;
+
+            lhs = (int32_t)(ptrdiff_t)(*subsrule)(
+                lalr_rule_inspect_lhs,
+                NULL, -1, NULL,
+                grammar_rules, ns_rules);
+            strptr = strvec_i2str(ns_rules, lhs);
+
+            if( strcmp(symbolseq[ssi].value, strptr) != 0 )
+                // the lhs of subsrule doesn't match the 1st symbol of symbolseq.
+                continue;
+
+            if( rchain->type == lalr_symtype_prod )
+                if( strcmp(rchain[0].value, strptr) == 0 )
+                    // The rule's 1st symbol equals its left-hand-side,
+                    // avoid its infinite loop.
+                    continue;
+
+            if( find_rule_in_traversed(*subsrule, tup) )
+                // catches loop-in-alternation rule pairs and groups.
+                continue;
+
+            if( query_result == true || begins_with_expected(
+                    rchain, expected_sym, &trav, grammar_rules, ns_rules) )
+            {
+                BEW_TRACE;
+                lalr_parse_accel_cache_insert(
+                    symbolseq, expected_sym, true);
+                return true;
+            }
+        }
+
+        if( !tup || // 2026-07-25: `symbolseq` is actually an `expect_chain`.
+            !symbolseq[ssi].optional )
+        {
+            BEW_TRACE;
+            lalr_parse_accel_cache_insert(symbolseq, expected_sym, false);
+            return false;
+        }
+        else continue;
+    }
 }
 
 static bool (lalr_rule_expect)(
@@ -526,6 +633,8 @@ static bool (lalr_rule_expect)(
     lalr_rule_symbol_t *expect_chain;
     lalr_rule_symbol_t expect_symbol = {};
     const char *lhs = strvec_i2str(ns_rules, production);
+
+    //- eprintf("lrx: "); symbol_print_expect_chain(term_expectation->expecting);
 
     expect_symbol.type = lalr_symtype_prod;
     expect_symbol.value = lhs;
@@ -778,10 +887,47 @@ int lalr_parse(
             if( !(mt = lalr_rule_match(rules, ri, te, ctx, ns_rules)) )
                 continue;
 
-            eprintf("  rule becomes candidate: %d.\n", ri);
+            eprintf("  Rule becomes candidate: %d.\n", ri);
             if( te->expecting && !lalr_rule_expect(
                     rules, ri, te, ctx, ns_rules) )
-                continue;
+                // continue // 2026-07-25: delegated by the below block.
+                ;
+
+            if( te->anchored )
+            {
+                // 2026-07-25, to see if this works:
+                // Additionally, for the first term on the stack,
+                // exclude rules that doesn't lead to the goal symbol.
+
+                lalr_rule_symbol_t *goalsyms = te->expecting;
+                int32_t production = (int32_t)(intptr_t)rules[ri](
+                    lalr_rule_inspect_lhs, NULL, ri, NULL, rules, ns_rules);
+                lalr_rule_symbol_t expect_symbol = {};
+                const char *lhs = strvec_i2str(ns_rules, production);
+
+                expect_symbol.type = lalr_symtype_prod;
+                expect_symbol.value = lhs;
+
+                if( !goalsyms )
+                {
+                    goalsyms = rules[0](
+                        lalr_rule_inspect_symseq,
+                        NULL, 0, NULL, rules, ns_rules);
+                }
+
+                while( goalsyms && !begins_with_expected(
+                           goalsyms, &expect_symbol,
+                           NULL, rules, ns_rules) )
+                {
+                    goalsyms = goalsyms->next;
+                }
+
+                if( !goalsyms && (te != ps->bottom || ri != 0) )
+                {
+                    eprintf("  Rule excluded for goal: %d.\n", ri);
+                    continue;
+                }
+            }
 
             mr = mt;
 
@@ -803,19 +949,19 @@ int lalr_parse(
                     return -1; // [host error].
                 }
                 expect_chain = expect_chain->next;
-                
+
                 mt++;
             }
 
             if( mt->type )
             {
-                eprintf("  rule Prefix match: %d.\n", ri);
+                eprintf("  Rule Prefix match: %d.\n", ri);
                 candidate_rules_count++;
             }
 
             if( !mt->type )
             {
-                eprintf("  rule  FULL  match: %d.\n", ri);
+                eprintf("  Rule  FULL  match: %d.\n", ri);
                 candidate_rules_count++;
 
                 // 2025-01-19:
@@ -873,7 +1019,7 @@ int lalr_parse(
                 eprintf("sv: %p, ", sv);
                 if( sv )
                 {
-                    if( sv->terminal ){ // equivalently `->production`.
+                    if( sv->terminal ) { // equivalently `->production`.
                         eprintf("%x.", sv->terminal->base.type);
                         s2obj_release(sv->terminal->pobj);
                     }
@@ -888,7 +1034,7 @@ int lalr_parse(
         }
 
         eprintf(" Reached matches.\n");
-        last_resort_rule = unique_rule;
+        last_resort_rule = unique_rule; // 2026-07-25 TODO: I was dead here.
 
         // shift 1 look-ahead token.
         if( sv )
@@ -978,13 +1124,6 @@ int lalr_parse(
                 continue;
             }
 
-            if( te->expecting && !lalr_rule_expect(
-                    rules, ri, te, ctx, ns_rules) )
-            {
-                Candidate_Drop(ri);
-                continue;
-            }
-
             lookahead_rules_count++;
         }
 
@@ -1002,6 +1141,64 @@ int lalr_parse(
         // this newly added assertion. Barring new changes in the future
         // of course,
         assert( !sv );
+
+        // 2026-07-26. If:
+        // 1. pre-lookahead stack-top term's production matches
+        //    one of the expectations, and
+        // 2. the lookahead matches a wildcard (i.e. an
+        //    invalid-terminated degenerate),
+        // then drop anchor.
+        // **Note**: Assume such opportunity is unique in a well-formed grammar.
+
+        ri = false;
+        expect_chain = te->expecting;
+        while( !ri && expect_chain )
+        {
+            // 2026-07-26.If.1:
+            if( expect_chain->type != lalr_symtype_invalid )
+            {
+                ri = lalr_symbol_matches_term(
+                    expect_chain, te, ns_rules);
+            }
+            expect_chain = expect_chain->next;
+            if( expect_chain->type == lalr_symtype_invalid )
+                break;
+        }
+        expect_chain = ps->top->expecting;
+        while( expect_chain )
+        {
+            // 2026-07-26.If.2:
+            symbol_print_expect_chain(expect_chain);
+            if( expect_chain->type == lalr_symtype_invalid )
+            {
+                expect_chain = expect_chain->next;
+                break;
+            }
+            expect_chain = expect_chain->next;
+        }
+        ri = ri && expect_chain;
+        ri = ri && ps->top->dn == te; // ensure `te` is the stack-top term.
+        if( ri )
+        {
+            eprintf(" unshift look-ahead, ");
+            sv = ps->top;
+            ps->top = sv->dn;
+            ps->top->up = NULL;
+
+            eprintf(" and clear 1 recent-most anchor.\n");
+            te = ps->top;
+            if( !(te = terms_drop_1anch(te)) )
+            {
+                // [parse error] - encountered offending token.
+                // All available rules had been tried on all
+                // anchored sequences. This is the same reason
+                // as -3, but whose origin warrants distinction.
+                // (2025-06-01).
+                if( candidates_bitmap ) free(candidates_bitmap);
+                return -8; // 2026-07-26: new error case.
+            }
+            continue;
+        }
 
         // ought to be expecting a LHS. as such, anchor the top of stack
         // so that it can be reduced (possibly grown with further tokens)
@@ -1021,6 +1218,7 @@ int lalr_parse(
             eprintf(" Reached new *potential* sub grammar tree.\n");
             ps->top->anchored = true;
             te = ps->top;
+
             symbol_print_expect_chain(te->expecting);
 
             lookahead_rules_count = 0;
