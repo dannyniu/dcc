@@ -71,8 +71,7 @@ cpptu_t *cpptu_create(char *sourcefile, cpptu_t *parent)
     return ret;
 }
 
-//extern
-strvec_t *ns_rules_ppexpr, *ns_rules_c;
+extern strvec_t *ns_rules_ppexpr, *ns_rules_c;
 
 bool ccPreprocInit()
 {

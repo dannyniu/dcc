@@ -1,7 +1,6 @@
 src_common_cpp="$(. ../cpp-c/cpp-c-src-common.inc ; echo "$src_common")"
 
 src_common="\
-c-grammar.c
 ${src_common_cpp}
 "
 

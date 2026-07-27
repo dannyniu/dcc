@@ -7,6 +7,7 @@ cpp-c/cpp-macro-expand-special.c
 cpp-c/cpp-master.c
 cpp-c/cpp-misc.c
 cpp-c/ppexpr-grammar.c
+pgm-cc/c-grammar.c
 c-misc/dequoting.c
 c-misc/diagnose.c
 langlex/langlex-c.c

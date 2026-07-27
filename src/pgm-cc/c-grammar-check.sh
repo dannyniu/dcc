@@ -10,8 +10,8 @@ testfunc()
 {
     echo parsing starts.
     #export LLVM_PROFILE_FILE="$HOME/deleteme.instrprof"
-    #lldb \-
-        $exec ../tests/cc-text-scalar-types/001-expr-ret.c
+    $exec ../tests/cc-text-scalar-types/001-expr-ret.c &&
+        $exec ../tests/cc-text-scalar-types/002-typedef-name.c
 }
 
 cd "$(dirname "$0")"
@@ -31,6 +31,6 @@ cflags_common="\
 
 arch_family=defaults
 srcset="Plain C"
-cflags="-D INTERCEPT_MEM_CALLS"
+cflags="-D INTERCEPT_MEM_CALLS" # -D DCC_LALR_LOGGING"
 
 tests_run
