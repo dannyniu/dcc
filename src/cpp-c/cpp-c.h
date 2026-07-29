@@ -86,7 +86,7 @@ struct cpptu {
 
     // Added 2026-07-24.
     // This is the (partial) parse tree used for the lexer hack.
-    s2obj_t *misc;
+    void **misc;
 
     long count_errors, count_warnings;
 };

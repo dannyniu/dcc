@@ -203,6 +203,18 @@ int lalr_parse(
         Reached(" Reached matches.\n");
         last_resort_rule = unique_rule; // 2026-07-25 TODO: I was dead here.
 
+        if( candidate_rules_count == 1 && last_resort_rule >= 0 )
+        {
+            // This block is added 2026-07-29.
+            // The only rule and it's a FULL match,
+            // reduce without consulting look-ahead.
+            // The C lexer depends on scopes being closed on leave
+            // to ensure unshadowing of declarations of identifiers
+            // in outter scopes.
+            lalr_rule_symbol_free(expect);
+            goto reduction;
+        }
+
         // shift 1 look-ahead token.
         if( sv )
         {

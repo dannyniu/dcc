@@ -25,6 +25,28 @@ void *ident_ident(lalr_rule_params)
     return lalr_rule_actions_generic(lalr_rule_gen_args);
 }
 
+void *privns_ident(lalr_rule_params)
+{
+    int32_t production = hRule("private-namespace-identifier");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_vtoken, .vtype = langlex_identifier, },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
+void *privns_typedefname(lalr_rule_params)
+{
+    int32_t production = hRule("private-namespace-identifier");
+    static lalr_rule_symbol_t symbolseq[] = {
+        { symtype_vtoken, .vtype = lexer_hack_typedef_name, },
+        {0},
+    };
+    (void)ctx;
+    return lalr_rule_actions_generic(lalr_rule_gen_args);
+}
+
 void *const_true(lalr_rule_params)
 {
     int32_t production = hRule("constant");
@@ -327,7 +349,7 @@ void *postfix_member(lalr_rule_params)
         { symtype_prod, .value = "|", },
         { symtype_prod, .value = "postfix-expr", },
         { symtype_stoken, .value = ".", },
-        { symtype_prod, .value = "identifier", },
+        { symtype_prod, .value = "private-namespace-identifier", },
         {0},
     };
     (void)ctx;
@@ -340,7 +362,7 @@ void *postfix_field(lalr_rule_params)
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_prod, .value = "postfix-expr", },
         { symtype_stoken, .value = "->", },
-        { symtype_prod, .value = "identifier", },
+        { symtype_prod, .value = "private-namespace-identifier", },
         {0},
     };
     (void)ctx;
@@ -1661,7 +1683,7 @@ void *aggr_def(lalr_rule_params)
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_prod, .value = "struct-or-union", },
         { symtype_prod, .value = "attr-spec-seq", lalr_opt },
-        { symtype_prod, .value = "identifier", lalr_opt },
+        { symtype_prod, .value = "private-namespace-identifier", lalr_opt },
         { symtype_stoken, .value = "{", },
         { symtype_prod, .value = "member-decl-list", },
         { symtype_stoken, .value = "}", },
@@ -1677,7 +1699,7 @@ void *aggr_decl(lalr_rule_params)
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_prod, .value = "struct-or-union", },
         { symtype_prod, .value = "attr-spec-seq", lalr_opt },
-        { symtype_prod, .value = "identifier", },
+        { symtype_prod, .value = "private-namespace-identifier", },
         {0},
     };
     (void)ctx;
@@ -1866,7 +1888,7 @@ void *enum_nocomma(lalr_rule_params)
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_stoken, .value = "enum", },
         { symtype_prod, .value = "attr-spec-seq", lalr_opt },
-        { symtype_prod, .value = "identifier", lalr_opt },
+        { symtype_prod, .value = "private-namespace-identifier", lalr_opt },
         { symtype_prod, .value = "enum-type-spec", lalr_opt },
         { symtype_stoken, .value = "{", },
         { symtype_prod, .value = "enum-list", },
@@ -1883,7 +1905,7 @@ void *enum_comma(lalr_rule_params)
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_stoken, .value = "enum", },
         { symtype_prod, .value = "attr-spec-seq", lalr_opt },
-        { symtype_prod, .value = "identifier", lalr_opt },
+        { symtype_prod, .value = "private-namespace-identifier", lalr_opt },
         { symtype_prod, .value = "enum-type-spec", lalr_opt },
         { symtype_stoken, .value = "{", },
         { symtype_prod, .value = "enum-list", },
@@ -1900,7 +1922,7 @@ void *enum_decl(lalr_rule_params)
     int32_t production = hRule("enum-specifier");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_stoken, .value = "enum", },
-        { symtype_prod, .value = "identifier", },
+        { symtype_prod, .value = "private-namespace-identifier", },
         { symtype_prod, .value = "enum-type-spec", lalr_opt },
         {0},
     };
@@ -2129,7 +2151,7 @@ void *direct_declarator_ident(lalr_rule_params)
 {
     int32_t production = hRule("direct-declarator");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "identifier", },
+        { symtype_prod, .value = "private-namespace-identifier", },
         { symtype_prod, .value = "attr-spec-seq", lalr_opt },
         {0},
     };
@@ -2684,7 +2706,7 @@ void *designator_member(lalr_rule_params)
     int32_t production = hRule("designator");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_stoken, .value = ".", },
-        { symtype_prod, .value = "identifier", },
+        { symtype_prod, .value = "private-namespace-identifier", },
         {0},
     };
     (void)ctx;
@@ -2780,7 +2802,7 @@ void *stdattr_ident(lalr_rule_params)
 {
     int32_t production = hRule("standard-attribute");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "identifier", },
+        { symtype_prod, .value = "private-namespace-identifier", },
         {0},
     };
     (void)ctx;
@@ -2793,7 +2815,7 @@ void *nsattr_nsattr(lalr_rule_params)
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_prod, .value = "attr-prefix", },
         { symtype_stoken, .value = "::", },
-        { symtype_prod, .value = "identifier", },
+        { symtype_prod, .value = "private-namespace-identifier", },
         {0},
     };
     (void)ctx;
@@ -2804,7 +2826,7 @@ void *attrprefix_ident(lalr_rule_params)
 {
     int32_t production = hRule("attr-prefix");
     static lalr_rule_symbol_t symbolseq[] = {
-        { symtype_prod, .value = "identifier", },
+        { symtype_prod, .value = "private-namespace-identifier", },
         {0},
     };
     (void)ctx;
@@ -3008,7 +3030,7 @@ void *label_ident(lalr_rule_params)
     int32_t production = hRule("label");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_prod, .value = "attr-spec-seq", lalr_opt },
-        { symtype_prod, .value = "identifier", },
+        { symtype_prod, .value = "private-namespace-identifier", },
         { symtype_stoken, .value = ":", },
         {0},
     };
@@ -3318,7 +3340,7 @@ void *jmp_goto(lalr_rule_params)
     int32_t production = hRule("jump-statement");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_stoken, .value = "goto", },
-        { symtype_prod, .value = "identifier", },
+        { symtype_prod, .value = "private-namespace-identifier", },
         { symtype_stoken, .value = ";", },
         {0},
     };
@@ -3331,7 +3353,7 @@ void *jmp_continue(lalr_rule_params)
     int32_t production = hRule("jump-statement");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_stoken, .value = "continue", },
-        { symtype_prod, .value = "identifier", lalr_opt },
+        { symtype_prod, .value = "private-namespace-identifier", lalr_opt },
         { symtype_stoken, .value = ";", },
         {0},
     };
@@ -3344,7 +3366,7 @@ void *jmp_break(lalr_rule_params)
     int32_t production = hRule("jump-statement");
     static lalr_rule_symbol_t symbolseq[] = {
         { symtype_stoken, .value = "break", },
-        { symtype_prod, .value = "identifier", lalr_opt },
+        { symtype_prod, .value = "private-namespace-identifier", lalr_opt },
         { symtype_stoken, .value = ";", },
         {0},
     };
@@ -3438,6 +3460,8 @@ void *funcbody_funcbody(lalr_rule_params)
 lalr_rule_t c_grammar_rules[] = {
     goal_TU,
     ident_ident,
+    privns_ident,
+    privns_typedefname,
     const_true,
     const_false,
     const_nullptr,

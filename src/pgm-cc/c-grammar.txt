@@ -4,6 +4,11 @@ identifier % ident
 : langlex_identifier % ident
 ;
 
+private-namespace-identifier % privns
+: langlex_identifier % ident
+| lexer_hack_typedef_name % typedefname
+;
+
 constant % const
 : "true" % true
 | "false" % false
@@ -52,8 +57,8 @@ postfix-expr % postfix
 : primary-expr % degenerate
 | postfix-expr "[" expression "]" % indirect
 | postfix-expr "(" arg-expr-list_opt ")"
-| postfix-expr "." identifier % member
-| postfix-expr "->" identifier % field
+| postfix-expr "." private-namespace-identifier % member
+| postfix-expr "->" private-namespace-identifier % field
 | postfix-expr "++" % inc
 | postfix-expr "--" % dec
 | compound-literal % complit
@@ -255,8 +260,8 @@ type-specifier % typespec
 ;
 
 struct-or-union-specifier % aggr
-: struct-or-union attr-spec-seq_opt identifier_opt "{" member-decl-list "}" % def
-| struct-or-union attr-spec-seq_opt identifier % decl
+: struct-or-union attr-spec-seq_opt private-namespace-identifier_opt "{" member-decl-list "}" % def
+| struct-or-union attr-spec-seq_opt private-namespace-identifier % decl
 ;
 
 struct-or-union % aggrkind
@@ -296,9 +301,9 @@ member-declarator % member_declarator
 ;
 
 enum-specifier % enum
-: "enum" attr-spec-seq_opt identifier_opt enum-type-spec_opt "{" enum-list "}" % nocomma
-| "enum" attr-spec-seq_opt identifier_opt enum-type-spec_opt "{" enum-list "," "}" % comma
-| "enum" identifier enum-type-spec_opt % decl
+: "enum" attr-spec-seq_opt private-namespace-identifier_opt enum-type-spec_opt "{" enum-list "}" % nocomma
+| "enum" attr-spec-seq_opt private-namespace-identifier_opt enum-type-spec_opt "{" enum-list "," "}" % comma
+| "enum" private-namespace-identifier enum-type-spec_opt % decl
 ;
 
 enum-list % enumlist
@@ -347,7 +352,7 @@ declarator % declarator
 ;
 
 direct-declarator % direct_declarator
-: identifier attr-spec-seq_opt % ident
+: private-namespace-identifier attr-spec-seq_opt % ident
 | "(" declarator ")" % paren
 | array-declarator attr-spec-seq_opt % array
 | function-declarator attr-spec-seq_opt % func
@@ -447,7 +452,7 @@ designator-list % desiglist
 
 designator % designator
 : "[" const-expr "]" % indirect
-| "." identifier % member
+| "." private-namespace-identifier % member
 ;
 
 
@@ -474,15 +479,15 @@ attrtok % attrtok
 ;
 
 standard-attribute % stdattr
-: identifier % ident
+: private-namespace-identifier % ident
 ;
 
 attr-prefix-tok % nsattr
-: attr-prefix "::" identifier % nsattr
+: attr-prefix "::" private-namespace-identifier % nsattr
 ;
 
 attr-prefix % attrprefix
-: identifier % ident
+: private-namespace-identifier % ident
 ;
 
 attr-arg-clause % aaclause
@@ -523,7 +528,7 @@ secondary-block % secondaryblk
 ;
 
 label % label
-: attr-spec-seq_opt identifier ":" % ident
+: attr-spec-seq_opt private-namespace-identifier ":" % ident
 | attr-spec-seq_opt "case" const-range-expr ":" % caserange
 | attr-spec-seq_opt "case" const-expr ":" % caseconst
 | attr-spec-seq_opt "default" ":" % default
@@ -573,9 +578,9 @@ iteration-statement % iterstmt
 ;
 
 jump-statement % jmp
-: "goto" identifier ";" % goto
-| "continue" identifier_opt ";" % continue
-| "break" identifier_opt ";" % break
+: "goto" private-namespace-identifier ";" % goto
+| "continue" private-namespace-identifier_opt ";" % continue
+| "break" private-namespace-identifier_opt ";" % break
 | "return" expression_opt ";" % return
 ;
 

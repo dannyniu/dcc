@@ -11,8 +11,6 @@ static void cpptu_final(cpptu_t *tu)
     s2obj_release(tu->HotFile->pobj);
     s2obj_release(tu->IncPaths->pobj);
     s2obj_release(tu->rope->pobj);
-    if( tu->misc ) // for when testing stand-alone pre-processor.
-        s2obj_release(tu->misc);
 }
 
 cpptu_t *cpptu_create(char *sourcefile, cpptu_t *parent)
@@ -58,8 +56,6 @@ cpptu_t *cpptu_create(char *sourcefile, cpptu_t *parent)
         parent->Includee = ret;
         ret->IncPaths = (s2list_t *)s2obj_retain(parent->IncPaths->pobj);
         ret->macros = (s2list_t *)s2obj_retain(parent->macros->pobj);
-        if( parent->misc ) // for when testing stand-alone pre-processor.
-            ret->misc = s2obj_retain(parent->misc);
     }
     else
     {

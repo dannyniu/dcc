@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
     cpptu->ctx_shifter.logger_base = (struct logging_ctxbase){
         .logger = (logger_func)logger,
     };
+    cpptu->misc = (void **)&parsed;
 
 #if INTERCEPT_MEM_CALLS
     acq_before = allocs;
@@ -54,7 +55,7 @@ int main(int argc, char *argv[])
 
     perfcounter = clock();
     i = lalr_parse(&parsed, GRAMMAR_RULES, NULL, NS_RULES,
-                   (token_shifter_t)cppDirectivesDispatch, (void *)cpptu);
+                   (token_shifter_t)cppMainProgramCoroutine, (void *)cpptu);
     printf("parsing returned: %d after %ld clock cycles, stack:\n",
            i, clock() - perfcounter);
 

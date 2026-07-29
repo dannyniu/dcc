@@ -1,7 +1,7 @@
 /* DannyNiu, 2026-03-29. Public Domain. */
 
 #include "cpp-c.h"
-#include "../c-misc/dequoting.h"
+#include "../pgm-cc/c-grammar.h"
 #include <s2ref.h>
 #include <stdarg.h>
 
@@ -723,6 +723,122 @@ lex_token_t *cppDirectivesDispatch(cpptu_t *ctx_tu)
 #define STRLIT_CLS_UTF32 7 // is UTF-32 encoded
 #define STRLIT_CLS_UTF8 8 // is UTF-8 encoded
 
+// Added 2026-07-29.
+#define theRule c_grammar_rules[prod->semantic_rule]
+
+// Added 2026-07-29.
+static bool find_typedef_spec(lalr_prod_t *prod)
+{
+    while( prod )
+    {
+        if( theRule == declspecs_genrule )
+        {
+            if( find_typedef_spec(prod->terms[0].production) )
+                return true;
+
+            prod = prod->terms[1].production;
+            continue;
+        }
+        else if( theRule == stor_cls_spec_typedef )
+        {
+            return true;
+        }
+        else return false;
+    }
+
+    return false;
+}
+
+// Added 2026-07-29.
+static bool find_typedef_name(lalr_prod_t *prod, lex_token_t *ident)
+{
+    while( prod )
+    {
+        if( theRule == blk_item_list_genrule )
+        {
+            if( find_typedef_name(prod->terms[1].production, ident) )
+                return true;
+
+            prod = prod->terms[0].production;
+            continue;
+        }
+
+        if( theRule == TU_genrule )
+        {
+            if( find_typedef_name(prod->terms[1].production, ident) )
+                return true;
+
+            prod = prod->terms[0].production;
+            continue;
+        }
+
+        if( theRule == selstmt_header_declexpr )
+        {
+            return find_typedef_name(prod->terms[0].production, ident);
+        }
+
+        if( theRule == decl_decl )
+        {
+            // 1st, look for `typedef` specifier.
+            if( !find_typedef_spec(prod->terms[0].production) )
+                return false;
+
+            // then traverse the declarators list.
+            prod = prod->terms[1].production;
+            continue;
+        }
+
+        if( theRule == decl_with_attr )
+        {
+            // 1st, look for `typedef` specifier.
+            if( !find_typedef_spec(prod->terms[1].production) )
+                return false;
+
+            // then traverse the declarators list.
+            prod = prod->terms[2].production;
+            continue;
+        }
+
+        if( theRule == initdecls_genrule )
+        {
+            if( find_typedef_name(prod->terms[1].production, ident) )
+                return true;
+
+            prod = prod->terms[0].production;
+            continue;
+        }
+
+        if( theRule == direct_declarator_ident )
+        {
+            if( s2data_cmp(
+                    prod->terms[0].production->terms[0].terminal->str,
+                    ident->str) == 0 )
+                return true;
+        }
+
+        if( theRule == direct_declarator_paren ||
+            theRule == declarator_pointer )
+        {
+            prod = prod->terms[1].production;
+            continue;
+        }
+
+        if( theRule == array_declarator_classic ||
+                 theRule == array_declarator_static ||
+                 theRule == array_declarator_qual ||
+                 theRule == array_declarator_asterisk ||
+                 theRule == function_declarator_funcdecl )
+        {
+            prod = prod->terms[0].production;
+            continue;
+        }
+
+        return false;
+    }
+
+    return false;
+}
+
 lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
 {
     lex_token_t *ret;
@@ -732,7 +848,27 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu)
     if( !ret ) return NULL;
 
     if( ret->completion == langlex_identifier )
-        ; // 2026-07-24 TODO: type-name lexer hack.
+    {
+        // The disambiguation between typedef-name and other
+        // non-tag identifiers - colloquially known as the
+        // lexer hack, had been implemented on 2026-07-29.
+
+        lalr_stack_t *ps = (lalr_stack_t *)*ctx_tu->misc;
+        lalr_term_t *te = ps->top;
+
+        while( te && !s2_is_prod(te->production) ) te = te->dn;
+            
+        while( te )
+        {
+            if( te && find_typedef_name(te->production, ret) )
+            {
+                ret->completion = lexer_hack_typedef_name;
+                break;
+            }
+
+            do { te = te->dn; } while( te && !s2_is_prod(te->production) );
+        }
+    }
 
     while( ret->completion == langlex_strlit )
     {

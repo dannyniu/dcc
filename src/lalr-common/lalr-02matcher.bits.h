@@ -136,7 +136,13 @@ int32_t lalr_stack_matcher(
 
             // 2025-01-19:
             // see "docs/Parser Pseudo-Code.txt" for rationale.
-            assert( unique_rule == -1 );
+            //
+            // 2026-07-29:
+            // The caller (i.e. `lalr_parse`) can now distinguish
+            // between FULL-match rules as long as the grammar
+            // is well-formed.
+            //- assert( unique_rule == -1 );
+
             unique_rule = ri;
         }
 

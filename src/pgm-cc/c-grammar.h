@@ -6,6 +6,8 @@ extern strvec_t *ns_rules_c;
 #define hRule(s) strvec_str2i(ns_rules_c, s)
 void *goal_TU(lalr_rule_params);
 void *ident_ident(lalr_rule_params);
+void *privns_ident(lalr_rule_params);
+void *privns_typedefname(lalr_rule_params);
 void *const_true(lalr_rule_params);
 void *const_false(lalr_rule_params);
 void *const_nullptr(lalr_rule_params);
