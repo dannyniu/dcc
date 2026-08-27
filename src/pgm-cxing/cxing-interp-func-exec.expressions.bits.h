@@ -106,6 +106,9 @@ if( theRule == primary_paren ) //>RULEIMPL<//
     {
         Reached();
         PassResultBack(valreg);
+
+        // 2026-08-27: fixes a leak with parenthesized lvalues.
+        instruction->opts = instruction[1].opts;
     }
 }
 

@@ -14,5 +14,6 @@ subr main()
     decl file = "00000000";
     decl bloc = blob.map(octaword);
     file.map(octaword).u = bloc.u;
+    (file.map(octaword).u);
     print(file);
 }
