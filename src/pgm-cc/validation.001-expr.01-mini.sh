@@ -10,7 +10,8 @@ testfunc()
     echo parsing starts.
     #export LLVM_PROFILE_FILE="$HOME/deleteme.instrprof"
     #lldb \
-        $exec ../tests/cc-text-scalar-types/001-expr-ret.c
+        #leaks -atExit -- \
+              $exec ../tests/cc-text-scalar-types/001-expr-ret.c
 }
 
 cd "$(dirname "$0")"
@@ -30,7 +31,8 @@ cflags_common="\
 
 arch_family=defaults
 srcset="Plain C"
-cflags="-D INTERCEPT_MEM_CALLS" # -D DCC_LALR_LOGGING"
+cflags="-D INTERCEPT_MEM_CALLS $sanitizers"
+ldflags="$sanitizers"
 
 if [ $EXPAND_SRC = yes ] ; then
 cc -E -DNDEBUG $cflags_common c-semantics-xhale.c ; else

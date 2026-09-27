@@ -75,8 +75,7 @@ bool PopSequence(
 {
     dcc_stack_entry_info_t *se = s2data_weakmap(ctx->stack_entries_ephemerals);
     ptrdiff_t si = s2data_len(ctx->stack_entries_ephemerals) / sizeof(*se) - 1;
-    mInstr_t *inst_pop = (mInstr_t *)s2gc_obj_alloc(
-        S2_OBJ_TYPE_MINI_INSTR, sizeof(mInstr_t));
+    mInstr_t *inst_pop;
 
     if( si < 0 )
         return false; // it's empty.
@@ -84,12 +83,11 @@ bool PopSequence(
     if( memcmp(&dish->cookie, &se->cookie, sizeof(se[si].cookie)) != 0 )
         return false; // wasn't push-saved on (partition-III of) the stack.
 
+    inst_pop = mInstrCreate();
     inst_pop->dest_actual = inst_pop->dest_compute = dish->dest_actual = regid;
     inst_pop->opcode = mLD;
     inst_pop->type = dish->type;
-    inst_pop->op = (mInstr_t *)(
-        inst_pop->payload = s2gc_obj_alloc(
-            S2_OBJ_TYPE_MINI_INSTR, sizeof(mInstr_t)));
+    inst_pop->payload = (inst_pop->op = mInstrCreate())->pobj;
 
     // 2026-08-24:
     // Because it's likely that loads/stores from/to the stack are likely to
@@ -113,8 +111,7 @@ bool PopSequence(
             spe = se[si - 1].addrend;
             spa = spe - (osp = spe % ctx->abi_oracle->stack_align);
 
-            pop_arith = (mInstr_t *)s2gc_obj_alloc(
-                S2_OBJ_TYPE_MINI_INSTR, sizeof(mInstr_t));
+            pop_arith = mInstrCreate();
 
             // See 2026-08-24 note above `inst_pop->op->opcode = mAS;`.
             pop_arith->opcode = mDES;
@@ -137,8 +134,7 @@ void PushSequence(
 {
     dcc_stack_entry_info_t *se = s2data_weakmap(ctx->stack_entries_ephemerals);
     ptrdiff_t si = s2data_len(ctx->stack_entries_ephemerals) / sizeof(*se);
-    mInstr_t *inst_push = (mInstr_t *)s2gc_obj_alloc(
-        S2_OBJ_TYPE_MINI_INSTR, sizeof(mInstr_t));
+    mInstr_t *inst_push = mInstrCreate();
 
     unsigned opsz = ctx->abi_oracle->types_descs[dish->type]->size;
     unsigned algn = ctx->abi_oracle->types_descs[dish->type]->align;
@@ -155,8 +151,7 @@ void PushSequence(
 
     if( spa != ctx->ptr_sp_actual )
     {
-        mInstr_t *push_arith = (mInstr_t *)s2gc_obj_alloc(
-            S2_OBJ_TYPE_MINI_INSTR, sizeof(mInstr_t));
+        mInstr_t *push_arith = mInstrCreate();
 
         push_arith->opcode = mENS;
         push_arith->misc = ctx->ptr_sp_actual - spa;
@@ -169,18 +164,18 @@ void PushSequence(
 
     inst_push->opcode = mST;
     inst_push->type = dish->type;
-    inst_push->op = (mInstr_t *)(
-        inst_push->payload = s2gc_obj_alloc(
-            S2_OBJ_TYPE_MINI_INSTR, sizeof(mInstr_t)));
+    inst_push->payload = (inst_push->op = mInstrCreate())->pobj;
 
     // See 2026-08-24 note above `inst_pop->op->opcode = mAS;` in `PopSequence`.
     inst_push->op->opcode = mAS;
     inst_push->op->type = mPointer;
     inst_push->op->misc = ctx->off_sp_addend;
-    inst_push->op->payload = (inst_push->op1 = dish)->pobj;
+    inst_push->op->payload = s2obj_retain((inst_push->op1 = dish)->pobj);
 
     s2list_push(ctx->mini_stream, inst_push->pobj, s2_setter_gave);
 }
+
+#define eprint(func, ...) ((void)0) //- fprint##func(stderr, __VA_ARGS__)
 
 // 2026-09-26:
 //
@@ -225,7 +220,7 @@ typedef enum {
 
 regavail_stat_t FindAvailableRegister(
     mInstr_t *dish, // in lieu of the input `cookie`.
-    regid_t *regid, mInstr_t **op, // output arguments
+    regid_t *regid, mInstr_t **eviction, // output arguments
     const struct s2ctx_list_element *lookforward, // instruction stream,
     omega_register_allocator_t *regfile,
     omega_regset_t regfile_subset) // working context.
@@ -246,9 +241,12 @@ regavail_stat_t FindAvailableRegister(
         if( !lookforward ) break; // See 2026-09-26 TODO above in sketch pseudo-code.
         else cur = (mInstr_t *)lookforward->value;
 
+        if( !cur ) break;
+
 #define FindAvailReg_OperandExamine(operand)                            \
         if( operand->registerLoadable )                                 \
         {                                                               \
+            eprint(_minstr, operand);                                   \
             ireg = regfile->cookie2regid(regfile, operand);             \
             if( ireg )                                                  \
             {                                                           \
@@ -257,7 +255,7 @@ regavail_stat_t FindAvailableRegister(
                 if( !ireg )                                             \
                 {                                                       \
                     *regid = rret;                                      \
-                    if( op ) *op = operand;                             \
+                    if( eviction ) *eviction = operand;                 \
                     regfile->clearallmarks(regfile, regfile_subset);    \
                     return reg_tobe_used;                               \
                 }                                                       \
@@ -265,24 +263,24 @@ regavail_stat_t FindAvailableRegister(
             }                                                           \
         }
 
-        if( cur )
-        {
-            // 2026-09-26:
-            // - <s answered="see below">Potential issue 1:
-            //   should not dictate operand order at here by this function?
-            //   but they're used in equally-distant-future by this point?</s>
-            // - ..Actually..:
-            //   this order here determines the order of push, and it's suffice that
-            //   the order of pop implemented respectively be consistent with this one here.
-            if( cur->op ){ FindAvailReg_OperandExamine(cur->op); }
-            if( cur->op1 ){ FindAvailReg_OperandExamine(cur->op1); }
-            if( cur->op2 ){ FindAvailReg_OperandExamine(cur->op2); }
-        }
+        eprint(f, ">-< %p\n", cur);
+
+        // 2026-09-26:
+        // - <s answered="see below">Potential issue 1:
+        //   should not dictate operand order at here by this function?
+        //   but they're used in equally-distant-future by this point?</s>
+        // - ..Actually..:
+        //   this order here determines the order of push, and it's suffice that
+        //   the order of pop implemented respectively be consistent with this one here.
+        if( cur->op ){ FindAvailReg_OperandExamine(cur->op); }
+        if( cur->op1 ){ FindAvailReg_OperandExamine(cur->op1); }
+        if( cur->op2 ){ FindAvailReg_OperandExamine(cur->op2); }
 
         lookforward = lookforward->next;
         continue;
     }
     *regid = rret;
+    regfile->clearallmarks(regfile, regfile_subset);
     return reg_has_vacancy;
 }
 
@@ -300,9 +298,12 @@ int64_t MiniStream_InsertSaveRestores(
 
 
 start_continue_process_1node:
-    if( !(node_anch = node_anch->next) ) return paircnt_pp;
+    if( node_anch == &ctx->mini_stream->anch_head )
+        s2list_seek(ctx->mini_stream, 0, S2_LIST_SEEK_SET);
+    else s2list_seek(ctx->mini_stream, 1, S2_LIST_SEEK_CUR);
+    if( (node_anch = node_anch->next) == &ctx->mini_stream->anch_tail ) return paircnt_pp;
     cur = (mInstr_t *)node_anch->value;
-    if( !cur ) goto start_continue_process_1node; // 2026-09-26: still debugging, tentative.
+    assert( cur );
 
 #define OperandRestoreEmitSeq(operand)                          \
     if( operand->registerLoadable )                             \
@@ -332,13 +333,14 @@ start_continue_process_1node:
     // 2026-09-27:
     // contains arithmetic value - hence register-loadable, so assign one.
     if( cur->registerLoadable )
-    {
+    {eprint(f, "\narith-rload.\n");
         mInstr_t *op_tbu; // the to be used operand.
         indicat = FindAvailableRegister(
             cur, &regid, &op_tbu,
             node_anch->next,
             regfile, regfile_subset);
 
+        eprint(_regid, regid), eprint(f, "/%d.%s.\n", indicat, mini_mnemonics[cur->opcode].name);
         if( indicat == reg_has_vacancy )
         {
             regfile->setregcookie(regfile, regid, cur);
@@ -349,9 +351,13 @@ start_continue_process_1node:
         {
             assert( indicat == reg_tobe_used );
             paircnt_pp ++;
+            eprint(_minstr, cur);
+            eprint(_minstr, op_tbu);
+            eprint(f, "-- --\n");
             if( !dryrun ) PushSequence(op_tbu, ctx);
             regfile->setregcookie(regfile, regid, cur);
         }
+        eprint(f, "== == ==\n");
 
         cur->dest_compute = regid;
         if( (!cur->op || !cur->op->registerLoadable) &&

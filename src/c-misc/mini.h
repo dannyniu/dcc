@@ -165,12 +165,7 @@ struct mInstr {
     //
     s2obj_t *payload;
 
-    int32_t misc;
-
-    // added 2026-09-26.
-    // a positive sequence number to help determine 
-    // the instructions' ordering in the mini stream.
-    int32_t seqno;
+    ptrdiff_t misc;
 
     cookie_t cookie;
 
@@ -194,5 +189,15 @@ struct mInstr {
 };
 
 mInstr_t *mInstrCreate();
+
+// 2026-09-27:
+// For Debugging:
+
+void fprint_regid(FILE *fp, regid_t x);
+void fprint_operand(FILE *fp, mInstr_t *op);
+void fprint_minstr(FILE *fp, mInstr_t *ins);
+void print_regid(regid_t x);
+void print_operand(mInstr_t *op);
+void print_minstr(mInstr_t *ins);
 
 #endif // dcc_mini_h

@@ -177,7 +177,7 @@ void aarch64_clearallmarks(
     for(ri=9; ri<=15; ri++)
         ctx->GPR[ri].mark = 0;
 
-    for(ri=16; ri<=32; ri++)
+    for(ri=16; ri<=31; ri++)
         ctx->SIMD[ri].mark = 0;
 
     if( regset & omega_regset_callee_saved_GPR )

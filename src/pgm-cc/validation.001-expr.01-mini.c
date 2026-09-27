@@ -2,6 +2,10 @@
 
 #include "../cpp-c/cpp-c.h"
 #include "c-grammar.h"
+
+#include "mental-comp.h"
+#include "../pgm-cgen-abi-spec/omega-supported.h"
+
 #include <s2obj.h>
 
 #define GRAMMAR_RULES c_grammar_rules
@@ -103,6 +107,11 @@ int main(int argc, char *argv[])
                    (const char *)s2data_weakmap((s2data_t *)gctail),
                    gctail, s2data_len((s2data_t *)gctail));
         }
+        if( gctail->type == S2_OBJ_TYPE_MINI_INSTR )
+        {
+            mInstr_t *ins = (void *)gctail;
+            print_minstr(ins);
+        }
 
         gctail = gctail->gc_prev;
     }
@@ -123,9 +132,6 @@ int main(int argc, char *argv[])
 #endif /* INTERCEPT_MEM_CALLS */
     return subret;
 }
-
-#include "mental-comp.h"
-#include "../pgm-cgen-abi-spec/omega-supported.h"
 
 void validation_mini_stream_check(lalr_stack_t *parsed, cpptu_t *cpptu)
 {
@@ -165,11 +171,7 @@ void validation_mini_stream_check(lalr_stack_t *parsed, cpptu_t *cpptu)
         mInstr_t *ins;
 
         s2list_get_T(mInstr_t)(MetaCtx.mini_stream, &ins);
-        printf("%s\t", mini_mnemonics[ins->opcode].name);
-        printf("%x/%x, ", ins->dest_actual, ins->dest_compute);
-        printf("%x, ", ins->op ? ins->op->dest_actual : 0);
-        printf("%x, ", ins->op1 ? ins->op1->dest_actual : 0);
-        printf("%x\n", ins->op2 ? ins->op2->dest_actual : 0);
+        print_minstr(ins);
 
         s2list_seek(MetaCtx.mini_stream, 1, S2_LIST_SEEK_CUR);
     }
@@ -178,5 +180,7 @@ void validation_mini_stream_check(lalr_stack_t *parsed, cpptu_t *cpptu)
     s2obj_release(MetaCtx.stack_entries_reusedops->pobj);
     s2obj_release(MetaCtx.scoped_decls->pobj);
     s2obj_release(MetaCtx.mini_stream->pobj);
+    CookieTable_Destroy(&MetaCtx.consumer_stats);
+    CookieTable_Destroy(&MetaCtx.usage_stats);
     free(regalloc);
 }
