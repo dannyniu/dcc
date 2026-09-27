@@ -6,7 +6,10 @@
 //
 // 2026-07-05:
 // TODOs:
-// - include guards.
+// - include guards (did 2026-08-14).
+
+#ifndef dcc_cpp_c_h
+#define dcc_cpp_c_h 1
 
 /// @brief
 /// A translation unit at its pre-processing stage.
@@ -168,3 +171,5 @@ lex_token_t *cppMainProgramCoroutine(cpptu_t *ctx_tu);
 #define rprintf(file, line, ...) eprintf(file":" #line " " __VA_ARGS__)
 #define rprintf1(file, line, ...) rprintf(file, line, __VA_ARGS__)
 #define Reached(...) rprintf1(__FILE__, __LINE__, __VA_ARGS__);
+
+#endif // dcc_cpp_c_h

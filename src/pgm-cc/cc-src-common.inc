@@ -2,6 +2,14 @@ src_common_cpp="$(. ../cpp-c/cpp-c-src-common.inc ; echo "$src_common")"
 
 src_common="\
 ${src_common_cpp}
+c-misc/cookie-table.c
+c-misc/vlong.c
+c-misc/mini.c
+c-semantics-xhale.c
+mental-eval.c
+mental-sematrav.c
+mini-gen.c
+pgm-cgen-abi-spec/omega-aarch64.c
 "
 
 memintercept='-DINTERCEPT_MEM_CALLS'

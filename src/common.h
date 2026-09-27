@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdalign.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -29,5 +30,11 @@ struct logging_ctxbase {
 #if '0' != 0x30 || 'A' != 0x41
 #error Non-ASCII environments need adaptation!
 #endif /* Testing for ASCII character set. */
+
+#if !(INT_MAX > SHRT_MAX)
+#error `int` MUST be wider than `short`!
+#endif // integer size.
+
+#define TODO(...) assert( ((void)#__VA_ARGS__, 0) )
 
 #endif /* dcc_common_h */
