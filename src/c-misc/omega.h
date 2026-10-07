@@ -65,20 +65,26 @@ struct omega_func_args_placer
 typedef struct omega_register_allocator omega_register_allocator_t;
 
 typedef enum {
-    // This are bitmask flags.
+    // These are bitmask flags.
     // ABI-specific set(s) start from the 6th bit - i.e. decimal value 64.
     omega_regset_all = -1,
     omega_regset_default = 0,
 
-    // By default, they're neither cleared by `clearallmarks`, 
+    // By default, they're neither cleared by `clearallmarks`,
     // thus nor touched by while generating machine code.
-    // This is changed between runs of code-gen to determine 
-    // whether it's better to save those registers to amortize 
+    // This is changed between runs of code-gen to determine
+    // whether it's better to save those registers to amortize
     // the cost of spilling.  As such, specifying any of the
     // following values, enables the respective sets of registers
     // to be used, and their save/restore sequence to be generated.
     omega_regset_callee_saved_GPR = 1,
     omega_regset_callee_saved_FPR = 2, // Recognized also as SIMD for many ABIs.
+
+    // The sets that could be invalidated across function calls, unless a
+    // function has no argument, or a function with only integer arguments
+    // calls a function with only floating-point arguments (or vice versa).
+    omega_regset_args_GPR = 4,
+    omega_regset_args_FPR = 8,
 } omega_regset_t;
 
 typedef void (*omega_initregalloc_t)(
@@ -110,10 +116,17 @@ typedef regid_t (*omega_getavailable_t)(
 typedef void (*omega_clearallmarks_t)(
     omega_register_allocator_t *ctx, omega_regset_t regset);
 
-// 2026-09-05 TODO: document me.
-typedef int (*omega_intersect_t)(
+// Computes the intersection of 2 register sets: Corresponding registers
+// with the same cookie value are preserved, others have their cookie
+// value cleared to all-bits-zero. Does not alter markings.
+typedef int (*omega_regalloc_intersect_t)(
     omega_register_allocator_t *ctx,
     omega_register_allocator_t const *other);
+
+// Invalidates the specified set of registers by clearing their
+// cookie values to all-bits-zero. Does not alter markings.
+typedef int (*omega_regalloc_invalidate_t)(
+    omega_register_allocator_t *ctx, omega_regset_t regset);
 
 struct omega_register_allocator
 {
@@ -131,7 +144,8 @@ struct omega_register_allocator
     omega_getavailable_t getavailable;
     omega_clearallmarks_t clearallmarks;
 
-    omega_intersect_t intersect;
+    omega_regalloc_intersect_t intersect;
+    omega_regalloc_invalidate_t invalidate;
 };
 
 typedef struct {

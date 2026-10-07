@@ -1,3 +1,5 @@
+// 2026-10-05: Old file, no longer relevant, to be deleted.
+
 // Sketch currently demonstrating the allocation of stack spaces for
 // evaluating expressions (2026-08-13).
 //
@@ -85,3 +87,8 @@ function_body.traversePostOrder((node) => {
 // is consistent with eviction order of most-distantly-future-used value.
 // HOWEVER! WE CAN'T KNOW WHEN TO EVICT TO STACK only by looking at the
 // register file!
+//
+// 2026-10-05:
+// Answer to the above 2026-08-24 issue: The entirity of the
+// 4-phase design is dropped, in favor of a lazy recompute
+// approach. See section '2026-10-05' in "notes.md".

@@ -192,10 +192,6 @@ void aarch64_clearallmarks(
 void aarch64_initregalloc(
     aarch64_register_allocator_t *ctx, omega_regset_t regset)
 {
-    // 2026-09-02:
-    // Exhalation produces a stream of compute instructions sans register
-    // allocation, interleaved with stores and saving of reused operands.
-
     int ri;
 
     memset(ctx, 0, sizeof(*ctx));
@@ -221,6 +217,7 @@ void aarch64_initregalloc(
     ctx->base.clearallmarks = (omega_clearallmarks_t)aarch64_clearallmarks;
 
     ctx->base.intersect = NULL; // 2026-09-25 TODO: Implement it!
+    ctx->base.invalidate = NULL; // 2026-10-07 TODO: Implement it!
 }
 
 aarch64_register_allocator_t *aarch64_regalloc_create()

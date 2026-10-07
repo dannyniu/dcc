@@ -17,6 +17,8 @@ typedef struct {
     uint8_t cookie_type;
 } cookie_t;
 
+cookie_t CookieXor(cookie_t a, cookie_t b);
+
 // See "plan-2026-08-01.md" (or later document(s)).
 enum {
     // in one sense, the cookie value is an/the invalid one.

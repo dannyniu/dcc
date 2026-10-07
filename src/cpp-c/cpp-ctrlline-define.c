@@ -97,6 +97,10 @@ int cppProcessDefineDirective(
                     }
                     s2list_seek(funcmacro_params, 1, S2_LIST_SEEK_CUR);
                 }
+                if( is_variadic )
+                {
+                    ccDiagnoseError(ctx_tu, "Excess parameter after ellipsis", spelling_and_site(tok));
+                }
                 s2list_push(funcmacro_params, tok->pobj, s2_setter_gave);
             }
             else if( strcmp("...", s2data_weakmap(tok->str)) == 0 )

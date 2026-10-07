@@ -2,7 +2,7 @@
 
 #include "mental-comp.h"
 
-void OperandDiscount_UnsequencedExpr(lalr_prod_t *node, dccMeta_t *ctx)
+DEPRECATED void OperandDiscount_UnsequencedExpr(lalr_prod_t *node, dccMeta_t *ctx)
 {
     // Eliminate second computations of reusable operands. I.e.:
     // When an operand is used in an reused expression,
@@ -30,7 +30,7 @@ void OperandDiscount_UnsequencedExpr(lalr_prod_t *node, dccMeta_t *ctx)
     }
 }
 
-void CollectReuseStats_UnsequencedExpr(lalr_prod_t *node, dccMeta_t *ctx)
+DEPRECATED void CollectReuseStats_UnsequencedExpr(lalr_prod_t *node, dccMeta_t *ctx)
 {
     mInstr_t *dish = (mInstr_t *)node->value;
 
@@ -175,7 +175,7 @@ void PushSequence(
     s2list_push(ctx->mini_stream, inst_push->pobj, s2_setter_gave);
 }
 
-#define eprint(func, ...) ((void)0) //- fprint##func(stderr, __VA_ARGS__)
+#define eprint(func, ...) //- fprint##func(stderr, __VA_ARGS__)
 
 // 2026-09-26:
 //
@@ -188,10 +188,12 @@ void PushSequence(
 //   - otherwise, the operand must have been evicted:
 //     - issue a pop sequence, then set `dest_actual` of the operand, and both `dest_*` fields of the pop-load instruction to the found available register.
 //   - finally, find an available register for `dest_compute`.
+//     - (added 2026-10-06) the register is simply assigned and not evicted.
 // - if it's a leaf node (e.g. an mIMM immediate), also do find an available register:
 //   - if the finding returned ''has vacancy(regid)'', call `setregcookie` for the current node.
 //   - if the ''value present(regid)'' indication, then nothing is done for it.
-//   - otherwise, assert the indication is ''to-be-used'', then
+//   - otherwise, if the operand node returned is ordered before the current node, then
+//     - assert the indication is ''to-be-used'',
 //     - emit push sequence for the operand node returned from finding the available register.
 //   - set `dest_actual` (and? `dest_compute`? but leaves don't have compute to begin with) to the returned `regid`.
 //
@@ -211,6 +213,40 @@ void PushSequence(
 //   - otherwise, replace the kept return value.
 // return the a special ''has vacancy(regid)'' indication.
 // (before returning, call `clearallmarks`)
+//
+//
+// 2026-10-05 TODO:
+// Revise sketch for `MiniStream_InsertSaveRestores`,
+// Add in handling of lazily evicted/re-evaluated reused operands,
+// and verify and re-check consistency of current push/pop logic.
+// (These are for tomorrow, i.e. 2026-10-06.)
+//
+//
+// 2026-10-06:
+// Simultaneous push+pop pollutes the LIFO order of the stack, and needs to be
+// avoided. When both operand-popping and compute-destination-push sequences
+// are to be emitted:
+// - the implication of push sequence conflicting with the pop sequence is that:
+//   - the 'find available register' procedure returned a ''to-be-used'' indication,
+//   - suggesting there is currently no available register.
+//
+// However, the fact that there's a pop for an immediate computation mInstr
+// suggests that even-later-used operands such as the one would've been evicted
+// by the push sequence must have already been pushed to deeper slot(s) than
+// the just-popped operands. __As such__, this push ought to be omitted.
+//
+// The today's revision stems from yesterday's idea of:
+// - eliminate partition-II,
+// - preserve all computations constituting the recomputation of reused operands,
+// - if leftover values in the register file coincides with a later reused operand,
+//   then any ''unsequenced'' re-computations leading up to that value are eliminated.
+//
+// Extending the above discission to its completion:
+// The above reasoning process had the assumption that we're operating under
+// a single expression AST tree, whereas for the new idea, we're operating
+// under a more general indirect-use/multi-tree model. However, since a later
+// reused operand would carry a re-computation sequence, the concern disappears
+// by virtue of not eliminating that re-computation sequence.
 
 typedef enum {
     reg_value_present = 1,
@@ -290,10 +326,14 @@ int64_t MiniStream_InsertSaveRestores(
     omega_regset_t regfile_subset)
 {
     const struct s2ctx_list_element *node_anch = &ctx->mini_stream->anch_head;
-    mInstr_t *cur;
+    const struct s2ctx_list_element *listptr;
+    cookie_t cpmt; // abbrev: c=cookie, pmt=permutation.
+    mInstr_t *cur, *nxt;
     int64_t paircnt_pp = 0; // count of push/pop pairs.
+    int64_t replctr; // replacement counter.
 
     regavail_stat_t indicat;
+    int popped;
     regid_t regid;
 
 
@@ -304,6 +344,61 @@ start_continue_process_1node:
     if( (node_anch = node_anch->next) == &ctx->mini_stream->anch_tail ) return paircnt_pp;
     cur = (mInstr_t *)node_anch->value;
     assert( cur );
+
+    // <recomp-elimin added="2026-10-07">
+
+    listptr = node_anch;
+    replctr = 0;
+    memset(&cpmt, 0, sizeof(cpmt));
+    regid = 0;
+    while( true )
+    {
+        nxt = (mInstr_t *)listptr->value;
+        if( !nxt ) break;
+        if( !nxt->registerLoadable )
+            break; // 2026-10-07: consider excempting this under certain condition.
+
+        if( !nxt->reuseCandidate ) break;
+
+        // Xor the cookie with the value of the (sub-)expression.
+        cpmt = CookieXor(cpmt, nxt->cookie);
+
+        // The operands of the (sub-)expression would cancel the previous ones out.
+        // Leaving the (cookie of) root value of the (sub-)expression in `cpmt`.
+        if( nxt->op && nxt->op->registerLoadable ) cpmt = CookieXor(cpmt, nxt->op->cookie);
+        if( nxt->op1 && nxt->op1->registerLoadable ) cpmt = CookieXor(cpmt, nxt->op1->cookie);
+        if( nxt->op2 && nxt->op2->registerLoadable ) cpmt = CookieXor(cpmt, nxt->op2->cookie);
+
+        regid = regfile->cookie2regid(regfile, nxt);
+        if( regid != 0 ) break;
+
+        listptr = listptr->next;
+        replctr ++;
+    }
+
+    if( regid != 0 && memcmp(&cpmt, &nxt->cookie, sizeof(cpmt)) == 0 )
+    {
+        // replace this subsequence
+        while( replctr-->0 )
+        {
+            s2obj_t *tmp;
+            s2list_shift(ctx->mini_stream, &tmp);
+            s2obj_release(tmp);
+        }
+        nxt->opcode = mNOP;
+        nxt->dest_actual = nxt->dest_compute = regid;
+
+        if( nxt->payload ) s2obj_release(nxt->payload);
+        if( nxt->pre ) s2obj_release(nxt->pre->pobj);
+        if( nxt->post ) s2obj_release(nxt->post->pobj);
+
+        nxt->payload = NULL;
+        nxt->pre = nxt->post = NULL;
+    }
+
+    // </recomp-elimin>
+
+    popped = false;
 
 #define OperandRestoreEmitSeq(operand)                          \
     if( operand->registerLoadable )                             \
@@ -319,6 +414,7 @@ start_continue_process_1node:
         else                                                    \
         {                                                       \
             paircnt_pp ++;                                      \
+            popped = true;                                      \
             if( !dryrun ) PopSequence(operand, ctx, regid);     \
         }                                                       \
         regfile->setregcookie(regfile, regid, operand);         \
@@ -333,14 +429,17 @@ start_continue_process_1node:
     // 2026-09-27:
     // contains arithmetic value - hence register-loadable, so assign one.
     if( cur->registerLoadable )
-    {eprint(f, "\narith-rload.\n");
+    {
         mInstr_t *op_tbu; // the to be used operand.
+
+        eprint(f, "\narith-rload.\n");
         indicat = FindAvailableRegister(
             cur, &regid, &op_tbu,
             node_anch->next,
             regfile, regfile_subset);
 
-        eprint(_regid, regid), eprint(f, "/%d.%s.\n", indicat, mini_mnemonics[cur->opcode].name);
+        eprint(_regid, regid);
+        eprint(f, "/%d.%s.\n", indicat, mini_mnemonics[cur->opcode].name);
         if( indicat == reg_has_vacancy )
         {
             regfile->setregcookie(regfile, regid, cur);
@@ -350,11 +449,20 @@ start_continue_process_1node:
         else
         {
             assert( indicat == reg_tobe_used );
-            paircnt_pp ++;
             eprint(_minstr, cur);
             eprint(_minstr, op_tbu);
             eprint(f, "-- --\n");
-            if( !dryrun ) PushSequence(op_tbu, ctx);
+            if( // retro note for 2026-10-06:
+                // sacrifice that register in belief of a future recomputation.
+                !popped
+                // 2026-10-07:
+                // we don't want to push operands that're recomputed in the future,
+                // we care only about computations with possibly missing operands.
+                && op_tbu->seqno < cur->seqno )
+            {
+                paircnt_pp ++;
+                if( !dryrun ) PushSequence(op_tbu, ctx);
+            }
             regfile->setregcookie(regfile, regid, cur);
         }
         eprint(f, "== == ==\n");

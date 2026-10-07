@@ -1,3 +1,4 @@
+#ifdef m
 m(NOP, = 0), // also used for attaching metadata to `lalr_prod_t` nodes.
 
 m(IMM),
@@ -35,3 +36,4 @@ m(FLIP), // Optimize away double-complement in MINI (TODO 2026-08-12).
 
 m(CMP),
 m(CVT),
+#endif // m

@@ -4,6 +4,15 @@
 
 uint8_t zsalt[ZSALT_LEN] = {0};
 
+cookie_t CookieXor(cookie_t a, cookie_t b)
+{
+    unsigned i;
+    for(i=0; i<sizeof(a.cookie_bits); i++)
+        a.cookie_bits[i] ^= b.cookie_bits[i];
+    a.cookie_type ^= b.cookie_type;
+    return a;
+}
+
 void CookieTable_Destroy(CookieTable *tab)
 {
     int i;

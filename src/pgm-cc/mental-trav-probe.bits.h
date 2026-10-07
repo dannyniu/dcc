@@ -70,7 +70,7 @@ int ProbeTravIdent(lalr_prod_t *code, dccMeta_t *ctx)
 start_evaluation:
     //- fprintf(stderr, "rule id: %d, rfp: %p [%p]. sp.ret: %p.\n", sp->body->semantic_rule, rfp, const_declit, sp->ret);
 #include "c-semantics.bits.h"
-    { fprintf(stderr, "unrecognized rule: %d.\n", sp->body->semantic_rule); }
+    { fprintf(stderr, "unrecognized rule: %d. implementation underway?\n", sp->body->semantic_rule); }
     ; // This semicolon here is because of the `else` clause in the macro `X`, so DO NOT REMOVE!
 
 finish_eval_1term:

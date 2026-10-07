@@ -5,7 +5,7 @@
 #define m(op, ...) { .opcode = m##op, .name = #op }
 struct mini_mnemonic mini_mnemonics_def[] =
 {
-#include "mini-opcodes.inc"
+#include "mini-opcodes.bits.h"
     {},
 }, *mini_mnemonics = mini_mnemonics_def;
 

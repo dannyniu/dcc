@@ -19,7 +19,7 @@ mInstr_t *MetaInstrDIV(lalr_prod_t *prod, dccOmega_t *omega, cpptu_t *ctx_tu);
 mInstr_t *MetaInstrREM(lalr_prod_t *prod, dccOmega_t *omega, cpptu_t *ctx_tu);
 
 typedef struct {
-    CookieTable consumer_stats, usage_stats;
+    CookieTable consumer_stats;
     s2list_t *mini_stream;
     s2list_t *scoped_decls;
     dccOmega_t *abi_oracle;
@@ -74,7 +74,7 @@ void PushSequence(
 
 
 // 2026-09-26 TODO: document these:
-int SemaTrav_NodeColoring(lalr_prod_t *code, dccMeta_t *ctx);
+int SemaTrav_NodeColoring(lalr_prod_t *code, dccMeta_t *ctx); // 2026-10-05 Note 1: Not necessarily expressions - applicable also to declarations, (and possibly though not yet, statements).
 int SemaTrav_OperandDiscount(lalr_prod_t *code, dccMeta_t *ctx);
 int SemaTrav_CollectReuseStats(lalr_prod_t *code, dccMeta_t *ctx);
 

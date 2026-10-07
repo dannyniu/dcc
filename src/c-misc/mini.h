@@ -89,7 +89,7 @@ enum mini_scalar_types {
 
 #define m(op, ...) m##op __VA_ARGS__
 enum mini_opcode {
-#include "mini-opcodes.inc"
+#include "mini-opcodes.bits.h"
 };
 #undef m
 struct mini_mnemonic { short opcode; const char *name; };
@@ -123,8 +123,10 @@ struct mInstr {
     // It's evaluated, and is waiting for its co-operand
     // to compute an expression. If not, Omega will not
     // indicate this node as yet needing eviction.
-    bool evaluated_waiting_for_use;
-    //- bool consumed_by_user; // 2026-08-25: wild guess it's not used.
+    //- bool evaluated_waiting_for_use;
+    //- bool consumed_by_user; // 2026-08-25: wild guess it's not used
+    // 2026-10-07:
+    // The above 2 fields are removed per deprecation.
 
     // 2026-09-26:
     // can be considered loosely as 'non-void'.
@@ -165,7 +167,8 @@ struct mInstr {
     //
     s2obj_t *payload;
 
-    ptrdiff_t misc;
+    int32_t misc;
+    int32_t seqno;
 
     cookie_t cookie;
 
@@ -177,9 +180,9 @@ struct mInstr {
     // 3. opcode operation semantic, then
     // 4. post-sequence.
     //
-    // For expressions, the pre-sequence are used to load possibly
-    // evicted operands back into registers, the post-sequence are
-    // used to save reused operands.
+    // <del date="2026-10-07">For expressions, the pre-sequence are used to
+    // load possibly evicted operands back into registers, the post-sequence
+    // are used to save reused operands.</del>
     //
     // Operand fields (i.e. `op{,[12]}`) are owned and freed externally,
     // The `pre` and `post` fields are owned by, and freed along with

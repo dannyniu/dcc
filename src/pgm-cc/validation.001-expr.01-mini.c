@@ -156,8 +156,8 @@ void validation_mini_stream_check(lalr_stack_t *parsed, cpptu_t *cpptu)
     regalloc = MetaCtx.abi_oracle->create_register_allocator_ctx();
 
     SemaTrav_NodeColoring(expression, &MetaCtx);
-    SemaTrav_OperandDiscount(expression, &MetaCtx);
-    SemaTrav_CollectReuseStats(expression, &MetaCtx);
+    //- SemaTrav_OperandDiscount(expression, &MetaCtx);
+    //- SemaTrav_CollectReuseStats(expression, &MetaCtx);
     XhaleTrav_MiniStream(expression, &MetaCtx);
     cgen_stats = MiniStream_InsertSaveRestores(
         &MetaCtx, false,
@@ -181,6 +181,5 @@ void validation_mini_stream_check(lalr_stack_t *parsed, cpptu_t *cpptu)
     s2obj_release(MetaCtx.scoped_decls->pobj);
     s2obj_release(MetaCtx.mini_stream->pobj);
     CookieTable_Destroy(&MetaCtx.consumer_stats);
-    CookieTable_Destroy(&MetaCtx.usage_stats);
     free(regalloc);
 }

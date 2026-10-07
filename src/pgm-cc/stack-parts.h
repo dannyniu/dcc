@@ -95,10 +95,7 @@ int ScopedDecls_Lookup(s2list_t *sd, s2data_t *ident, dcc_decl_info_t **out);
 int ScopedDecls_Process1Decl(s2list_t *sd, lalr_prod_t *declaration, cpptu_t *ctx_tu);
 
 //
-// Partition-II of the stack: reused operands.
-// These use the same 'stack entry' info as ephemeral operands, except that
-// the addend is not to the stack pointer, but to a different value.
-// Specifically the value of stack pointer had partition-iii been empty.
+// Partition-II of the stack: reused operands - we did away with these as of 2026-10-07.
 //
 // Partition-III of the stack: ephemeral temporaries.
 

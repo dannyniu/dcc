@@ -37,4 +37,14 @@ struct logging_ctxbase {
 
 #define TODO(...) assert( ((void)#__VA_ARGS__, 0) )
 
+#ifndef __has_attribute
+#define __has_attribute(...) 0
+#endif // __has_attribute
+
+#if __has_attribute(deprecated)
+#define DEPRECATED [[deprecated]]
+#else
+#define DEPRECATED
+#endif // __has_attribute(deprecated)
+
 #endif /* dcc_common_h */
